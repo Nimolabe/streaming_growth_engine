@@ -8,18 +8,28 @@ Eine Website für **neue Streamer**: Guides, Tools und Community, um schneller z
 index.html      → Die Seite (alle Abschnitte)
 css/style.css   → Design (Farben oben unter :root anpassen)
 js/main.js      → Menü, Scroll-Animationen
+js/auth.js      → Anmeldung (Firebase Authentication)
+js/firebase-config.js → Firebase-Zugangsdaten (hier eintragen)
 assets/         → Bilder, Logos, Icons
 ```
 
 ## Lokal ansehen
 
-Einfach `index.html` im Browser öffnen, oder:
+Wegen der Anmeldung (JavaScript-Module) die Seite über einen kleinen lokalen Server öffnen:
 
 ```bash
 python3 -m http.server 8000
 ```
 
 Dann http://localhost:8000 aufrufen.
+
+## Anmeldung einrichten (Firebase)
+
+1. In der Firebase-Konsole: **Authentication → Los gehts**
+2. Unter **Anmeldemethode** aktivieren: **E-Mail/Passwort** und **Google**
+3. Unter **Projekteinstellungen → Allgemein → Deine Apps** eine **Web-App** hinzufügen
+4. Die angezeigte `firebaseConfig` in `js/firebase-config.js` eintragen
+5. Sobald die Seite online ist: Domain unter **Authentication → Einstellungen → Autorisierte Domains** eintragen (`localhost` ist schon freigegeben)
 
 ## Zusammenarbeiten
 
@@ -31,6 +41,7 @@ Dann http://localhost:8000 aufrufen.
 
 - [ ] Guides-Seite mit echten Inhalten
 - [ ] Tool-Sammlung
+- [x] Anmeldung (E-Mail + Google)
 - [ ] Community-Link (z. B. Discord)
 - [ ] Eigenes Logo
 - [ ] Veröffentlichen über GitHub Pages
