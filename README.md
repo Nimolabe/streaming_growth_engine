@@ -10,6 +10,7 @@ css/style.css   → Design (Farben oben unter :root anpassen)
 js/main.js      → Menü, Scroll-Animationen
 js/auth.js      → Anmeldung (Firebase Authentication)
 js/firebase-config.js → Firebase-Zugangsdaten (hier eintragen)
+database.rules.json   → Sicherheitsregeln der Realtime Database
 assets/         → Bilder, Logos, Icons
 ```
 
@@ -30,6 +31,14 @@ Dann http://localhost:8000 aufrufen.
 3. Unter **Projekteinstellungen → Allgemein → Deine Apps** eine **Web-App** hinzufügen
 4. Die angezeigte `firebaseConfig` in `js/firebase-config.js` eintragen
 5. Sobald die Seite online ist: Domain unter **Authentication → Einstellungen → Autorisierte Domains** eintragen (`localhost` ist schon freigegeben)
+
+## Datenbank-Regeln
+
+Die Sicherheitsregeln stehen in `database.rules.json`. Bei Änderungen den Inhalt in der
+Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffentlichen** klicken.
+
+- `users/<uid>`: private Daten, nur der Nutzer selbst darf lesen und schreiben
+- `profiles/<uid>`: öffentliche Profile, alle Eingeloggten dürfen lesen, nur der Besitzer schreiben
 
 ## Zusammenarbeiten
 
