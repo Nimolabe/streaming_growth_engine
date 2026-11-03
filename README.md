@@ -5,10 +5,13 @@ Eine Website für **neue Streamer**: Guides, Tools und Community, um schneller z
 ## Struktur
 
 ```
-index.html      → Die Seite (alle Abschnitte)
+index.html      → Startseite
+setups.html     → Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog
 css/style.css   → Design (Farben oben unter :root anpassen)
 js/main.js      → Menü, Scroll-Animationen
 js/auth.js      → Anmeldung (Firebase Authentication)
+js/setups.js    → Logik der Setups-Seite
+js/setups-data.js → Produkte, Kategorien und Streamer-Setups (hier neue Daten eintragen)
 js/firebase-config.js → Firebase-Zugangsdaten (hier eintragen)
 database.rules.json   → Sicherheitsregeln der Realtime Database
 assets/         → Bilder, Logos, Icons
@@ -38,6 +41,7 @@ Die Sicherheitsregeln stehen in `database.rules.json`. Bei Änderungen den Inhal
 Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffentlichen** klicken.
 
 - `users/<uid>`: private Daten, nur der Nutzer selbst darf lesen und schreiben
+- `users/<uid>/favorites`: gespeicherte Lieblings-Setups (Setups-Seite)
 - `profiles/<uid>`: öffentliche Profile, alle Eingeloggten dürfen lesen, nur der Besitzer schreiben
 
 ## Zusammenarbeiten
@@ -51,6 +55,9 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - [ ] Guides-Seite mit echten Inhalten
 - [ ] Tool-Sammlung
 - [x] Anmeldung (E-Mail + Google)
+- [x] Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog, Favoriten
+- [ ] Echte Streamer-Setups mit Quellen eintragen
+- [ ] Kaufen-Links / aktuelle Preise
 - [ ] Community-Link (z. B. Discord)
 - [ ] Eigenes Logo
 - [ ] Veröffentlichen über GitHub Pages

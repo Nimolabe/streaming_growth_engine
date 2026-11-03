@@ -245,3 +245,8 @@ button.btn-small { font-size: 0.75rem; }
 @media (max-width: 760px) {
   .user-menu { flex-direction: column; }
 }
+
+/* ===== Links in Karten / aktive Navigation ===== */
+.card-link { display: inline-block; margin-top: 1rem; color: var(--accent); font-weight: 500; }
+.card-link:hover { text-decoration: underline; }
+.nav-links a.active { color: var(--text); }
