@@ -110,9 +110,15 @@ async function initFirebase() {
   try {
     const { initializeApp } = await import(`${SDK}/firebase-app.js`);
     fb = await import(`${SDK}/firebase-auth.js`);
-    auth = fb.getAuth(initializeApp(firebaseConfig));
+    const app = initializeApp(firebaseConfig);
+    auth = fb.getAuth(app);
     auth.languageCode = "de";
-    fb.onAuthStateChanged(auth, updateUI);
+    fb.onAuthStateChanged(auth, (user) => {
+      updateUI(user);
+      // Andere Seiten-Skripte (z. B. Favoriten auf setups.html) informieren
+      window.sgeAuth = { user, app };
+      document.dispatchEvent(new CustomEvent("sge:auth", { detail: window.sgeAuth }));
+    });
   } catch (err) {
     console.error("Firebase konnte nicht geladen werden:", err);
   }
