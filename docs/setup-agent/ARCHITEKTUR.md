@@ -1,6 +1,6 @@
 # Setup Intelligence Agent – Architektur (Phase 1)
 
-Stand: 10.11.2026 · Status: **Entwurf zur Prüfung** (Phase 1)
+Stand: 10.11.2026 · Status: **Phasen 1–5 umgesetzt** (Phase 6, optionale KI, bewusst offen)
 
 Der Setup Intelligence Agent sammelt, prüft und verwaltet Angaben dazu, welche Hardware und
 Software bekannte Streamer nutzen. Er arbeitet **regelbasiert und ohne kostenpflichtige KI-APIs**.
@@ -11,6 +11,7 @@ Begleitende Dokumente:
 - [DATENMODELL.md](DATENMODELL.md) – Datenmodelle A–F und Firestore-Struktur
 - [VERIFIZIERUNG.md](VERIFIZIERUNG.md) – Verifizierungs- und Vertrauensregeln
 - [API.md](API.md) – versionierte Schnittstellen (v1)
+- [BETRIEB.md](BETRIEB.md) – Einrichtung, Ablauf, Fehlerbehebung
 
 ---
 
@@ -84,17 +85,20 @@ Repository-Schnittstelle läuft.
 - Geschäftslogik als Python-Paket `backend/setup_agent` (Python ≥ 3.11, Pydantic v2).
 - REST-API mit **FastAPI** ab Phase 2. Grund für die Wahl: Pydantic-Modelle werden direkt zu
   dokumentierten OpenAPI-Schemas, Versionierung über `/api/v1`.
-- **Hosting-Frage (offen):** Kostenloses, dauerhaftes Hosting für einen Python-Server ohne
-  Kreditkarte ist in Phase 2 zu prüfen. Damit das System nicht davon abhängt:
+- **Hosting-Frage (offen):** Für einen dauerhaft laufenden Python-Server ohne Kreditkarte wurde
+  keine geprüfte kostenlose Lösung festgelegt. Das System hängt deshalb nicht davon ab:
   - Öffentliche Lese-API = statische JSON-Dateien (3.3), brauchen keinen Server.
   - Agent-Läufe = Batch-Jobs in GitHub Actions (3.4), brauchen keinen Server.
-  - FastAPI dient der Admin-Bedienung und der späteren App-Integration und läuft notfalls lokal.
+  - Admin-Bedienung = `admin.html` direkt gegen Firestore (Sicherheitsregeln), schreibt nur Vorschläge,
+    die der stündliche Lauf prüft und übernimmt.
+  - FastAPI dient der späteren App-Integration und läuft bis zur Hosting-Entscheidung lokal.
 
 ### 3.3 Veröffentlichung: statische JSON-API
 
 Freigegebene Daten werden von einem Export-Job in versionierte JSON-Dateien geschrieben,
-z. B. `data/v1/streamers.json`, `data/v1/streamers/<id>.json`, `data/v1/products.json`.
-Sie werden mit der Website ausgeliefert (gleiche Hosting-Lösung wie heute).
+z. B. `v1/streamers.json`, `v1/streamers/<id>/setup.json`, `v1/products.json`. Der Job schreibt sie
+in den eigenen Branch **`data`** (nicht `main`, damit keine Bot-Commits im Entwicklungszweig landen);
+abrufbar z. B. über `raw.githubusercontent.com/Nimolabe/streaming_growth_engine/data/v1/…`.
 
 Vorteile: keine Datenbankzugriffe durch Besucher, unabhängig vom Frontend-Framework,
 cachebar, Versionsstand im Git nachvollziehbar. Die JSON-Struktur entspricht exakt den
@@ -185,9 +189,13 @@ Zustand, und wird einzeln getestet. Die Uhrzeit wird injiziert, damit Tests dete
 
 | Phase | Inhalt | Status |
 | --- | --- | --- |
-| 1 | Architektur, Datenmodelle, Verifizierungsregeln, API-Entwurf; Modelle und Regeln als getesteter Code | **in diesem PR** |
-| 2 | Repository-Adapter (In-Memory, Firestore), FastAPI v1, Audit Logger, JSON-Export, Beispiel-Setups | geplant |
-| 3 | Source Registry, Product Resolver, Change Detector, Approval Manager | geplant |
-| 4 | Datenadapter, Price Monitor, Scheduler (GitHub Actions), Fehlerbehandlung | geplant |
-| 5 | Admin-Oberfläche, Sicherheitsregeln, Integrationstests, Frontend-Anbindung | geplant |
+| 1 | Architektur, Datenmodelle, Verifizierungsregeln, API-Entwurf; Modelle und Regeln als getesteter Code | umgesetzt |
+| 2 | Repository (In-Memory, Firestore), Audit Logger, Approval Manager, JSON-Export, Beispieldaten | umgesetzt |
+| 3 | Source Registry, Product Resolver, Change Detector | umgesetzt |
+| 4 | Fetcher, Source Monitor, Price Monitor, Jobs, GitHub-Actions-Workflow | umgesetzt |
+| 5 | REST-API (FastAPI), Admin-Seite, Firestore-Regeln, Admin-Recht | umgesetzt; Anbindung der Setups-Seite folgt nach PR #4 |
 | 6 | Optional: KI-Extraktor, nur wenn messbarer Mehrwert | offen |
+
+Getestet: siehe `backend/README.md`. Nicht gegen die echten Dienste getestet: Firestore (nur mit
+nachgebautem Client), die Firestore-Regeln (kein Emulator verfügbar), die GitHub-Actions-Jobs
+(laufen erst nach dem Merge und mit Secret).

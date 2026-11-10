@@ -50,6 +50,9 @@ def run_job(job: str, repo: R.Repository, *, out_dir: Path | None = None, fetche
     try:
         if job == "apply":
             result["apply"] = _summary(approvals.apply_pending_approvals())
+            invalid = getattr(repo, "invalid_proposals", {})
+            if invalid:
+                result["invalid_proposals"] = sorted(invalid)  # fehlerhafte Dokumente aus der Admin-Seite
         if job == "weekly":
             if fetcher is not None:
                 result["sources"] = _summary(SourceMonitor(repo, approvals, fetcher, clock).run())

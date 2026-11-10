@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from . import repository as R
 from .models import AuditEntry, ChangeProposal, PriceObservation, Product, ProposalStatus
@@ -38,6 +38,7 @@ def _translate(e: Exception) -> Exception:
 class FirestoreRepository:
     def __init__(self, client: Any) -> None:
         self.db = client
+        self.invalid_proposals: dict[str, str] = {}
 
     @classmethod
     def from_service_account(cls, credentials_json: str | dict, project_id: str | None = None) -> "FirestoreRepository":
@@ -127,8 +128,15 @@ class FirestoreRepository:
         coll = self.db.collection(R.PROPOSALS)
         query = coll.where("status", "==", status.value) if status else coll
         docs = self._call(lambda: list(query.stream()))
-        # Admin-Seite legt Vorschläge mit eigener Dokument-ID an → ID aus dem Dokument übernehmen
-        return sorted((ChangeProposal.model_validate({**d.to_dict(), "id": d.id}) for d in docs), key=lambda p: p.created_at)
+        # Admin-Seite legt Vorschläge mit eigener Dokument-ID an → ID aus dem Dokument übernehmen.
+        # Ein fehlerhaftes Dokument (z. B. falsche Uhrzeit im Browser) darf nicht alle Läufe blockieren.
+        out = []
+        for d in docs:
+            try:
+                out.append(ChangeProposal.model_validate({**d.to_dict(), "id": d.id}))
+            except ValidationError as e:
+                self.invalid_proposals[d.id] = str(e)[:300]
+        return sorted(out, key=lambda p: p.created_at)
 
     # ------------------------------------------------------------ Audit, Preise, Meta
 

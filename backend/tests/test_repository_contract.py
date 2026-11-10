@@ -120,3 +120,16 @@ def test_full_workflow_on_both_backends(repo):
     c = repo.list(R.CLAIMS, SetupClaim)[0]
     assert c.published and c.status == "confirmed"
     assert len(repo.audit_log()) >= 6
+
+
+def test_invalid_admin_proposal_does_not_block_others():
+    client = FakeClient()
+    repo = FirestoreRepository(client)
+    client.collection("change_proposals").document("kaputt").create({"entity_type": "product", "status": "pending"})
+    client.collection("change_proposals").document("ok1").create({
+        "entity_type": "product", "entity_id": "new", "operation": "create", "payload": {}, "base_version": None,
+        "reason": "Neu", "evidence_source_ids": [], "origin": "admin", "created_by": {"type": "admin", "id": "u1"},
+        "created_at": "2025-06-01T10:00:00.000Z", "status": "pending", "decided_by": None, "decided_at": None,
+        "decision_note": None, "applied_at": None, "apply_error": None})
+    assert [p.id for p in repo.list_proposals(ProposalStatus.PENDING)] == ["ok1"]
+    assert "kaputt" in repo.invalid_proposals
