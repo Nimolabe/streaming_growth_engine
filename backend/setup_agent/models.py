@@ -205,6 +205,7 @@ class Streamer(_Versioned):
     primary_language: str | None = Field(default=None, pattern=r"^[a-z]{2}$")
     categories: list[StreamCategory] = Field(min_length=1)
     profile_links: list[HttpUrl] = Field(default_factory=list)
+    active: bool = True
 
     @staticmethod
     def make_id(platform: Platform, handle: str) -> str:
@@ -360,7 +361,7 @@ class PriceObservation(_Model):
 # ---------------------------------------------------------------- D. Quellen
 
 
-class Source(_Model):
+class Source(_Versioned):
     url: HttpUrl
     source_type: SourceType
     registry_id: str | None = None
@@ -433,6 +434,9 @@ class InvalidTransition(ValueError):
 
 
 class ChangeProposal(_Model):
+    # Vorschläge des Agenten bekommen eine ID aus dem dedupe_key (keine Duplikate bei Wiederholung).
+    # Vorschläge aus der Admin-Seite behalten die ID ihres Firestore-Dokuments.
+    id: str = Field(default="", max_length=128)
     entity_type: Literal["streamer", "setup_claim", "product", "offer", "source", "source_registry"]
     entity_id: str = Field(min_length=1)
     operation: Operation
@@ -446,17 +450,21 @@ class ChangeProposal(_Model):
     status: ProposalStatus = ProposalStatus.PENDING
     decided_by: Actor | None = None
     decided_at: datetime | None = None
-    decision_note: str | None = None
+    decision_note: str | None = Field(default=None, max_length=500)
+    applied_at: datetime | None = None
+    apply_error: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _default_id(self) -> ChangeProposal:
+        if not self.id:
+            object.__setattr__(self, "id", "p_" + self.dedupe_key)
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def dedupe_key(self) -> str:
-        return identity.dedupe_key(self.entity_type, self.entity_id, self.operation.value, self.payload)
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def id(self) -> str:
-        return "p_" + self.dedupe_key
+        # base_version gehört dazu: Ist ein Datensatz inzwischen geändert, ist derselbe Vorschlag eine neue Entscheidung.
+        return identity.dedupe_key(self.entity_type, self.entity_id, self.operation.value, {"payload": self.payload, "base_version": self.base_version})
 
     def decide(self, status: ProposalStatus, by: Actor, at: datetime, note: str | None = None) -> ChangeProposal:
         """Gibt eine entschiedene Kopie zurück. Nur Admins dürfen freigeben oder ablehnen."""
