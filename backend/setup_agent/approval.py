@@ -56,10 +56,10 @@ class AuditLogger:
         self.repo = repo
 
     @staticmethod
-    def diff(before: dict[str, Any] | None, after: dict[str, Any] | None) -> dict[str, tuple[Any, Any]]:
+    def diff(before: dict[str, Any] | None, after: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         before, after = before or {}, after or {}
         keys = (set(before) | set(after)) - _IGNORED_IN_DIFF
-        return {k: (before.get(k), after.get(k)) for k in sorted(keys) if before.get(k) != after.get(k)}
+        return {k: {"from": before.get(k), "to": after.get(k)} for k in sorted(keys) if before.get(k) != after.get(k)}
 
     def record(self, *, at: datetime, actor: Actor, action: AuditAction, entity_type: str, entity_id: str, reason: str,
                before: BaseModel | None = None, after: BaseModel | None = None, proposal_id: str | None = None) -> AuditEntry:

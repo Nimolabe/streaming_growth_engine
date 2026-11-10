@@ -142,7 +142,7 @@ class TestRepository:
         repo = InMemoryRepository()
         e1 = AuditEntry(at=NOW, actor=AGENT, action=AuditAction.CHECK_FAILED, entity_type="offer", entity_id="o_1", reason="Timeout")
         e2 = AuditEntry(at=NOW, actor=AGENT, action=AuditAction.UPDATE, entity_type="offer", entity_id="o_2",
-                        from_version=1, to_version=2, changes={"price": (39900, 34900)}, reason="Preis gesunken")
+                        from_version=1, to_version=2, changes={"price": {"from": 39900, "to": 34900}}, reason="Preis gesunken")
         repo.append_audit(e1)
         repo.append_audit(e2)
         assert repo.audit_log(entity_id="o_2") == [e2]

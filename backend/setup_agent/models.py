@@ -364,6 +364,7 @@ class PriceObservation(_Model):
 class Source(_Versioned):
     url: HttpUrl
     source_type: SourceType
+    streamer_id: str | None = None  # bei eigenen Seiten/Kanälen eines Streamers
     registry_id: str | None = None
     title: str | None = Field(default=None, max_length=200)
     first_seen_at: datetime = Field(default_factory=utcnow)
@@ -416,7 +417,8 @@ class AuditEntry(_Model):
     entity_id: str = Field(min_length=1)
     from_version: int | None = Field(default=None, ge=1)
     to_version: int | None = Field(default=None, ge=1)
-    changes: dict[str, tuple[Any, Any]] = Field(default_factory=dict)
+    # {feld: {"from": alt, "to": neu}} – keine verschachtelten Listen, die Firestore nicht speichern kann
+    changes: dict[str, dict[str, Any]] = Field(default_factory=dict)
     reason: str = Field(min_length=3)
     proposal_id: str | None = None
 

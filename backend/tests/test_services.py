@@ -112,7 +112,7 @@ class TestApprovalWorkflow:
         admin_do(am, "streamer", {"display_name": "Nachtfalke"}, entity_id="twitch-nachtfalke", op=Operation.UPDATE,
                  base_version=1, reason="Kanal umbenannt")
         upd = [e for e in repo.audit_log("streamer", "twitch-nachtfalke") if e.action == AuditAction.UPDATE][0]
-        assert upd.changes == {"display_name": ("NachtfalkeTV", "Nachtfalke")}
+        assert upd.changes == {"display_name": {"from": "NachtfalkeTV", "to": "Nachtfalke"}}
         assert upd.reason == "Kanal umbenannt" and upd.from_version == 1 and upd.to_version == 2 and upd.actor == ADMIN
 
     def test_apply_pending_from_admin_page(self):
@@ -283,7 +283,7 @@ class TestExport:
         assert [i["product"]["id"] for i in setup["items"]] == ["shure-sm7b"], "unbekannte Kamera erscheint nicht"
         item = setup["items"][0]
         assert item["status"] == "confirmed" and item["sources"][0]["source_type"] == "own_setup_page"
-        assert item["last_verified_at"] == "2026-11-10T12:00:00Z"
+        assert item["last_verified_at"] == "2025-06-02T12:00:00Z"
 
     def test_prices_states_and_alternatives(self):
         repo, _ = self._world()

@@ -8,7 +8,8 @@ import pytest
 
 from setup_agent.models import Evidence, ProductCategory, SetupClaim, SourceType
 
-NOW = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
+# Fester Zeitpunkt deutlich in der Vergangenheit, damit Tests mit "später" (bis +1 Jahr) nicht in der Zukunft landen
+NOW = datetime(2025, 6, 2, 12, 0, tzinfo=timezone.utc)
 
 
 def days_ago(n: int) -> datetime:
