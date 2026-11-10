@@ -8,7 +8,7 @@ Die Logik steckt in api_core.py; hier werden nur Routen, Parameter und Fehlerfor
 
 import os
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from fastapi import Body, FastAPI, Header, Query, Request  # type: ignore[import-not-found]
 from fastapi.exceptions import RequestValidationError  # type: ignore[import-not-found]
@@ -18,14 +18,16 @@ from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 from . import __version__
 from . import repository as R
 from .api_core import SetupApi, TokenVerifier
+from .models import utcnow
 
 PREFIX = "/api/v1"
 # Auf Modulebene, damit FastAPI die Typangabe beim Start auflösen kann
 Kind = Literal["streamers", "products", "claims", "offers", "sources", "source-registry"]
 
 
-def create_app(repo: R.Repository, verifier: TokenVerifier, *, allowed_origins: list[str] | None = None) -> FastAPI:
-    api = SetupApi(repo, verifier)
+def create_app(repo: R.Repository, verifier: TokenVerifier, *, allowed_origins: list[str] | None = None,
+               clock: Callable[[], datetime] = utcnow) -> FastAPI:
+    api = SetupApi(repo, verifier, clock=clock)
     app = FastAPI(title="Setup Intelligence Agent API", version=__version__, docs_url=f"{PREFIX}/docs",
                   openapi_url=f"{PREFIX}/openapi.json", redoc_url=None)
     if allowed_origins:

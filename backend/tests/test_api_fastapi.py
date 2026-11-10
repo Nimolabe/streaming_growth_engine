@@ -20,7 +20,7 @@ class TestFastApiWiring:
 
         repo = R.InMemoryRepository()
         seed(repo, NOW)
-        app = create_app(repo, FakeVerifier())
+        app = create_app(repo, FakeVerifier(), clock=lambda: NOW)
         import setup_agent.api_core as core
         return TestClient(app), repo, core
 
