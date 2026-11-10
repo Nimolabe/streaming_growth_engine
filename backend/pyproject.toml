@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setup-agent"
+version = "0.1.0"
+description = "Setup Intelligence Agent der Streaming Growth Engine (regelbasiert, ohne kostenpflichtige KI-APIs)"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# Phase 2: api = ["fastapi", "uvicorn"], firestore = ["firebase-admin"]
+
+[tool.setuptools]
+packages = ["setup_agent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
