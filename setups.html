@@ -50,7 +50,7 @@
           <label class="field">
             <span>Dein Budget</span>
             <div class="budget-input">
-              <input type="range" id="budget-range" min="50" max="2000" step="10" value="300" aria-label="Budget-Regler">
+              <input type="range" id="budget-range" min="50" max="4000" step="10" value="300" aria-label="Budget-Regler">
               <div class="budget-number"><input type="number" id="budget-number" min="0" max="10000" step="10" value="300" aria-label="Budget in Euro"><span>€</span></div>
             </div>
           </label>
@@ -65,10 +65,11 @@
           </label>
 
           <div class="field">
-            <span>Das habe ich schon</span>
-            <div class="chips small" id="budget-owned"></div>
+            <span>Was brauchst du noch?</span>
+            <p class="hint parts-hint">Hake an, was du schon hast oder nicht brauchst. PC/Konsole und Bildschirm sind auf „Habe ich“ voreingestellt.</p>
+            <div class="parts" id="budget-parts"></div>
           </div>
-          <p class="hint">Ohne PC/Konsole gerechnet. Preise sind Richtwerte.</p>
+          <p class="hint">Preise sind Richtwerte.</p>
         </form>
 
         <div class="planner-result" id="budget-result" aria-live="polite"></div>
@@ -80,7 +81,7 @@
           <li><strong>Mikrofon</strong>: Zuschauer verzeihen schlechtes Bild, aber keinen schlechten Ton.</li>
           <li><strong>Licht</strong>: Eine günstige Webcam mit gutem Licht schlägt eine teure Kamera im Dunkeln.</li>
           <li><strong>Kamera</strong>: Erst upgraden, wenn Ton und Licht stimmen.</li>
-          <li><strong>Komfort</strong>: Stream-Controller, Maus und Tastatur machen das Streamen angenehmer, aber nicht besser.</li>
+          <li><strong>Komfort</strong>: Stream Deck, Maus und Tastatur machen das Streamen angenehmer, aber nicht besser.</li>
         </ol>
       </div>
     </section>
@@ -97,13 +98,14 @@
           <select id="streamer-type"><option value="">Alle Bauteile</option></select>
         </label>
         <label class="field">
-          <span>Max. Gesamtpreis</span>
+          <span>Budget (Gesamtpreis)</span>
           <select id="streamer-price">
             <option value="">Egal</option>
-            <option value="300">bis 300 €</option>
-            <option value="600">bis 600 €</option>
-            <option value="1000">bis 1.000 €</option>
-            <option value="1500">bis 1.500 €</option>
+            <option value="0-500">bis 500 €</option>
+            <option value="500-1000">500 – 1.000 €</option>
+            <option value="1000-2000">1.000 – 2.000 €</option>
+            <option value="2000-3000">2.000 – 3.000 €</option>
+            <option value="3000-">über 3.000 €</option>
           </select>
         </label>
         <label class="check fav-toggle">
@@ -126,7 +128,7 @@
         </label>
         <label class="field grow">
           <span>Max. Preis: <strong id="catalog-price-label"></strong></span>
-          <input type="range" id="catalog-price" min="20" max="700" step="10" value="700">
+          <input type="range" id="catalog-price" min="20" max="2500" step="10" value="2500">
         </label>
         <label class="field">
           <span>Sortieren</span>
