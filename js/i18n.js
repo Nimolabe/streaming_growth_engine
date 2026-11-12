@@ -69,7 +69,9 @@
     "Preis absteigend":"Price: high to low", "Preis-Leistung":"Value for money",
     "Name, Spiel oder Produkt …":"Name, game or product …", "Budget-Regler":"Budget slider", "Budget in Euro":"Budget in euros",
     "Land":"Country", "Sprache":"Language", "Sprache der Website":"Website language",
-    "Die Sprache wird anhand deines Landes vorgeschlagen. Du kannst sie jederzeit ändern.":"We suggest a language based on your country. You can change it anytime."
+    "Die Sprache wird anhand deines Landes vorgeschlagen. Du kannst sie jederzeit ändern.":"We suggest a language based on your country. You can change it anytime.",
+    "Stream-Chat":"Stream chat", "Neuer Follower":"New follower", "Zeitplan":"Schedule",
+    "Beispiel einer Stream-Vorschau":"Example of a stream preview", "Weiter scrollen":"Scroll down"
   }));
   // Remember original text nodes so switching back is lossless.
   const originals = new WeakMap();

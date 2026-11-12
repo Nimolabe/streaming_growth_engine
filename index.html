@@ -5,12 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streaming Growth Engine</title>
   <meta name="description" content="Dein Start als Streamer: Tipps, Tools und Community für neue Streamer.">
+  <meta name="theme-color" content="#0b0a12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <script>
+    // Animationen nur vorbereiten, wenn JavaScript läuft und Bewegung erlaubt ist.
+    // Falls die Skripte nicht laden, wird nach kurzer Zeit alles sichtbar geschaltet.
+    document.documentElement.classList.add("js");
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.documentElement.classList.add("motion");
+      setTimeout(function () { if (!window.__motionReady) document.documentElement.classList.remove("motion"); }, 3000);
+    }
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="page-home">
+  <!--
+    Platzhalter-Bilder: Unsplash (frei nutzbar, Unsplash-Lizenz).
+    Florian Olivo, Chuck Fortner, Branden Skeli, Stanley Li, Fausto Sandoval, ELLA DON.
+    Später durch eigene Bilder in assets/ ersetzen.
+  -->
+
   <!-- ===== Navigation ===== -->
   <header class="nav">
     <a href="#" class="logo">SGE<span>.</span></a>
@@ -33,66 +50,133 @@
     <!-- ===== Hero ===== -->
     <section class="hero">
       <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-glow" aria-hidden="true"></div>
+
       <div class="hero-content">
-        <p class="tag"><span class="live-dot"></span> Level 1: Dein Stream beginnt</p>
-        <h1>Vom ersten Stream<br>zur <span class="glow">eigenen Community</span></h1>
-        <p class="lead">Die Streaming Growth Engine hilft neuen Streamern, schneller zu wachsen: mit Guides, Tools und einer Community, die dich pusht.</p>
-        <div class="hero-actions">
+        <p class="tag" data-hero><span class="live-dot"></span> Level 1: Dein Stream beginnt</p>
+        <h1>
+          <span class="line"><span>Vom ersten Stream</span></span>
+          <span class="line"><span>zur <span class="glow">eigenen Community</span></span></span>
+        </h1>
+        <p class="lead" data-hero>Die Streaming Growth Engine hilft neuen Streamern, schneller zu wachsen: mit Guides, Tools und einer Community, die dich pusht.</p>
+        <div class="hero-actions" data-hero>
           <a href="#start" class="btn">Quest starten</a>
           <a href="#features" class="btn btn-ghost">Mehr erfahren</a>
         </div>
-        <div class="stats">
+        <div class="stats" data-hero>
           <div><strong>Free</strong><span>Kostenlos</span></div>
           <div><strong>DE</strong><span>Auf Deutsch</span></div>
           <div><strong>Soon</strong><span>Neue Tools</span></div>
         </div>
       </div>
+
+      <!-- Stream-Vorschau: zeigt, worum es geht -->
+      <figure class="stream" aria-label="Beispiel einer Stream-Vorschau">
+        <div class="stream-screen">
+          <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1400&q=75" alt="Gamer im Gaming-Stuhl vor einem Bildschirm in violettem Licht" fetchpriority="high">
+          <div class="stream-hud">
+            <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+            <span class="viewers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C6.5 5 2.7 9.4 1.5 12c1.2 2.6 5 7 10.5 7s9.3-4.4 10.5-7C21.3 9.4 17.5 5 12 5zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg><span class="viewer-count" data-viewers>0</span></span>
+          </div>
+          <div class="stream-follow" aria-hidden="true"><span>Neuer Follower</span><strong>NightOwlTV</strong></div>
+        </div>
+        <aside class="stream-chat" aria-hidden="true">
+          <p class="chat-title">Stream-Chat</p>
+          <ul class="chat-list"></ul>
+        </aside>
+      </figure>
+
+      <a class="scroll-cue" href="#features" aria-label="Weiter scrollen"><span></span></a>
     </section>
+
+    <!-- ===== Laufband ===== -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Twitch</span><span>YouTube</span><span>Kick</span><span>Zeitplan</span><span>Raids</span><span>Community</span>
+        <span>Twitch</span><span>YouTube</span><span>Kick</span><span>Zeitplan</span><span>Raids</span><span>Community</span>
+        <span>Twitch</span><span>YouTube</span><span>Kick</span><span>Zeitplan</span><span>Raids</span><span>Community</span>
+        <span>Twitch</span><span>YouTube</span><span>Kick</span><span>Zeitplan</span><span>Raids</span><span>Community</span>
+      </div>
+    </div>
 
     <!-- ===== Features ===== -->
     <section id="features" class="section">
       <h2 class="section-title">Dein <span class="glow">Loadout</span></h2>
       <div class="cards">
-        <article class="card">
-          <div class="card-icon">🎮</div>
-          <h3>Stream-Setup</h3>
-          <p>Finde das beste Setup für dein Budget und schau dir an, womit andere streamen.</p>
-          <a href="setups.html" class="card-link">Zum Setup-Finder →</a>
+        <article class="card card-media">
+          <div class="card-img"><img src="https://images.unsplash.com/photo-1616588589676-62b3bd4ff6d2?auto=format&fit=crop&w=900&q=70" alt="Gaming-Arbeitsplatz mit Neon-Schildern in violettem Licht" loading="lazy"></div>
+          <div class="card-body">
+            <div class="card-icon">🎮</div>
+            <h3>Stream-Setup</h3>
+            <p>Finde das beste Setup für dein Budget und schau dir an, womit andere streamen.</p>
+            <a href="setups.html" class="card-link">Zum Setup-Finder →</a>
+          </div>
         </article>
-        <article class="card">
-          <div class="card-icon">📈</div>
-          <h3>Wachstum</h3>
-          <p>Strategien für mehr Zuschauer: Zeitplan, Titel, Kategorien und Social Media.</p>
+        <article class="card card-media">
+          <div class="card-img"><img src="https://images.unsplash.com/photo-1775410631936-7de96322df0b?auto=format&fit=crop&w=900&q=70" alt="Gaming-Setup mit mehreren Monitoren und RGB-Beleuchtung" loading="lazy"></div>
+          <div class="card-body">
+            <div class="card-icon">📈</div>
+            <h3>Wachstum</h3>
+            <p>Strategien für mehr Zuschauer: Zeitplan, Titel, Kategorien und Social Media.</p>
+          </div>
         </article>
-        <article class="card">
-          <div class="card-icon">🛠️</div>
-          <h3>Tools</h3>
-          <p>Hilfreiche Tools und Bots, die dir Arbeit abnehmen. <em>Kommt bald.</em></p>
+        <article class="card card-media">
+          <div class="card-img"><img src="https://images.unsplash.com/photo-1619190324856-af3f6eb55601?auto=format&fit=crop&w=900&q=70" alt="Audio-Mischpult" loading="lazy"></div>
+          <div class="card-body">
+            <div class="card-icon">🛠️</div>
+            <h3>Tools</h3>
+            <p>Hilfreiche Tools und Bots, die dir Arbeit abnehmen. <em>Kommt bald.</em></p>
+          </div>
         </article>
-        <article class="card">
-          <div class="card-icon">🤝</div>
-          <h3>Community</h3>
-          <p>Vernetze dich mit anderen Streamern, raide euch gegenseitig und wachst zusammen.</p>
+        <article class="card card-media">
+          <div class="card-img"><img src="https://images.unsplash.com/photo-1610041321420-a596dd14ebc9?auto=format&fit=crop&w=900&q=70" alt="Person mit Kopfhörern am Computer" loading="lazy"></div>
+          <div class="card-body">
+            <div class="card-icon">🤝</div>
+            <h3>Community</h3>
+            <p>Vernetze dich mit anderen Streamern, raide euch gegenseitig und wachst zusammen.</p>
+          </div>
         </article>
       </div>
     </section>
 
-    <!-- ===== Erste Schritte ===== -->
-    <section id="start" class="section">
-      <h2 class="section-title">Erste <span class="glow">Quests</span></h2>
-      <ol class="quests">
-        <li><span class="xp">+100 XP</span><div><h3>Plattform wählen</h3><p>Twitch, YouTube oder Kick: finde heraus, was zu dir passt.</p></div></li>
-        <li><span class="xp">+200 XP</span><div><h3>Setup einrichten</h3><p>Streaming-Software installieren und deine erste Szene bauen.</p></div></li>
-        <li><span class="xp">+300 XP</span><div><h3>Zeitplan festlegen</h3><p>Regelmäßigkeit schlägt Länge. Plane feste Stream-Tage.</p></div></li>
-        <li><span class="xp">+500 XP</span><div><h3>Go Live!</h3><p>Dein erster Stream. Der wichtigste Schritt von allen.</p></div></li>
-      </ol>
+    <!-- ===== Erste Schritte: XP-Leiste füllt sich beim Scrollen ===== -->
+    <section id="start" class="quest-section">
+      <div class="quest-pin section">
+        <div class="quest-head">
+          <h2 class="section-title">Erste <span class="glow">Quests</span></h2>
+          <div class="xp-meter" aria-hidden="true">
+            <div class="xp-meter-top"><span class="xp-level">Level <strong data-level>1</strong></span><span class="xp-total"><strong data-xp>0</strong> / 1100 XP</span></div>
+            <div class="xp-bar"><span></span></div>
+          </div>
+        </div>
+        <ol class="quests">
+          <li><span class="xp">+100 XP</span><div><h3>Plattform wählen</h3><p>Twitch, YouTube oder Kick: finde heraus, was zu dir passt.</p></div><span class="quest-check" aria-hidden="true"></span></li>
+          <li><span class="xp">+200 XP</span><div><h3>Setup einrichten</h3><p>Streaming-Software installieren und deine erste Szene bauen.</p></div><span class="quest-check" aria-hidden="true"></span></li>
+          <li><span class="xp">+300 XP</span><div><h3>Zeitplan festlegen</h3><p>Regelmäßigkeit schlägt Länge. Plane feste Stream-Tage.</p></div><span class="quest-check" aria-hidden="true"></span></li>
+          <li><span class="xp">+500 XP</span><div><h3>Go Live!</h3><p>Dein erster Stream. Der wichtigste Schritt von allen.</p></div><span class="quest-check" aria-hidden="true"></span></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== Setup-Teaser: Bild öffnet sich beim Scrollen ===== -->
+    <section class="showcase">
+      <div class="showcase-frame">
+        <img src="https://images.unsplash.com/photo-1598550480917-1c485268676e?auto=format&fit=crop&w=1800&q=75" alt="Mikrofon neben einem Monitor an einem Streaming-Platz" loading="lazy">
+        <div class="showcase-shade" aria-hidden="true"></div>
+        <div class="showcase-copy">
+          <h2>Finde dein <span class="glow">perfektes Setup</span></h2>
+          <p>Lass dir Setups für dein Budget vorschlagen, schau dir an, womit andere Streamer streamen, und vergleiche Hardware.</p>
+          <a href="setups.html" class="btn">Zum Setup-Finder →</a>
+        </div>
+      </div>
     </section>
 
     <!-- ===== Community / CTA ===== -->
     <section id="community" class="section cta">
+      <p class="cta-level" aria-hidden="true">Level 2</p>
       <h2>Bereit für <span class="glow">Level 2</span>?</h2>
       <p>Erstelle deinen Account und starte deine Streamer-Reise.</p>
-      <button type="button" class="btn" data-open-auth="register">Kostenlos registrieren</button>
+      <button type="button" class="btn btn-large" data-open-auth="register">Kostenlos registrieren</button>
     </section>
   </main>
 
@@ -103,7 +187,7 @@
   <!-- ===== Anmelde-Fenster ===== -->
   <div class="modal" id="auth-modal" hidden>
     <div class="modal-backdrop" data-close-auth></div>
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-title" data-lenis-prevent>
       <button type="button" class="modal-close" data-close-auth aria-label="Schließen">✕</button>
       <h2 id="auth-title">Anmelden</h2>
 
@@ -140,8 +224,12 @@
     </div>
   </div>
 
+  <script src="js/vendor/gsap.min.js"></script>
+  <script src="js/vendor/ScrollTrigger.min.js"></script>
+  <script src="js/vendor/lenis.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/motion.js"></script>
   <script type="module" src="js/auth.js"></script>
 </body>
 </html>
