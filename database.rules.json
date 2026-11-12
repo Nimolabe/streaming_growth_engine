@@ -10,13 +10,49 @@
       }
     },
 
+    "usernames": {
+      ".read": true,
+      "$name": {
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && newData.parent().parent().child('profiles').child(auth.uid).child('usernameLower').val() === $name) || (data.val() === auth.uid && !newData.exists()))",
+        ".validate": "newData.isString() && $name.matches(/^[a-z0-9_]{3,20}$/)"
+      }
+    },
+
     "profiles": {
+      ".read": true,
+      ".indexOn": ["usernameLower", "nameLower", "createdAt"],
       "$uid": {
-        ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['name'])",
-        "name": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+        ".validate": "newData.hasChildren(['name', 'username', 'usernameLower', 'nameLower', 'createdAt']) && newData.parent().parent().child('usernames').child(newData.child('usernameLower').val()).val() === $uid",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30" },
+        "nameLower": { ".validate": "newData.isString() && newData.val() === newData.parent().child('name').val().toLowerCase()" },
+        "username": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{3,20}$/)" },
+        "usernameLower": { ".validate": "newData.isString() && newData.val() === newData.parent().child('username').val().toLowerCase()" },
+        "bio": { ".validate": "newData.isString() && newData.val().length <= 280" },
+        "platform": { ".validate": "newData.isString() && newData.val().matches(/^(twitch|youtube|kick|tiktok|andere|)$/)" },
+        "channel": { ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^https:\\/\\/.{3,190}$/))" },
+        "games": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "createdAt": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())" },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "following": {
+      "$uid": {
+        ".read": true,
+        "$target": {
+          ".write": "auth != null && auth.uid === $uid && $target !== $uid",
+          ".validate": "newData.val() === true && newData.parent().parent().parent().child('profiles').child($target).exists()"
+        }
+      }
+    },
+
+    "followers": {
+      "$uid": {
+        ".read": true,
+        "$follower": {
+          ".write": "auth != null && auth.uid === $follower && $follower !== $uid",
+          ".validate": "newData.val() === true && newData.parent().parent().parent().child('following').child($follower).child($uid).val() === true"
         }
       }
     }

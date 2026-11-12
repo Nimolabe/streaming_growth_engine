@@ -7,8 +7,15 @@ Eine Website für **neue Streamer**: Guides, Tools und Community, um schneller z
 ```
 index.html      → Startseite
 setups.html     → Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog
+community.html  → Community: Profile suchen, neue Streamer entdecken
+profil.html     → Profilseite (eigenes Profil bearbeiten, fremde Profile ansehen, folgen)
 css/style.css   → Design (Farben oben unter :root anpassen)
-js/main.js      → Menü, Scroll-Animationen
+js/main.js      → Menü, Einblendungen auf Unterseiten
+js/motion.js    → Animationen der Startseite (GSAP, Lenis in js/vendor/)
+js/social.js    → Nutzernamen, Profile, Suche, Folgen (wird von auth.js geladen)
+js/community.js → Logik der Community-Seite
+js/profil.js    → Logik der Profilseite
+css/social.css  → Design für Community, Profile und Nutzernamen-Feld
 js/auth.js      → Anmeldung (Firebase Authentication)
 js/setups.js    → Logik der Setups-Seite
 js/setups-data.js → Produkte, Kategorien und Streamer-Setups (hier neue Daten eintragen)
@@ -42,7 +49,11 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 
 - `users/<uid>`: private Daten, nur der Nutzer selbst darf lesen und schreiben
 - `users/<uid>/favorites`: gespeicherte Lieblings-Setups (Setups-Seite)
-- `profiles/<uid>`: öffentliche Profile, alle Eingeloggten dürfen lesen, nur der Besitzer schreiben
+- `usernames/<name>`: reserviert Nutzernamen (klein geschrieben) → uid. Jeder Name nur einmal, nur der Besitzer kann ihn freigeben
+- `profiles/<uid>`: öffentliche Profile (Name, Nutzername, Bio, Plattform, Kanal-Link, Lieblingsspiele). Für alle lesbar, damit Profil-Links und Suche ohne Anmeldung funktionieren; nur der Besitzer schreibt. Indizes für die Suche: `usernameLower`, `nameLower`, `createdAt`
+- `following/<uid>/<ziel>` und `followers/<ziel>/<uid>`: wer wem folgt, nur der Folgende selbst darf schreiben
+
+**Wichtig:** Nach jeder Änderung an `database.rules.json` die Regeln in der Firebase-Konsole veröffentlichen, sonst funktionieren Profile und Suche nicht.
 
 ## Zusammenarbeiten
 
@@ -58,6 +69,7 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - [x] Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog, Favoriten
 - [ ] Echte Streamer-Setups mit Quellen eintragen
 - [ ] Kaufen-Links / aktuelle Preise
+- [x] Profile mit eigenem Nutzernamen, Profilsuche, Folgen
 - [ ] Community-Link (z. B. Discord)
 - [ ] Eigenes Logo
 - [ ] Veröffentlichen über GitHub Pages

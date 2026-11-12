@@ -1,0 +1,131 @@
+/* ============================================================
+   Social: Community-Suche und Profilseite
+   ============================================================ */
+.page-social { background: #0b0a12; }
+.page-social main { min-height: 70vh; }
+
+/* ---------- Avatar ---------- */
+.avatar {
+  flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
+  font: 700 1rem var(--font-head); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+.avatar-xl { width: 7rem; height: 7rem; font-size: 2.2rem; border: 5px solid #0b0a12; }
+
+/* ---------- Community-Kopf mit Suche ---------- */
+.social-head { max-width: 1200px; margin: 0 auto; padding: 4.5rem 5% 2rem; position: relative; }
+.social-head::before {
+  content: ""; position: absolute; inset: -2rem 0 auto; height: 360px; pointer-events: none; z-index: -1;
+  background: radial-gradient(40% 70% at 70% 30%, rgba(139, 124, 246, .22), transparent 70%);
+}
+.social-head h1 { font-family: var(--font-head); font-size: clamp(2.4rem, 6vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em; margin-bottom: 1rem; }
+.social-head .lead { margin-bottom: 2rem; }
+.search { position: relative; max-width: 640px; }
+.search-icon { position: absolute; left: 1.1rem; top: 50%; width: 1.3rem; height: 1.3rem; margin-top: -.65rem; fill: var(--text-dim); pointer-events: none; }
+.search input {
+  width: 100%; padding: 1.05rem 1.2rem 1.05rem 3.2rem; font: 500 1.1rem var(--font-body);
+  background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 14px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(139, 124, 246, .18); }
+.search input::-webkit-search-cancel-button { filter: invert(1); opacity: .6; }
+.me-cta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.4rem; color: var(--text-dim); }
+.me-cta p { margin: 0; }
+.me-cta strong { color: var(--text); }
+
+.social-section { max-width: 1200px; margin: 0 auto; padding: 1rem 5% 6rem; }
+.social-title { font-family: var(--font-head); font-size: 1.3rem; margin-bottom: .3rem; }
+.result-status { color: var(--text-dim); font-size: .9rem; min-height: 1.4em; margin-bottom: 1rem; }
+
+/* ---------- Profilkarten ---------- */
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.profile-card {
+  display: flex; align-items: center; gap: .9rem; padding: 1rem 1.1rem; min-width: 0;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .25s, transform .25s, box-shadow .25s;
+  animation: card-in .45s cubic-bezier(.2,.7,.2,1) both;
+}
+.profile-card:hover { border-color: rgba(139, 124, 246, .6); transform: translateY(-2px); box-shadow: 0 18px 40px -24px rgba(139, 124, 246, .7); }
+.profile-card:nth-child(2) { animation-delay: .03s; } .profile-card:nth-child(3) { animation-delay: .06s; }
+.profile-card:nth-child(4) { animation-delay: .09s; } .profile-card:nth-child(5) { animation-delay: .12s; }
+.profile-card:nth-child(n + 6) { animation-delay: .15s; }
+@keyframes card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.pc-text { display: grid; min-width: 0; flex: 1; }
+.pc-text strong { font-family: var(--font-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-handle { color: var(--text-dim); font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-platform { flex: none; font: 600 .7rem var(--font-head); padding: .25rem .55rem; border-radius: 6px; background: rgba(255, 255, 255, .06); color: var(--text-dim); }
+.pf-twitch { background: rgba(145, 70, 255, .18); color: #c4a3ff; }
+.pf-youtube { background: rgba(255, 0, 0, .15); color: #ff8a8a; }
+.pf-kick { background: rgba(83, 252, 24, .12); color: #8dfa63; }
+.pf-tiktok { background: rgba(37, 244, 238, .12); color: #7ff3ef; }
+
+/* ---------- Profilseite ---------- */
+.profile-page { max-width: 880px; margin: 0 auto; padding: 3rem 5% 6rem; }
+.profile-state { text-align: center; padding: 4rem 1rem; color: var(--text-dim); }
+.profile-state h1 { font-family: var(--font-head); color: var(--text); font-size: 2rem; margin-bottom: .8rem; }
+.profile-state p { margin-bottom: 1.6rem; }
+.profile-state-actions { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
+
+.profile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; animation: card-in .5s cubic-bezier(.2,.7,.2,1) both; }
+.profile-banner { height: 150px; opacity: .85; position: relative; }
+.profile-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(22, 24, 29, .9)); }
+.profile-main { display: flex; align-items: flex-end; gap: 1.2rem; flex-wrap: wrap; padding: 0 1.8rem; margin-top: -3.5rem; position: relative; }
+.profile-id { flex: 1; min-width: 200px; padding-bottom: .4rem; }
+.profile-id h1 { font-family: var(--font-head); font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; overflow-wrap: anywhere; }
+.profile-handle { color: var(--accent); font-weight: 500; }
+.profile-actions { display: flex; gap: .6rem; flex-wrap: wrap; padding-bottom: .4rem; }
+.profile-bio { padding: 1.5rem 1.8rem 0; color: var(--text); white-space: pre-line; max-width: 65ch; }
+.muted { color: var(--text-dim); }
+.profile-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 1.6rem 1.8rem 0; border: 1px solid var(--border); border-radius: var(--radius); }
+.profile-stats div { padding: .9rem 1rem; border-left: 1px solid var(--border); }
+.profile-stats div:first-child { border-left: 0; }
+.profile-stats dt { color: var(--text-dim); font-size: .8rem; }
+.profile-stats dd { font: 700 1.25rem var(--font-head); font-variant-numeric: tabular-nums; }
+.profile-block { padding: 1.4rem 1.8rem 0; }
+.profile-block h2 { font: 600 .85rem var(--font-head); color: var(--text-dim); margin-bottom: .6rem; }
+.chips-list { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; }
+.chips-list li { padding: .35rem .8rem; border-radius: 999px; background: rgba(139, 124, 246, .12); border: 1px solid rgba(139, 124, 246, .3); font-size: .9rem; }
+.channel-link { color: var(--accent); font-weight: 500; overflow-wrap: anywhere; }
+.channel-link:hover { text-decoration: underline; }
+.share-note { padding: 1rem 1.8rem 1.6rem; color: var(--text-dim); font-size: .9rem; min-height: 1.4em; overflow-wrap: anywhere; }
+
+/* Bearbeiten */
+.profile-form { padding: 2rem 1.8rem; }
+.profile-form h1 { font-family: var(--font-head); font-size: 1.8rem; margin-bottom: 1.4rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2rem; }
+.field-wide { grid-column: 1 / -1; }
+.field textarea, .field select {
+  width: 100%; padding: .75rem .9rem; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; font: inherit; resize: vertical;
+}
+.field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.form-actions { display: flex; gap: .8rem; margin-top: .8rem; flex-wrap: wrap; }
+
+/* Eingabefeld mit @ davor (auch im Anmeldefenster) */
+.handle-input { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.handle-input:focus-within { border-color: var(--accent); }
+.field .handle-input { display: flex; margin: 0; font-size: 1rem; color: var(--text); }
+.field .handle-input > span { display: inline; margin: 0; padding-left: .9rem; font-size: 1rem; color: var(--text-dim); font-weight: 600; }
+.field .handle-input input { border: 0; background: transparent; padding-left: .3rem; }
+.field small span { display: inline; margin: 0; font-size: inherit; color: inherit; }
+.sge-field-hint.is-good { color: #7ee08f; }
+.sge-field-hint.is-bad { color: #ff8589; }
+.modal-lead { color: var(--text-dim); margin: -.6rem 0 1.2rem; font-size: .95rem; }
+.un-later { display: block; margin: 1rem auto 0; }
+
+/* Nutzername in der Navigation als Link */
+a.user-name { transition: color .2s; }
+a.user-name:hover { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .profile-main { padding: 0 1.2rem; }
+  .profile-bio, .profile-block { padding-left: 1.2rem; padding-right: 1.2rem; }
+  .profile-stats { grid-template-columns: 1fr 1fr; margin: 1.4rem 1.2rem 0; }
+  .profile-stats div:nth-child(3) { border-left: 0; }
+  .profile-stats div:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  .share-note { padding: 1rem 1.2rem 1.4rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .profile-form { padding: 1.6rem 1.2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-card, .profile { animation: none; }
+}
