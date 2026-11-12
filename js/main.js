@@ -13,6 +13,8 @@ links.querySelectorAll("a").forEach((a) =>
 );
 
 // Elemente beim Scrollen einblenden
+// (Auf der Startseite übernimmt js/motion.js die Animationen.)
+if (!document.body.classList.contains("page-home")) {
 const revealEls = document.querySelectorAll(".card, .quests li, .section-title, .cta");
 revealEls.forEach((el) => el.classList.add("reveal"));
 const observer = new IntersectionObserver(
@@ -27,3 +29,4 @@ const observer = new IntersectionObserver(
   { threshold: 0.15 }
 );
 revealEls.forEach((el) => observer.observe(el));
+}
