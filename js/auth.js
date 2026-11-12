@@ -3,6 +3,7 @@
 //  (E-Mail/Passwort + Google)
 // ============================================================
 import { firebaseConfig } from "./firebase-config.js";
+import { beginSignup, endSignup, usernameProblem, isUsernameFree, saveProfile } from "./social.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2";
 
@@ -13,6 +14,8 @@ const title = $("auth-title");
 const form = $("auth-form");
 const nameField = $("name-field");
 const nameInput = $("auth-name");
+const usernameField = $("username-field");
+const usernameInput = $("auth-username");
 const emailInput = $("auth-email");
 const passwordInput = $("auth-password");
 const submitBtn = $("auth-submit");
@@ -27,6 +30,7 @@ const logoutBtn = $("logout-btn");
 let mode = "login"; // "login" | "register"
 let auth = null;
 let fb = null; // Firebase-Auth-Funktionen
+let firebaseApp = null;
 
 // ---------- Fenster öffnen / schließen ----------
 function openModal(newMode = "login") {
@@ -34,7 +38,7 @@ function openModal(newMode = "login") {
   hideMessage();
   modal.hidden = false;
   document.body.style.overflow = "hidden";
-  setTimeout(() => (mode === "register" ? nameInput : emailInput).focus(), 50);
+  setTimeout(() => (mode === "register" ? (usernameInput || nameInput) : emailInput).focus(), 50);
 }
 function closeModal() {
   modal.hidden = true;
@@ -47,6 +51,7 @@ function setMode(newMode) {
   title.textContent = isReg ? "Account erstellen" : "Willkommen zurück";
   submitBtn.textContent = isReg ? "Registrieren" : "Anmelden";
   nameField.hidden = !isReg;
+  if (usernameField) usernameField.hidden = !isReg;
   forgotBtn.hidden = isReg;
   passwordInput.autocomplete = isReg ? "new-password" : "current-password";
   document.querySelectorAll(".auth-tab").forEach((t) =>
@@ -111,6 +116,7 @@ async function initFirebase() {
     const { initializeApp } = await import(`${SDK}/firebase-app.js`);
     fb = await import(`${SDK}/firebase-auth.js`);
     const app = initializeApp(firebaseConfig);
+    firebaseApp = app;
     auth = fb.getAuth(app);
     auth.languageCode = "de";
     fb.onAuthStateChanged(auth, (user) => {
@@ -137,10 +143,11 @@ function ready() {
 // ---------- Navigation anpassen ----------
 function updateUI(user) {
   if (user) {
-    userName.textContent = user.displayName || user.email;
+    if (!userName.textContent.startsWith("@")) userName.textContent = user.displayName || user.email;
     loginBtn.hidden = true;
     userMenu.hidden = false;
   } else {
+    userName.textContent = "";
     loginBtn.hidden = false;
     userMenu.hidden = true;
   }
@@ -153,15 +160,37 @@ form.addEventListener("submit", async (e) => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const name = nameInput.value.trim();
+  const username = usernameInput ? usernameInput.value.trim() : "";
 
-  if (mode === "register" && !name) return showMessage("Bitte gib einen Streamer-Namen ein.");
+  if (mode === "register") {
+    const problem = usernameInput ? usernameProblem(username) : "";
+    if (problem) return showMessage(problem);
+    if (!name) return showMessage("Bitte gib einen Streamer-Namen ein.");
+  }
 
   setBusy(true);
   try {
     if (mode === "register") {
-      const cred = await fb.createUserWithEmailAndPassword(auth, email, password);
-      await fb.updateProfile(cred.user, { displayName: name });
-      updateUI(cred.user);
+      // Nutzername vorab prüfen, damit kein Account ohne Namen entsteht
+      if (usernameInput && !(await isUsernameFree(firebaseApp, username))) {
+        return showMessage("Dieser Nutzername ist schon vergeben.");
+      }
+      beginSignup();
+      try {
+        const cred = await fb.createUserWithEmailAndPassword(auth, email, password);
+        await fb.updateProfile(cred.user, { displayName: name });
+        updateUI(cred.user);
+        if (usernameInput) {
+          try {
+            await saveProfile(firebaseApp, cred.user.uid, { username, name });
+          } catch (err) {
+            // Account existiert trotzdem; der Nutzername wird beim nächsten Laden nachgefragt
+            console.error("Profil konnte nicht angelegt werden:", err);
+          }
+        }
+      } finally {
+        endSignup();
+      }
     } else {
       await fb.signInWithEmailAndPassword(auth, email, password);
     }

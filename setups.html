@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/setups.css">
+  <link rel="stylesheet" href="css/social.css">
 </head>
 <body>
   <!-- ===== Navigation ===== -->
@@ -20,10 +21,11 @@
       <a href="index.html#features">Features</a>
       <a href="setups.html" class="active" aria-current="page">Setups</a>
       <a href="index.html#start">Erste Schritte</a>
+      <a href="community.html">Community</a>
       <!-- Wird von js/auth.js gesteuert -->
       <button type="button" class="btn btn-small" id="login-btn" data-open-auth="login">Anmelden</button>
       <div class="user-menu" id="user-menu" hidden>
-        <span class="user-name" id="user-name"></span>
+        <a class="user-name" id="user-name" href="profil.html"></a>
         <button type="button" class="btn btn-small btn-ghost" id="logout-btn">Abmelden</button>
       </div>
     </nav>
@@ -162,6 +164,11 @@
       <p class="auth-message" id="auth-message" hidden></p>
 
       <form id="auth-form" novalidate>
+        <label class="field" id="username-field" hidden>
+          <span>Nutzername</span>
+          <span class="handle-input"><span aria-hidden="true">@</span><input type="text" id="auth-username" autocomplete="username" maxlength="20" placeholder="z. B. nightowl_tv"></span>
+          <small class="sge-field-hint">3–20 Zeichen: Buchstaben, Zahlen und _. Darüber finden dich andere.</small>
+        </label>
         <label class="field" id="name-field" hidden>
           <span>Streamer-Name</span>
           <input type="text" id="auth-name" autocomplete="nickname" placeholder="z. B. NightOwlTV">
