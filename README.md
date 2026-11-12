@@ -22,6 +22,7 @@ js/setups-data.js → Produkte, Kategorien und Streamer-Setups (hier neue Daten 
 js/firebase-config.js → Firebase-Zugangsdaten (hier eintragen)
 database.rules.json   → Sicherheitsregeln der Realtime Database
 assets/         → Bilder, Logos, Icons
+agents/         → KI-Agenten (Python-Backend, lokaler Prototyp) → siehe agents/README.md
 ```
 
 ## Lokal ansehen
@@ -73,3 +74,5 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - [ ] Community-Link (z. B. Discord)
 - [ ] Eigenes Logo
 - [ ] Veröffentlichen über GitHub Pages
+- [x] KI-Agenten zusammengeführt (Content Strategist, Growth Analyst, Clip Hunter als Prototypen)
+- [ ] KI-Agenten in die Plattform einbinden (Beta-Bereich, Backend mit Anmeldung)

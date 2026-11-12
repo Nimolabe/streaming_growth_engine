@@ -1,0 +1,14 @@
+{
+  "strategy_code": "start_clip_experiment",
+  "metric": "clip_views",
+  "baseline_weeks": [
+    50,
+    55
+  ],
+  "followup_weeks": [
+    62,
+    61
+  ],
+  "observation_windows_comparable": true,
+  "changed_only_one_major_factor": true
+}

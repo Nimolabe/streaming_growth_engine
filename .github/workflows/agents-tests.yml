@@ -1,0 +1,45 @@
+name: KI-Agenten Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_video_tests:
+        description: "FFmpeg installieren und Video-Tests ausführen"
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: [main]
+    paths: ["agents/**", ".github/workflows/agents-tests.yml"]
+  pull_request:
+    paths: ["agents/**", ".github/workflows/agents-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: FFmpeg für Video-Tests
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_video_tests }}
+        timeout-minutes: 3
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y ffmpeg
+          fi
+          ffmpeg -version | head -n 1
+      - name: Abhängigkeiten installieren
+        run: python -m pip install -e ".[dev]"
+      - name: Tests
+        run: python -m pytest -q
+      - name: Lint
+        run: python -m ruff check streaming_agents tests
