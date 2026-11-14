@@ -364,7 +364,10 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
 
 /* ---------- Loadout-Karten mit Bild ---------- */
 .page-home .section-title { font-size: clamp(2rem, 5vw, 3.6rem); letter-spacing: -.02em; }
-.card-media { padding: 0; overflow: hidden; display: flex; flex-direction: column; position: relative; transform-style: preserve-3d; }
+.card-media { padding: 0; overflow: hidden; display: flex; flex-direction: column; position: relative; transform-style: preserve-3d;
+  /* transform wird per GSAP animiert (Einflug, Neigen). Ein CSS-Übergang auf transform
+     kollidiert damit und lässt die Karten versetzt stehen bleiben. */
+  transition: border-color .25s, box-shadow .25s; }
 .card-media::before { /* Lichtkegel folgt der Maus */
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .3s;
   background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(139, 124, 246, .18), transparent 45%);
