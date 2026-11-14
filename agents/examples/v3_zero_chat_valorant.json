@@ -1,0 +1,15 @@
+{
+  "platform": "Twitch",
+  "game": "Valorant",
+  "audience": "Deutschsprachige Gaming-Zuschauer",
+  "language": "de",
+  "experience": "intermediate",
+  "style": "interactive",
+  "goal": "discovery",
+  "average_viewers": 2,
+  "active_chatters": 0,
+  "hours_per_week": 12,
+  "streams_per_week": 3,
+  "ideas_requested": 5,
+  "exclude_format_ids": []
+}

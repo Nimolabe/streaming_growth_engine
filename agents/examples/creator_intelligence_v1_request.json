@@ -1,0 +1,48 @@
+{
+  "platform": "twitch",
+  "channel_category": "Valorant",
+  "primary_goal": "discovery",
+  "weekly_hours_available": 12,
+  "weeks": [
+    {
+      "week_start": "2026-10-05",
+      "stream_minutes": 420,
+      "average_viewers": 4,
+      "unique_viewers": 85,
+      "returning_viewers": 14,
+      "follows": 3,
+      "clips_published": 0,
+      "clip_views": 0
+    },
+    {
+      "week_start": "2026-10-12",
+      "stream_minutes": 360,
+      "average_viewers": 5,
+      "unique_viewers": 93,
+      "returning_viewers": 16,
+      "follows": 4,
+      "clips_published": 0,
+      "clip_views": 0
+    },
+    {
+      "week_start": "2026-10-19",
+      "stream_minutes": 480,
+      "average_viewers": 4,
+      "unique_viewers": 88,
+      "returning_viewers": 13,
+      "follows": 2,
+      "clips_published": 0,
+      "clip_views": 0
+    },
+    {
+      "week_start": "2026-10-26",
+      "stream_minutes": 360,
+      "average_viewers": 3,
+      "unique_viewers": 79,
+      "returning_viewers": 12,
+      "follows": 2,
+      "clips_published": 0,
+      "clip_views": 0
+    }
+  ]
+}

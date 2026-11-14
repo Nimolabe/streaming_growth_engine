@@ -1,0 +1,15 @@
+{
+  "platform": "Twitch",
+  "game": "Minecraft",
+  "audience": "Einsteiger und kreative Spieler",
+  "language": "de",
+  "experience": "beginner",
+  "style": "creative",
+  "goal": "consistency",
+  "average_viewers": 5,
+  "active_chatters": 1,
+  "hours_per_week": 8,
+  "streams_per_week": 2,
+  "ideas_requested": 3,
+  "exclude_format_ids": []
+}
