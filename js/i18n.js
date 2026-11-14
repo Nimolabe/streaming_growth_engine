@@ -34,6 +34,8 @@
     "Strategien für mehr Zuschauer: Zeitplan, Titel, Kategorien und Social Media.":"Strategies for more viewers: schedules, titles, categories, and social media.",
     "Hilfreiche Tools und Bots, die dir Arbeit abnehmen.":"Helpful tools and bots that save you time.",
     "Kommt bald.":"Coming soon.",
+    "Neu: Clip Hunter":"New: Clip Hunter", "Kein Highlight geht verloren":"Never lose a highlight",
+    "Der Clip Hunter erkennt deine besten Stream-Momente an den Reaktionen im Chat und an plötzlichen Lautstärke-Spitzen und schneidet sie als Hochformat-Clips – bereit für TikTok, Shorts und Reels.":"Clip Hunter spots your best stream moments from chat reactions and sudden audio spikes and cuts them into vertical clips – ready for TikTok, Shorts and Reels.",
     "Vernetze dich mit anderen Streamern, raide euch gegenseitig und wachst zusammen.":"Connect with other streamers, support each other and grow together.",
     "Erste":"First", "Quests":"Quests",
     "Plattform wählen":"Choose a platform", "Twitch, YouTube oder Kick: finde heraus, was zu dir passt.":"Twitch, YouTube or Kick: find what works for you.",
