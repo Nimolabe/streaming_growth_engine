@@ -30,6 +30,7 @@ def test_api_exposes_one_route_per_agent_function():
         "/api/v1/clips/scan",
         "/api/v1/clips/evaluate",
         "/api/v1/clips/review-queue",
+        "/api/v1/clips/chat-moments",
     } <= paths
     assert not any("/demo/" in path for path in paths)
 
