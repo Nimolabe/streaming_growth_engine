@@ -37,6 +37,8 @@ from .agents.creator_strategy_review import (
 from .agents.v3_contracts import ContentStrategyV3, CreatorProfileV3
 from .agents.v3_recommender import generate_strategy_v3
 from .agents.weekly_planner import make_weekly_plan
+from .clip_hunter.hunter import hunt
+from .clip_hunter.models import ChatHuntRequest, HuntResult
 from .contracts import AgentInfo, WeeklyPlanRequest, WeeklyPlanResponse
 from .registry import AGENTS
 
@@ -132,6 +134,13 @@ def clip_scan(
             return scan_recording_v2(recording, settings)
         except ClipScanError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@api.post("/clips/chat-moments", response_model=HuntResult, tags=["Clip Hunter"])
+def clip_chat_moments(request: ChatHuntRequest) -> HuntResult:
+    """Findet Clip-Momente nur aus einem Chat-Mitschnitt (Reaktionen, Emotes, Ausschläge)."""
+    return hunt(chat_log=request.chat_log, vod_start=request.vod_start,
+                settings=request.settings, twitch_video_id=request.twitch_video_id)
 
 
 @api.post("/clips/evaluate", response_model=ClipEvaluationReport, tags=["Clip Hunter"])

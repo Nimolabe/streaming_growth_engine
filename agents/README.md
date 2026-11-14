@@ -8,7 +8,7 @@ es gibt keine Verbindung zur Website und keine öffentliche Bereitstellung.
 | --- | --- | --- |
 | Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
 | Growth Analyst | Prototyp | Vergleicht selbst eingegebene Wochenwerte, wählt ein passendes Experiment und wertet es aus, ohne Wachstum zu versprechen |
-| Clip Hunter | Prototyp | Findet Audio-Spitzen und Bildwechsel in eigenen Aufnahmen als Prüfkandidaten, kann sie als MP4 ausschneiden und gegen menschliche Markierungen messen. Versteht keine Inhalte |
+| Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Versteht noch keine Inhalte (kein Sprachmodell) |
 | Trend Scout | geplant | soll die Scouts aus dem Trend Radar auf Streaming-Kategorien umstellen |
 | Setup Advisor | geplant | wird über den Setup Intelligence Agent (`backend/setup_agent`) abgedeckt |
 
@@ -45,6 +45,7 @@ Danach im Browser: <http://127.0.0.1:8000/api/v1/docs> (zum Ausprobieren aller E
 | POST | `/api/v1/growth/analysis` | Growth Analyst | [`creator_intelligence_v1_request.json`](examples/creator_intelligence_v1_request.json) |
 | POST | `/api/v1/growth/strategy` | Growth Analyst | [`creator_intelligence_v2_strategy.json`](examples/creator_intelligence_v2_strategy.json) |
 | POST | `/api/v1/growth/review` | Growth Analyst | [`creator_intelligence_v2_review.json`](examples/creator_intelligence_v2_review.json) |
+| POST | `/api/v1/clips/chat-moments` | Clip Hunter: Momente aus einem Chat-Mitschnitt | |
 | POST | `/api/v1/clips/scan` | Clip Hunter (Datei-Upload, max. 100 MB / 15 Min.) | |
 | POST | `/api/v1/clips/evaluate` | Clip Hunter: Treffer gegen menschliche Markierungen | |
 | POST | `/api/v1/clips/review-queue` | Clip Hunter: verblindete Prüfliste | |
@@ -58,14 +59,23 @@ Wochenplan-Beispiel:
 }
 ```
 
-### Clip Hunter auf der Kommandozeile
+### Clip Hunter (Chat + Audio)
 
 ```bash
-python -m streaming_agents.clip_cli --input mein_stream.mp4 --json kandidaten.json --extract-dir clip_exports
+# 1. Während des Streams: Chat mitschneiden (anonym, nur lesen, Strg+C beendet)
+python -m streaming_agents.clip_hunter record-chat meinkanal --out chat.jsonl
+
+# 2. Nach dem Stream: VOD + Chat auswerten, Bericht und Hochformat-Clips erzeugen
+python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl \
+    --vod-start 2026-11-14T18:00:05+01:00 --report bericht.html --export-dir clips --vertical
 ```
 
-Nur für eigene Aufnahmen. Die Kandidaten sind Stellen zum Ansehen, keine Bewertung,
-ob ein Clip gut ankommt.
+Schritt-für-Schritt-Anleitung, Kalibrierung und Abgleich mit Zuschauer-Clips:
+[docs/clip-hunter.md](docs/clip-hunter.md). Nur für eigene Aufnahmen; die Kandidaten
+sind Stellen zum Ansehen, keine Vorhersage, ob ein Clip gut ankommt.
+
+Der ältere reine Audio-Scanner bleibt verfügbar:
+`python -m streaming_agents.clip_cli --input mein_stream.mp4 --json kandidaten.json`.
 
 ### Optional: Sprachmodell (aus, kostet Geld)
 

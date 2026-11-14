@@ -8,7 +8,9 @@ agents/
 │   ├── api.py            → FastAPI-App, alle Endpunkte unter /api/v1
 │   ├── contracts.py      → gemeinsame Datenmodelle (Agent-Liste, Wochenplan)
 │   ├── registry.py       → ehrlicher Status jedes Agenten (geplant / Prototyp / fertig)
-│   ├── clip_cli.py       → Kommandozeile für den Clip Hunter
+│   ├── clip_hunter/      → Clip Hunter v4: Chat-Mitschnitt, Chat- und Audio-Signale,
+│   │                       Zusammenführung, Export, Bericht, Twitch-API, Kommandozeile
+│   ├── clip_cli.py       → älterer reiner Audio-Scanner (Kommandozeile)
 │   ├── agents/           → die Logik der einzelnen Agenten
 │   └── llm/              → austauschbare Sprachmodell-Schnittstelle (standardmäßig aus)
 ├── tests/                → pytest, läuft ohne Netzwerk
@@ -22,7 +24,7 @@ agents/
 | --- | --- | --- |
 | Content Strategist | `v3_recommender`, `v3_contracts`, `v3_game_knowledge`, `v2_catalog`, `v2_recommender`, `v2_contracts`, `weekly_planner` | `/content/strategy`, `/content/weekly-plan` |
 | Growth Analyst | `creator_intelligence`, `creator_strategy`, `creator_strategy_review` (+ `_contracts`) | `/growth/analysis`, `/growth/strategy`, `/growth/review` |
-| Clip Hunter | `clip_intelligence`, `clip_intelligence_v2`, `clip_export`, `clip_evaluation`, `clip_review_queue_v3` (+ `_contracts`) | `/clips/scan`, `/clips/evaluate`, `/clips/review-queue` |
+| Clip Hunter | `clip_hunter/` (v4, Chat + Audio); älter: `clip_intelligence`, `clip_intelligence_v2`, `clip_export`, `clip_evaluation`, `clip_review_queue_v3` | `/clips/chat-moments`, `/clips/scan`, `/clips/evaluate`, `/clips/review-queue` |
 | Trend Scout | – (geplant, soll die Scouts aus dem Trend Radar wiederverwenden) | – |
 | Setup Advisor | – (wird vom Setup Intelligence Agent in `backend/setup_agent` abgedeckt) | – |
 

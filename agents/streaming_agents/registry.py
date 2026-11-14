@@ -19,7 +19,10 @@ AGENTS = [
     AgentInfo(
         name=AgentName.CLIP_HUNTER,
         status=AgentStatus.PROTOTYPE,
-        description="Offline audio and scene-change review timestamps from user-owned recordings.",
+        description=(
+            "Offline clip moments from chat reactions (live chat recording, emote types, "
+            "alert filtering) and sudden audio spikes; vertical export and viewer-clip check."
+        ),
     ),
     AgentInfo(
         name=AgentName.GROWTH_ANALYST,
