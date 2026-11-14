@@ -1,0 +1,87 @@
+# Geplante Läufe des Setup-Agenten (kostenlos: Standard-Runner in öffentlichen Repositories).
+# Voraussetzung: Repository-Secret FIREBASE_SERVICE_ACCOUNT (JSON-Schlüssel eines Service-Kontos mit Firestore-Zugriff).
+# Ohne Secret beenden sich die Läufe ohne Änderung.
+# Der JSON-Export wird in den Branch "data" geschrieben (nicht main). Abruf z. B. über
+# https://raw.githubusercontent.com/Nimolabe/streaming_growth_engine/data/v1/streamers.json
+
+name: Setup-Agent Jobs
+
+on:
+  schedule:
+    - cron: "17 * * * *"    # stündlich: Freigaben anwenden + Export
+    - cron: "41 4 * * *"    # täglich: Preise
+    - cron: "23 3 * * 1"    # montags: Quellen prüfen + Regeln neu bewerten
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job"
+        required: true
+        default: apply
+        type: choice
+        options: [apply, weekly, prices, export]
+
+permissions:
+  contents: write   # nur für den Branch "data"
+
+concurrency:
+  group: setup-agent-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: github.repository == 'Nimolabe/streaming_growth_engine'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Job bestimmen
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then JOB="${{ inputs.job }}";
+          elif [ "${{ github.event.schedule }}" = "41 4 * * *" ]; then JOB=prices;
+          elif [ "${{ github.event.schedule }}" = "23 3 * * 1" ]; then JOB=weekly;
+          else JOB=apply; fi
+          echo "job=$JOB" >> "$GITHUB_OUTPUT"
+
+      - name: Secret vorhanden?
+        id: secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "ok=false" >> "$GITHUB_OUTPUT"; echo "::notice::FIREBASE_SERVICE_ACCOUNT fehlt – Lauf übersprungen."; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.ok == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Installieren
+        if: steps.secret.outputs.ok == 'true'
+        working-directory: backend
+        run: python -m pip install -e ".[firestore]"
+
+      - name: Daten-Branch holen
+        if: steps.secret.outputs.ok == 'true'
+        run: |
+          git fetch origin data:data 2>/dev/null && git worktree add public-data data || {
+            git worktree add --detach public-data && cd public-data && git checkout --orphan data && git rm -rfq . ; }
+
+      - name: Job ausführen
+        if: steps.secret.outputs.ok == 'true'
+        working-directory: backend
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PRICE_FEEDS: ${{ vars.PRICE_FEEDS }}
+        run: python -m setup_agent run "${{ steps.pick.outputs.job }}" --out ../public-data
+
+      - name: Export veröffentlichen (Branch data)
+        if: steps.secret.outputs.ok == 'true'
+        working-directory: public-data
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "Keine Änderungen am Export."; exit 0; fi
+          git -c user.name="setup-agent[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Export $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin HEAD:data

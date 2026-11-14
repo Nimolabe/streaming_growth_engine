@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// Sicherheitsregeln für Cloud Firestore (Setup Intelligence Agent).
+// Öffentliche Besucher lesen NICHT aus Firestore, sondern den statischen JSON-Export (Branch "data").
+// Admin = angemeldetes Firebase-Konto mit Custom Claim admin == true
+// (setzen mit: python -m setup_agent set-admin --email …).
+// Der Agent (GitHub Actions) nutzt ein Service-Konto; das umgeht diese Regeln technisch.
+//
+// Admins schreiben nie direkt Fakten. Sie legen Vorschläge an und entscheiden sie;
+// angewendet werden freigegebene Vorschläge vom Agenten (stündlicher Lauf), inkl. Prüfung und Audit-Log.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    function actorIsMe(actor) {
+      return actor is map && actor.type == 'admin' && actor.id == request.auth.uid;
+    }
+
+    // Standard: alles gesperrt
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Fakten und Stammdaten: Admins lesen, niemand schreibt direkt
+    match /streamers/{id}        { allow read: if isAdmin(); }
+    match /setup_claims/{id}     { allow read: if isAdmin(); }
+    match /products/{id}         { allow read: if isAdmin(); }
+    match /offers/{id}           { allow read: if isAdmin(); }
+    match /offers/{id}/observations/{obs} { allow read: if isAdmin(); }
+    match /sources/{id}          { allow read: if isAdmin(); }
+    match /source_registry/{id}  { allow read: if isAdmin(); }
+    match /meta/{id}             { allow read: if isAdmin(); }
+
+    // Änderungshistorie: nur lesen, nie ändern oder löschen
+    match /audit_log/{id}        { allow read: if isAdmin(); }
+
+    // Freigabe-Workflow
+    match /change_proposals/{id} {
+      allow read: if isAdmin();
+
+      // Neuer Vorschlag durch einen Admin: immer "pending", Urheber = angemeldetes Konto
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['entity_type', 'entity_id', 'operation', 'payload', 'base_version',
+             'reason', 'evidence_source_ids', 'origin', 'created_by', 'created_at', 'status', 'decided_by',
+             'decided_at', 'decision_note', 'applied_at', 'apply_error'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.origin == 'admin'
+        && actorIsMe(request.resource.data.created_by)
+        && request.resource.data.entity_type in ['streamer', 'setup_claim', 'product', 'offer', 'source', 'source_registry']
+        && request.resource.data.operation in ['create', 'update', 'retire']
+        && request.resource.data.reason is string && request.resource.data.reason.size() >= 3
+        && request.resource.data.get('applied_at', null) == null
+        && request.resource.data.get('decided_by', null) == null;
+
+      // Entscheidung: nur offene Vorschläge, nur Status + Entscheidungsfelder, Ablehnung mit Begründung
+      allow update: if isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decided_by', 'decided_at', 'decision_note'])
+        && actorIsMe(request.resource.data.decided_by)
+        && (request.resource.data.status == 'approved'
+            || (request.resource.data.decision_note is string && request.resource.data.decision_note.size() >= 3));
+    }
+  }
+}
