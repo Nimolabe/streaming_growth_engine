@@ -49,7 +49,8 @@ class ChatLog(BaseModel):
 
 
 class HuntSettings(BaseModel):
-    """Einstellungen; Standardwerte sind Startpunkte und mit echten Streams zu kalibrieren."""
+    """Einstellungen. Die Chat-Werte sind an 61 echten Twitch-Streams (LIGHTOR-Datensatz)
+    eingestellt und an 50 weiteren geprüft, siehe docs/clip-hunter.md → „Messung“."""
 
     language: Language = "de"
     max_candidates: int = Field(default=15, ge=1, le=50)
@@ -58,11 +59,11 @@ class HuntSettings(BaseModel):
     min_clip_seconds: float = Field(default=12, ge=5, le=60)
     max_clip_seconds: float = Field(default=60, ge=10, le=180)
     # Chat
-    chat_window_seconds: int = Field(default=8, ge=3, le=30)
-    chat_baseline_seconds: int = Field(default=300, ge=60, le=1800)
-    chat_min_z: float = Field(default=3.0, ge=1.0, le=20)
+    chat_window_seconds: int = Field(default=12, ge=3, le=30)
+    chat_baseline_seconds: int = Field(default=120, ge=60, le=1800)
+    chat_min_z: float = Field(default=2.0, ge=1.0, le=20)
     chat_min_chatters: int = Field(default=4, ge=2, le=200)
-    chat_reaction_lag_seconds: float = Field(default=5, ge=0, le=20)
+    chat_reaction_lag_seconds: float = Field(default=8, ge=0, le=20)
     chat_offset_seconds: float = Field(default=0, ge=-600, le=600)
     chat_min_gap_seconds: int = Field(default=25, ge=5, le=300)
     # Audio
