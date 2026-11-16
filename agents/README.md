@@ -6,7 +6,7 @@ es gibt keine Verbindung zur Website und keine öffentliche Bereitstellung.
 
 | Agent | Status | Was er heute kann |
 | --- | --- | --- |
-| Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
+| Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Neu: **Kategorie-Check auf echten Twitch-Daten** – in welcher Kategorie man mit seinen Zuschauern gesehen wird und zu welchen Zeiten. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
 | Growth Analyst | Prototyp | Vergleicht selbst eingegebene Wochenwerte, wählt ein passendes Experiment und wertet es aus, ohne Wachstum zu versprechen |
 | Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Versteht noch keine Inhalte (kein Sprachmodell) |
 | Trend Scout | geplant | soll die Scouts aus dem Trend Radar auf Streaming-Kategorien umstellen |
@@ -42,6 +42,7 @@ Danach im Browser: <http://127.0.0.1:8000/api/v1/docs> (zum Ausprobieren aller E
 | GET | `/api/v1/agents` | Übersicht mit Status | |
 | POST | `/api/v1/content/strategy` | Content Strategist | [`v3_minecraft.json`](examples/v3_minecraft.json) |
 | POST | `/api/v1/content/weekly-plan` | Content Strategist | siehe unten |
+| POST | `/api/v1/content/category-check` | Content Strategist: gespeicherte Twitch-Messungen auswerten | [docs/category-check.md](docs/category-check.md) |
 | POST | `/api/v1/growth/analysis` | Growth Analyst | [`creator_intelligence_v1_request.json`](examples/creator_intelligence_v1_request.json) |
 | POST | `/api/v1/growth/strategy` | Growth Analyst | [`creator_intelligence_v2_strategy.json`](examples/creator_intelligence_v2_strategy.json) |
 | POST | `/api/v1/growth/review` | Growth Analyst | [`creator_intelligence_v2_review.json`](examples/creator_intelligence_v2_review.json) |
@@ -58,6 +59,19 @@ Wochenplan-Beispiel:
   "weekly_hours": 8, "stream_days": 3, "primary_goal": "community"
 }
 ```
+
+### Kategorie-Check (echte Twitch-Daten)
+
+```bash
+# Braucht TWITCH_CLIENT_ID und TWITCH_CLIENT_SECRET (kostenlose App, siehe Doku)
+python -m streaming_agents.category_check measure "Minecraft" "Stardew Valley" --out messungen.jsonl
+python -m streaming_agents.category_check watch "Minecraft" "Stardew Valley" --every 60 --hours 168 --out messungen.jsonl
+python -m streaming_agents.category_check report messungen.jsonl --viewers 2 --window 16-24 --html bericht.html
+```
+
+Zeigt je Kategorie: Live-Kanäle, Publikum, deinen Platz in der Liste und die besten Zeiten.
+Gespeichert werden nur Zuschauerzahlen. Anleitung und Lesehilfe:
+[docs/category-check.md](docs/category-check.md).
 
 ### Clip Hunter (Chat + Audio)
 

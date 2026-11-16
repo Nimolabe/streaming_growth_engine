@@ -37,6 +37,8 @@ from .agents.creator_strategy_review import (
 from .agents.v3_contracts import ContentStrategyV3, CreatorProfileV3
 from .agents.v3_recommender import generate_strategy_v3
 from .agents.weekly_planner import make_weekly_plan
+from .category_check.analysis import analyze, local_time_from_offset, parse_window
+from .category_check.models import CategoryCheckRequest, CategoryCheckResult
 from .clip_hunter.hunter import hunt
 from .clip_hunter.models import ChatHuntRequest, HuntResult
 from .contracts import AgentInfo, WeeklyPlanRequest, WeeklyPlanResponse
@@ -74,6 +76,22 @@ def content_strategy(profile: CreatorProfileV3) -> ContentStrategyV3:
         return generate_strategy_v3(profile)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@api.post("/content/category-check", response_model=CategoryCheckResult,
+          tags=["Content Strategist"])
+def content_category_check(request: CategoryCheckRequest) -> CategoryCheckResult:
+    """Wertet Twitch-Messungen aus: Platz im Verzeichnis, Publikum und beste Zeiten.
+
+    Die Messungen entstehen lokal mit `python -m streaming_agents.category_check`;
+    die API selbst fragt Twitch nicht an.
+    """
+    try:
+        window = parse_window(request.window) if request.window else None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return analyze(request.snapshots, own_viewers=request.own_viewers, language=request.language,
+                   to_local=local_time_from_offset(request.utc_offset_minutes), window=window)
 
 
 @api.post("/content/weekly-plan", response_model=WeeklyPlanResponse, tags=["Content Strategist"])
