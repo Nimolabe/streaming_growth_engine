@@ -47,6 +47,19 @@
       }
     },
 
+    "waitlist": {
+      "$feature": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid && $feature === 'clipHunter'",
+          ".write": "auth != null && auth.uid === $uid && $feature === 'clipHunter'",
+          ".validate": "newData.hasChildren(['createdAt'])",
+          "createdAt": { ".validate": "newData.isNumber() && (newData.val() === now || (data.exists() && newData.val() === data.val()))" },
+          "platform": { ".validate": "newData.isString() && (newData.val() === 'twitch' || newData.val() === 'youtube' || newData.val() === 'kick' || newData.val() === 'tiktok' || newData.val() === 'andere')" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "followers": {
       "$uid": {
         ".read": true,

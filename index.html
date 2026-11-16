@@ -144,6 +144,13 @@
             <span class="card-badge">Neu: Clip Hunter</span>
             <h3>Kein Highlight geht verloren</h3>
             <p>Der Clip Hunter erkennt die Highlights deines Streams und macht sie bereit als Clips für TikTok, Shorts und Reels. <em>Kommt bald.</em></p>
+            <div class="waitlist" data-waitlist="clipHunter">
+              <div class="waitlist-actions">
+                <button type="button" class="btn btn-small" data-waitlist-join>Für die Beta vormerken</button>
+                <button type="button" class="btn btn-small btn-ghost" data-waitlist-leave hidden>Austragen</button>
+              </div>
+              <p class="waitlist-status" data-waitlist-status aria-live="polite" hidden></p>
+            </div>
           </div>
         </article>
       </div>
@@ -246,5 +253,6 @@
   <script src="js/i18n.js"></script>
   <script src="js/motion.js"></script>
   <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/waitlist.js"></script>
 </body>
 </html>

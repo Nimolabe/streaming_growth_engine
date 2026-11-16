@@ -402,6 +402,14 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
   .card-wide p { max-width: 46ch; }
 }
 
+/* Beta-Warteliste in einer Feature-Kachel */
+.waitlist { margin-top: 1.2rem; }
+.waitlist-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.waitlist-status { margin: .7rem 0 0; font-size: .85rem; color: var(--text-dim); }
+.waitlist-status[data-type="success"] { color: #3ddc97; }
+.waitlist-status[data-type="error"] { color: #ff6b81; }
+.waitlist.is-joined .waitlist-status { font-weight: 600; }
+
 /* ---------- Quests mit XP-Leiste ---------- */
 .quest-section { border-top: 1px solid var(--border); }
 .quest-pin { display: grid; grid-template-columns: .9fr 1.1fr; gap: 3rem; align-items: start; }
