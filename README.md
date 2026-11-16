@@ -64,7 +64,7 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 
 ## Ideen / Roadmap
 
-- [ ] Guides-Seite mit echten Inhalten
+- [x] Guides-Seite: Plattform, OBS, erster Stream, Zeitplan, Wachstum, Twitch Affiliate (Inhalte in `js/guides.js`, Deutsch/Englisch, Fakten mit „Stand“ und Quelle)
 - [ ] Tool-Sammlung
 - [x] Anmeldung (E-Mail + Google)
 - [x] Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog, Favoriten
