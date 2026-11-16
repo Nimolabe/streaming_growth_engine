@@ -22,7 +22,10 @@ TEXT = {
            "moments": "Community-Momente", "none": "Keine Kandidaten gefunden.",
            "high": "hoch", "medium": "mittel", "low": "niedrig",
            "level": {"none": "kein Chat", "low": "wenig Chat", "active": "aktiver Chat"},
-           "hit": "getroffen von Platz", "miss": "nicht getroffen"},
+           "hit": "getroffen von Platz", "miss": "nicht getroffen",
+           "ai_yes": "KI: clipwürdig", "ai_no": "KI: eher nicht", "ai_cut": "KI-Schnitt",
+           "hook": "Hook", "caption": "Caption", "ai_model": "KI-Modell",
+           "ai_reviewed": "geprüft"},
     "en": {"title": "Clip Hunter – result", "mode": "Analysis", "duration": "Length",
            "chat": "Chat", "candidates": "Candidates", "time": "Time", "category": "Type",
            "confidence": "Confidence", "score": "Score", "why": "Why",
@@ -32,7 +35,10 @@ TEXT = {
            "moments": "Community moments", "none": "No candidates found.",
            "high": "high", "medium": "medium", "low": "low",
            "level": {"none": "no chat", "low": "small chat", "active": "active chat"},
-           "hit": "matched by rank", "miss": "not matched"},
+           "hit": "matched by rank", "miss": "not matched",
+           "ai_yes": "AI: clip-worthy", "ai_no": "AI: probably not", "ai_cut": "AI cut",
+           "hook": "Hook", "caption": "Caption", "ai_model": "AI model",
+           "ai_reviewed": "reviewed"},
 }
 
 STYLE = """
@@ -54,6 +60,9 @@ margin:12px 0}
 .bar i{display:block;height:100%;background:#9146ff}
 ul{margin:8px 0 0 18px;padding:0}li{margin:2px 0}
 .samples{margin-top:8px;color:#c9c9d6;font-size:14px}
+.ai{margin-top:10px;padding:10px 12px;background:#1d1d27;border-radius:8px}
+.ai .title{font-weight:700;font-size:16px}.ai .tags{color:#bf94ff;font-size:13px}
+.ai .verdict{font-size:13px;font-weight:600}.ai .yes{color:#20c997}.ai .no{color:#a1a1b5}
 .samples code{background:#232330;padding:1px 6px;border-radius:4px;margin-right:6px}
 a{color:#bf94ff}table{border-collapse:collapse;width:100%}
 td,th{text-align:left;padding:6px 8px;border-bottom:1px solid #262633;font-size:14px}
@@ -109,6 +118,7 @@ def render_report(result: HuntResult, *, evaluation: EvaluationReport | None = N
         if item.chat and item.chat.sample_messages:
             codes = "".join(f"<code>{escape(text)}</code>" for text in item.chat.sample_messages)
             samples = f'<div class="samples">{t["samples"]}: {codes}</div>'
+        ai_html = _ai_html(item, t)
         rows.append(
             f'<div class="card"><div class="head"><span class="rank">#{item.rank}</span>'
             f'<strong>{time_range}</strong>'
@@ -116,7 +126,7 @@ def render_report(result: HuntResult, *, evaluation: EvaluationReport | None = N
             f'</span><span class="conf">{t["confidence"]}: {t[item.confidence]}</span>'
             f'<span class="bar" title="{t["score"]} {item.score}"><i style="width:{item.score}%">'
             f'</i></span><span class="conf">{item.score}/100</span>{link}{file_link}</div>'
-            f'<ul>{reasons}</ul>{samples}</div>'
+            f'{ai_html}<ul>{reasons}</ul>{samples}</div>'
         )
     meta = [f'<span>{t["mode"]}: {escape(result.mode)}</span>']
     if result.duration_seconds:
@@ -124,6 +134,9 @@ def render_report(result: HuntResult, *, evaluation: EvaluationReport | None = N
     if result.chat:
         meta.append(f'<span>{t["chat"]}: {t["level"][result.chat.level]} '
                     f'({result.chat.median_chatters_per_minute:g}/min)</span>')
+    if result.ai_model:
+        meta.append(f'<span>{t["ai_model"]}: {escape(result.ai_model)} '
+                    f'({result.ai_reviewed} {t["ai_reviewed"]})</span>')
     note = f'<div class="note">{escape(result.alignment_note)}</div>' \
         if result.alignment_note else ""
     eval_html = _evaluation_html(evaluation, t) if evaluation else ""
@@ -137,6 +150,28 @@ def render_report(result: HuntResult, *, evaluation: EvaluationReport | None = N
         f'{_timeline(result)}<h2>{t["candidates"]} ({len(result.candidates)})</h2>{body}'
         f'{eval_html}<h2>{t["limits"]}</h2><ul>{limits}</ul></main></body></html>'
     )
+
+
+def _ai_html(item, t: dict) -> str:
+    review = item.ai
+    if review is None:
+        return ""
+    verdict = (f'<span class="verdict yes">{t["ai_yes"]}</span>' if review.clipworthy
+               else f'<span class="verdict no">{t["ai_no"]}</span>')
+    parts = [(f'<div class="ai">{verdict} · {round(review.confidence * 100)} % · '
+              f'{t["ai_cut"]}: {format_hms(review.start_seconds)}–'
+              f'{format_hms(review.end_seconds)}')]
+    if review.title:
+        parts.append(f'<div class="title">{escape(review.title)}</div>')
+    if review.hook:
+        parts.append(f'<div>{t["hook"]}: {escape(review.hook)}</div>')
+    if review.caption:
+        parts.append(f'<div>{t["caption"]}: {escape(review.caption)}</div>')
+    if review.hashtags:
+        tags = " ".join("#" + escape(tag) for tag in review.hashtags)
+        parts.append(f'<div class="tags">{tags}</div>')
+    parts.append("</div>")
+    return "".join(parts)
 
 
 def _evaluation_html(report: EvaluationReport, t: dict) -> str:

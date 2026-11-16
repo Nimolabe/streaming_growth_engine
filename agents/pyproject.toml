@@ -12,6 +12,7 @@ dependencies = ["fastapi>=0.110,<1", "uvicorn>=0.29,<1", "pydantic>=2.6,<3", "py
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.6,<1"]
 llm = ["openai>=2,<4"]
+whisper = ["faster-whisper>=1.0,<2"]
 
 [tool.setuptools.packages.find]
 include = ["streaming_agents*"]
