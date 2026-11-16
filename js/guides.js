@@ -63,6 +63,7 @@
             { de: "Pause: Bild mit Musik, Mikrofon und Spiel stumm.", en: "Break: image with music, mic and game muted." },
             { de: "Ende: Danke, nächster Stream-Termin, und wen du gleich raidest.", en: "Ending: thanks, next stream date and who you are about to raid." },
           ],
+          link: { href: "layouts.html", label: { de: "Alle vier Szenen fertig gestalten: Layout-Baukasten →", en: "Design all four scenes in minutes: layout builder →" } },
         },
         {
           h: { de: "Quellen in der Live-Szene", en: "Sources in your live scene" },

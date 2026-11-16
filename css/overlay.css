@@ -1,0 +1,68 @@
+/* ===== Overlay (OBS-Browser-Quelle, feste Größe 1920 × 1080) ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+body {
+  --accent: #8b7cf6; --on-accent: #fff; --text: #f2f1f7; --dim: rgba(242, 241, 247, .65);
+  --panel: rgba(14, 13, 22, .78);
+  font-family: "Inter", system-ui, sans-serif; color: var(--text);
+}
+#overlay { position: relative; width: 100%; height: 100%; }
+
+/* ---------- Vollbild-Szenen (Startet gleich, Pause, Ende) ---------- */
+.screen { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.bg { position: absolute; inset: 0; background: #0b0a12; }
+.blob { position: absolute; border-radius: 50%; filter: blur(120px); opacity: .55; background: var(--accent);
+  animation: drift 18s ease-in-out infinite alternate; }
+.blob-1 { width: 900px; height: 900px; left: -250px; top: -300px; }
+.blob-2 { width: 700px; height: 700px; right: -200px; bottom: -250px; animation-duration: 22s; opacity: .4; }
+.blob-3 { width: 420px; height: 420px; left: 55%; top: 15%; animation-duration: 26s; opacity: .25; }
+@keyframes drift { to { transform: translate(120px, 80px) scale(1.12); } }
+
+.center { position: relative; text-align: center; max-width: 1500px; padding: 0 60px; }
+.kicker { font: 600 34px/1.2 "Inter", sans-serif; letter-spacing: .28em; text-transform: uppercase; color: var(--accent); }
+.title { margin-top: 28px; font: 700 128px/1.05 "Space Grotesk", sans-serif; letter-spacing: -.02em; }
+.sub { margin-top: 40px; min-height: 64px; font: 600 52px/1.2 "Space Grotesk", sans-serif; color: var(--dim); }
+.sub.is-time { font-variant-numeric: tabular-nums; color: var(--text); }
+
+.socials { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: center;
+  flex-wrap: wrap; gap: 22px 46px; list-style: none; padding: 0 80px; }
+.social { display: flex; align-items: center; gap: 14px; font: 600 30px/1 "Inter", sans-serif; color: var(--text); }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); flex: none; }
+
+/* ---------- Live-Szene: transparent, Rahmen für die Webcam ---------- */
+.cam-frame { position: absolute; left: 60px; top: 640px; width: 480px; height: 270px;
+  border: 6px solid var(--accent); border-radius: 18px; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
+.cam-label { position: absolute; left: -6px; bottom: -64px; padding: 12px 26px; border-radius: 0 0 14px 14px;
+  font: 700 30px/1 "Space Grotesk", sans-serif; background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+.social-badge { position: absolute; right: 60px; bottom: 60px; display: flex; align-items: center; gap: 14px;
+  padding: 18px 28px; border-radius: 14px; background: var(--panel); font: 600 30px/1 "Inter", sans-serif;
+  border-left: 6px solid var(--accent); }
+.social-badge.swap { animation: pop .6s cubic-bezier(.2, .7, .2, 1); }
+@keyframes pop { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Stil: Neon ---------- */
+.theme-neon .title { text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 70%, transparent); }
+.theme-neon .cam-frame { box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 2px rgba(0, 0, 0, .35); }
+
+/* ---------- Stil: Minimal ---------- */
+.theme-minimal .bg { background: #111216; }
+.theme-minimal .blob { display: none; }
+.theme-minimal .title::after { content: ""; display: block; width: 160px; height: 6px; margin: 40px auto 0;
+  background: var(--accent); border-radius: 3px; }
+.theme-minimal .title { font-weight: 500; }
+.theme-minimal .kicker { color: var(--dim); }
+.theme-minimal .cam-frame { border-width: 3px; border-color: rgba(255, 255, 255, .85); }
+.theme-minimal .cam-label { background: #111216; color: var(--text); border-bottom: 4px solid var(--accent); }
+
+/* ---------- Stil: Kräftig ---------- */
+.theme-bold .bg { background: var(--accent); }
+.theme-bold .blob { background: #000; opacity: .18; }
+.theme-bold .center, .theme-bold .social { color: var(--on-accent); }
+.theme-bold .kicker { color: var(--on-accent); opacity: .8; }
+.theme-bold .sub { color: var(--on-accent); opacity: .85; }
+.theme-bold .dot { background: var(--on-accent); }
+.theme-bold .title { text-transform: uppercase; font-size: 140px; }
+.theme-bold .cam-frame { border-width: 10px; border-radius: 4px; }
+.theme-bold .cam-label { border-radius: 0; }
+.theme-bold .social-badge { background: var(--accent); color: var(--on-accent); border-left: none; }
+.theme-bold .social-badge .dot { background: var(--on-accent); }
