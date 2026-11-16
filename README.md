@@ -56,8 +56,8 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - `users/<uid>/favorites`: gespeicherte Lieblings-Setups (Setups-Seite)
 - `usernames/<name>`: reserviert Nutzernamen (klein geschrieben) → uid. Jeder Name nur einmal, nur der Besitzer kann ihn freigeben
 - `profiles/<uid>`: öffentliche Profile (Name, Nutzername, Bio, Plattform, Kanal-Link, Lieblingsspiele). Für alle lesbar, damit Profil-Links und Suche ohne Anmeldung funktionieren; nur der Besitzer schreibt. Indizes für die Suche: `usernameLower`, `nameLower`, `createdAt`
-- `following/<uid>/<ziel>` und `followers/<ziel>/<uid>`: wer wem folgt, nur der Folgende selbst darf schreiben
 - `layouts/<uid>`: im Profil geteiltes Stream-Layout (`params` = Einstellungen des Baukastens, `updatedAt`). Für alle lesbar, nur der Besitzer schreibt; wird beim Anzeigen immer neu geprüft
+- `following/<uid>/<ziel>` und `followers/<ziel>/<uid>`: wer wem folgt, nur der Folgende selbst darf schreiben
 
 **Wichtig:** Nach jeder Änderung an `database.rules.json` die Regeln in der Firebase-Konsole veröffentlichen, sonst funktionieren Profile und Suche nicht.
 
