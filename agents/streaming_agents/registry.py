@@ -7,7 +7,8 @@ AGENTS = [
         name=AgentName.CONTENT_STRATEGIST,
         status=AgentStatus.PROTOTYPE,
         description=(
-            "Offline curated format recommendations, mini-series and weekly plans; "
+            "Curated format recommendations, mini-series and weekly plans, plus a category "
+            "check on real Twitch directory data (visibility, audience, best times); "
             "optional LLM provider remains off by default."
         ),
     ),
