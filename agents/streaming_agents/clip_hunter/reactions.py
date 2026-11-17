@@ -14,20 +14,22 @@ _EMOTES: dict[str, frozenset[str]] = {
     "funny": frozenset({
         "KEKW", "KEKL", "LUL", "LULW", "OMEGALUL", "ICANT", "pepeLaugh", "PepeLaugh",
         "LMAO", "4Head", "EleGiggle", "kekw", "Kekw", "KEK", "xdd", "XDD", "LOLW",
-        "pepeLaughing", "OMEGADANCE",
+        "pepeLaughing", "OMEGADANCE", "Jebaited",
     }),
     "hype": frozenset({
         "Pog", "POG", "PogU", "POGGERS", "Poggers", "PogChamp", "PagMan", "PagChomp", "POGCRAZY",
         "GIGACHAD", "Chad", "EZ", "Clap", "W", "WW", "WWW", "HYPERS", "PogBones", "catJAM",
         "LETSGO", "LETSGOOO", "FeelsStrongMan", "peepoClap",
+        # klassische Twitch-Emotes und Rufe (in echten Chats häufig bei Highlights)
+        "Kreygasm", "SwiftRage", "SeemsGood", "GGEZ", "REKT", "GG", "OUTPLAYED",
     }),
     "shock": frozenset({
         "WHAT", "WAYTOO", "D:", "monkaOMEGA", "HUH", "Huh", "WutFace", "Stare", "OOOO", "OOOOO",
-        "NOWAY", "WTF", "OMG", "pepeMeltdown", "Susge",
+        "NOWAY", "WTF", "OMG", "pepeMeltdown", "Susge", "DansGame", "HOLY",
     }),
     "fail": frozenset({
         "L", "LL", "LLL", "F", "Sadge", "NotLikeThis", "BibleThump", "PepeHands", "FeelsBadMan",
-        "Deadge", "Despairge", "BOOBA_RIP",
+        "Deadge", "Despairge", "BOOBA_RIP", "BabyRage", "PJSalt",
     }),
     "tension": frozenset({
         "monkaS", "monkaW", "monkaGIGA", "monkaH", "monkaSTEER", "PauseChamp", "PAUSE",
@@ -39,8 +41,9 @@ _WORDS: dict[str, frozenset[str]] = {
     "funny": frozenset({"lol", "lul", "lmao", "lmfao", "rofl", "xd", "xdd", "hahaha", "haha",
                         "ahahah", "hahahaha", "jaja", "jajaja", "dead", "💀", "😂", "🤣", "😆"}),
     "hype": frozenset({"pog", "poggers", "letsgo", "letsgoo", "letsgooo", "insane", "clutch",
-                       "hype", "ehre", "goated", "🔥", "🐐", "👏"}),
-    "shock": frozenset({"wtf", "omg", "wat", "noway", "krass", "huh", "bruh", "😱",
+                       "hype", "ehre", "goated", "gg", "ggez", "ggwp", "rekt", "outplayed",
+                       "🔥", "🐐", "👏"}),
+    "shock": frozenset({"wtf", "omg", "omfg", "wat", "noway", "krass", "huh", "bruh", "😱",
                         "😳", "🤯", "😨"}),
     "fail": frozenset({"rip", "unlucky", "sadge", "😭", "😢"}),
     "tension": frozenset({"😬", "😰"}),

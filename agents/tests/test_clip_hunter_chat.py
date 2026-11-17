@@ -86,10 +86,18 @@ def test_alert_reactions():
 
 
 # ---------- Chat-Ausschläge ----------
+STRONG_Z = 3.0  # echte Reaktionswellen liegen deutlich darüber, Grundrauschen darunter
+
+
+def strong(moments):
+    return [m for m in moments if m.z_score >= STRONG_Z]
+
+
 def test_detects_real_moments_with_types_and_timing():
     moments, stats = analyze_chat(build_chat(FULL), HuntSettings(), START)
     assert stats.level == "active"
     assert stats.events == {"sub": 2, "raid": 1}
+    moments = strong(moments)
     assert [m.dominant_category for m in moments] == ["funny", "hype", "shock", "tension"]
     for true_time, moment in zip(TRUE_EVENTS, moments):
         assert abs(moment.event_seconds - true_time) <= 4
@@ -104,7 +112,21 @@ def test_alerts_raids_commands_and_bots_never_become_moments(seed):
     scenario = ChatScenario(seed=seed, subs=[700, 1900], raids=[1300, 2600],
                             command_floods=[400, 3100], bot_spam_every=20)
     moments, _ = analyze_chat(build_chat(scenario), HuntSettings(), START)
-    assert moments == []
+    # Höchstens schwaches Grundrauschen, nie eine Welle aus Alerts, Raids, Befehlen oder Bots
+    assert strong(moments) == []
+    assert all(m.alert_nearby is None for m in moments)
+    for moment in moments:
+        assert not any("RAID" in text or text.startswith("!") or "Instagram" in text
+                       for text in moment.sample_messages)
+
+
+def test_background_noise_stays_rare_and_weak():
+    total = 0
+    for seed in range(1, 11):
+        moments, _ = analyze_chat(build_chat(ChatScenario(seed=seed)), HuntSettings(), START)
+        assert strong(moments) == []
+        total += len(moments)
+    assert total <= 10  # 10 Stunden ruhiger Chat: höchstens etwa ein schwacher Treffer pro Stunde
 
 
 @pytest.mark.parametrize("seed", range(1, 9))
@@ -112,7 +134,7 @@ def test_detection_is_stable_across_random_chats(seed):
     scenario = ChatScenario(seed=seed, bursts=FULL.bursts, subs=FULL.subs, raids=FULL.raids,
                             command_floods=FULL.command_floods)
     moments, _ = analyze_chat(build_chat(scenario), HuntSettings(), START)
-    assert [m.dominant_category for m in moments] == ["funny", "hype", "shock", "tension"]
+    assert [m.dominant_category for m in strong(moments)] == ["funny", "hype", "shock", "tension"]
 
 
 def test_single_spammer_is_not_a_moment():
@@ -121,7 +143,7 @@ def test_single_spammer_is_not_a_moment():
             for index in range(80)]
     log = ChatLog(header=log.header, messages=sorted(log.messages + spam, key=lambda m: m.ts))
     moments, _ = analyze_chat(log, HuntSettings(), START)
-    assert moments == []
+    assert not any(890 <= m.onset_seconds <= 930 for m in moments)
 
 
 def test_broadcaster_messages_do_not_count():
@@ -129,7 +151,8 @@ def test_broadcaster_messages_do_not_count():
     own = [ChatMessage(ts=START + 1200 + index * 0.1, user=f"x{index}", text="KEKW",
                        broadcaster=True) for index in range(60)]
     log = ChatLog(header=log.header, messages=sorted(log.messages + own, key=lambda m: m.ts))
-    assert analyze_chat(log, HuntSettings(), START)[0] == []
+    moments, _ = analyze_chat(log, HuntSettings(), START)
+    assert not any(1190 <= m.onset_seconds <= 1220 for m in moments)
 
 
 def test_vod_start_and_offset_shift_times():
@@ -137,14 +160,18 @@ def test_vod_start_and_offset_shift_times():
     base, _ = analyze_chat(log, HuntSettings(), START)
     later_vod, _ = analyze_chat(log, HuntSettings(), START + 100)
     shifted, _ = analyze_chat(log, HuntSettings(chat_offset_seconds=30), START)
-    assert later_vod[0].event_seconds == pytest.approx(base[0].event_seconds - 100, abs=1)
-    assert shifted[0].event_seconds == pytest.approx(base[0].event_seconds + 30, abs=1)
+    def top(moments):
+        return max(moments, key=lambda m: m.z_score).event_seconds
+
+    assert top(later_vod) == pytest.approx(top(base) - 100, abs=1)
+    assert top(shifted) == pytest.approx(top(base) + 30, abs=1)
 
 
 def test_messages_outside_the_vod_are_ignored():
     log = build_chat(ChatScenario(bursts=[Burst(600, "funny", 45), Burst(3000, "hype", 50)]))
     moments, stats = analyze_chat(log, HuntSettings(), START, duration_seconds=1800)
-    assert [m.dominant_category for m in moments] == ["funny"]
+    assert [m.dominant_category for m in strong(moments)] == ["funny"]
+    assert all(m.onset_seconds <= 1860 for m in moments)
     assert stats.messages_ignored > 0
 
 

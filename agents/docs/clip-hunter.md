@@ -8,7 +8,7 @@ Ein Sprachmodell ist noch nicht im Spiel, siehe [Ausblick](#ausblick).
 
 | Signal | Was gemessen wird | Wofür es gut ist |
 | --- | --- | --- |
-| **Chat** | Wie viele *verschiedene* Chatter in wenigen Sekunden schreiben, verglichen mit dem normalen Tempo der letzten 5 Minuten. Dazu kommt die Art der Reaktion: lustig (KEKW, LUL, „hahaha“), Hype (Pog, W, „LETS GO“), Schock (WHAT, „??“), Fail (L, Sadge, F) oder Spannung (monkaS) | *Dass* etwas passiert ist und *was* |
+| **Chat** | Wie viele *verschiedene* Chatter in wenigen Sekunden schreiben, verglichen mit dem normalen Tempo der letzten 2 Minuten. Dazu kommt die Art der Reaktion: lustig (KEKW, LUL, „hahaha“), Hype (Pog, W, „LETS GO“), Schock (WHAT, „??“), Fail (L, Sadge, F) oder Spannung (monkaS) | *Dass* etwas passiert ist und *was* |
 | **Audio** | Plötzlicher Anstieg der Lautstärke gegenüber den Sekunden davor, also nicht einfach die lautesten Stellen | Den *genauen Zeitpunkt* |
 
 Aussortiert oder abgewertet werden:
@@ -24,7 +24,7 @@ So werden Chat und Audio zusammengeführt:
 | Fall | Bewertung |
 | --- | --- |
 | Chat-Ausschlag **und** Audio-Spitze kurz davor | hoch. Der Zeitpunkt kommt vom Audio, die Art der Reaktion vom Chat |
-| Nur Chat-Ausschlag | mittel bis hoch, je nach Stärke. Die Chat-Verzögerung (Standard 5 s) wird herausgerechnet |
+| Nur Chat-Ausschlag | mittel bis hoch, je nach Stärke. Die Chat-Verzögerung (gemessen etwa 8 s) wird herausgerechnet |
 | Nur Audio-Spitze bei aktivem Chat | niedrig: vermutlich Alert-Ton, Musik oder Lärm |
 | Nur Audio-Spitze ohne oder mit wenig Chat | Hauptsignal, aber mit mehr Fehlalarmen |
 
@@ -102,9 +102,51 @@ ist also eher zu streng.
 Ohne Video geht es auch: `--chat` allein findet die Momente nur aus dem Chat.
 `--video` allein nutzt nur das Audio.
 
-## Kalibrieren
+## Messung an echten Streams
 
-Die Standardwerte sind Startwerte. Mit 2–3 echten Streams lassen sie sich gut einstellen:
+Die Chat-Erkennung ist an **111 echten Twitch-Streams** gemessen und eingestellt. Grundlage
+ist der öffentliche Forschungsdatensatz **LIGHTOR** der Simon Fraser University: Chats von
+Dota-2- und League-of-Legends-Streams, in denen Menschen die Highlights als Zeitintervalle
+markiert haben.
+
+**Vorgehen:**
+- 61 Streams dienten zum Einstellen der Schwellen.
+- 50 weitere wurden vorher beiseitegelegt und nur zum Prüfen verwendet.
+- Die folgenden Zahlen gelten für alle 100 Test-Streams und nur für den Chat, ohne Audio.
+
+| Test-Streams | Clip enthält ein Highlight (Top 10) | Treffer ±5 s (Top 10) | Abdeckung (Top 15) | Zufall | Nachrichten zählen |
+| --- | --- | --- | --- | --- | --- |
+| Dota 2 (50, ca. 42 Nachr./min) | **63 %** | 52 % | 56 % | 13 % | 47 % |
+| LoL-E-Sport (50, ca. 126 Nachr./min) | **72 %** | 64 % | 48 % | 19 % | 67 % |
+| zusammen | **67 %** | 58 % | 52 % | 17 % | 57 % |
+
+So sind die Zahlen zu lesen:
+
+- **Etwa zwei von drei vorgeschlagenen Clips enthalten ein markiertes Highlight.** Der Zufall
+  schafft 13–19 %.
+- Die Markierungen sind unvollständig. Echte, aber nicht markierte Momente zählen hier als
+  Fehltreffer, die tatsächliche Quote liegt also eher höher.
+- **Gegenüber den früheren Startwerten** gab es Verbesserungen bei mittelgroßen Chats wie
+  bei Dota 2: Treffer von 46 % auf 52 %, Abdeckung von 45 % auf 56 %. In sehr großen
+  E-Sport-Chats kostet die Einstellung ein paar Prozentpunkte. Weil die Zielgruppe wachsende
+  Streamer mit kleineren Chats sind, gilt die Einstellung für mittelgroße Chats.
+- Die echte Chat-Verzögerung liegt bei etwa **8 Sekunden**. Sie ist jetzt der Standardwert.
+- Die Zahlen gelten **nur für den Chat**. Für die Audio-Spitzen gibt es noch keine echten
+  Messdaten, weil der Datensatz keine Videos enthält.
+
+**Selbst nachmessen** (Datensatz liegt nicht im Repository):
+
+```bash
+git clone https://github.com/sfu-db/Lightor_Exp
+python -m streaming_agents.clip_hunter benchmark --lightor Lightor_Exp --game all --split test
+```
+
+Jede Änderung an Schwellen oder Emote-Listen sollte so geprüft werden, bevor sie übernommen wird.
+
+## Kalibrieren für den eigenen Kanal
+
+Die Standardwerte sind an echten Streams eingestellt (siehe oben). Für einen bestimmten Kanal
+lassen sie sich mit 2–3 eigenen Streams weiter verfeinern:
 
 | Beobachtung | Stellschraube |
 | --- | --- |

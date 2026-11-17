@@ -26,7 +26,7 @@ class Burst:
     event: float
     category: str
     users: int
-    lag: float = 5.0
+    lag: float = 8.0  # gemessene typische Chat-Verzögerung (LIGHTOR-Daten)
 
 
 @dataclass

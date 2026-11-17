@@ -203,8 +203,10 @@ def limitations(language: Language, mode: str, chat: ChatStats | None) -> list[s
         if de else "Candidates are moments to review, not a prediction of clip performance.",
         "Leise Komik ohne Chat-Reaktion und rein visuelle Momente können fehlen."
         if de else "Quiet humour without chat reaction and purely visual moments can be missed.",
-        "Schwellenwerte sind Startwerte und sollten mit eigenen Streams kalibriert werden."
-        if de else "Thresholds are starting values and should be calibrated with your own streams.",
+        "Schwellenwerte sind an echten Twitch-Streams eingestellt; für den eigenen Kanal "
+        "lassen sie sich weiter verfeinern."
+        if de else "Thresholds are tuned on real Twitch streams and can be refined for your "
+        "own channel.",
     ]
     if mode == "audio" or (chat and chat.level != "active"):
         items.append(

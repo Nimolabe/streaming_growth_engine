@@ -17,6 +17,7 @@ from pathlib import Path
 from pydantic import TypeAdapter, ValidationError
 
 from .audio_signal import MediaError
+from .benchmark import BenchmarkError, evaluate, load_lightor
 from .chat_log import ChatLogError, ChatLogWriter, read_chat_log
 from .evaluation import EvaluationReport, evaluate_against_viewer_clips
 from .export import export_candidates
@@ -212,6 +213,23 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    streams = load_lightor(args.lightor, game=args.game, split=args.split)
+    _print(f"Messe {len(streams)} Streams … (dauert je nach Rechner etwa eine Minute)")
+    result = evaluate(streams)
+    _print(f"Streams: {result.streams} · markierte Highlights: {result.highlights}")
+    _print(f"Treffer in den Top 10 (±5 s):        {_pct(result.top10_hits)}")
+    _print(f"Clip enthält ein Highlight (Top 10): {_pct(result.top10_clip_contains)}")
+    _print(f"Abdeckung der Highlights (Top 15):   {_pct(result.coverage_top15)}")
+    _print(f"Vergleich – Zufall: {_pct(result.random_top10_hits)} · "
+           f"Nachrichten zählen: {_pct(result.count_top10_hits)} (Treffer Top 10)")
+    if args.out:
+        target = _new_file(args.out, args.overwrite)
+        target.write_text(result.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        _print(f"Gespeichert: {target}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m streaming_agents.clip_hunter",
@@ -260,6 +278,16 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--report")
     evaluate.add_argument("--overwrite", action="store_true")
     evaluate.set_defaults(handler=cmd_evaluate)
+
+    bench = sub.add_parser("benchmark",
+                           help="Chat-Erkennung an echten Streams messen (LIGHTOR-Datensatz)")
+    bench.add_argument("--lightor", required=True,
+                       help="Pfad zu Lightor_Exp (git clone https://github.com/sfu-db/Lightor_Exp)")
+    bench.add_argument("--game", choices=["dota2", "lol", "all"], default="all")
+    bench.add_argument("--split", choices=["train", "test", "all"], default="test")
+    bench.add_argument("--out", help="Ergebnis als JSON speichern")
+    bench.add_argument("--overwrite", action="store_true")
+    bench.set_defaults(handler=cmd_benchmark)
     return parser
 
 
@@ -269,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.handler(args)
     except (CliError, ChatLogError, MediaError, TwitchApiError, ChannelNameError,
-            ValidationError, ValueError) as exc:
+            BenchmarkError, ValidationError, ValueError) as exc:
         message = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
         if isinstance(exc, ValidationError):
             message = "Ungültige Einstellung: " + "; ".join(
