@@ -144,6 +144,8 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #18 | Guides-Seite |
 | #19 | Layout-Baukasten |
 | #20 | Content Strategist: Kategorie-Check auf echten Twitch-Daten |
+| #21 | Doku: `CLAUDE.md` mit Projektstand und Arbeitsregeln |
+| #22 | Browser-Tests (`tests/web/`, eigene CI) und Handy-Fixes für Guides und Layout-Baukasten |
 
 Gemergt am 17.11.2026. Danach: CI grün, 231 Python-Tests grün, alle Seiten DE/EN ohne
 JS-Fehler, Website neu veröffentlicht.
@@ -289,17 +291,19 @@ python -m pytest -q
 #   python -m streaming_agents.clip_hunter benchmark --lightor <Pfad>/Lightor_Exp --game all --split test
 ```
 
-Website lokal: `python -m http.server` in der Repo-Wurzel, dann im Browser öffnen. Bisher
-wurden Browser-Tests mit Playwright (Headless Chrome) gemacht. Firebase wurde dabei über
-Routing nachgebaut (`gstatic.com/firebasejs/...` durch Stub-Module ersetzt). Diese
-Testskripte liegen **nicht** im Repo. Bei Bedarf als `tests/web/` anlegen.
+Website lokal: `python -m http.server` in der Repo-Wurzel, dann im Browser öffnen.
 
-Die Browser-Tests liegen jetzt unter `tests/web/` (`python -m pytest tests/web -q`,
-Anleitung in `tests/web/README.md`) und laufen in der CI (`.github/workflows/web-tests.yml`).
+Browser-Tests: `tests/web/` (Playwright, Chromium headless), Aufruf aus der Repo-Wurzel mit
+`python -m pytest tests/web -q`. Die Tests starten selbst einen lokalen Server, beantworten
+Anfragen nach außen mit 204 und bauen Firebase über Stub-Module nach
+(`gstatic.com/firebasejs/...` → `tests/web/stubs/`). Anleitung: `tests/web/README.md`.
+Die CI (`.github/workflows/web-tests.yml`) führt sie bei Änderungen an `*.html`, `js/**`,
+`css/**`, `database.rules.json` und `tests/web/**` aus.
 
 Prüfliste für Website-Änderungen:
 - Deutsch und Englisch, auch beim Umschalten; keine deutschen Reste im Englischen.
-- Desktop und Handy (390 px, kein seitliches Scrollen); keine JS-Fehler in der Konsole.
+- Desktop und Handy (390 und 360 px, Setups auch 320 px, kein seitliches Scrollen); keine
+  JS-Fehler in der Konsole.
 - Angemeldet und abgemeldet; Verhalten ohne veröffentlichte Firebase-Regeln.
 - Eingaben aus URL oder Datenbank: XSS-Versuche (`<img onerror>`, `<script>`) bleiben Text.
 
@@ -334,7 +338,3 @@ Prüfliste für Website-Änderungen:
 - Trend Scout auf Basis der Kategorie-Messungen (welche Kategorien wachsen?).
 - Import von Twitch-Analytics-Exporten für den Growth Analyst. Braucht eine echte
   Beispieldatei, weil das Format nicht verifiziert ist.
-- Browser-Testskripte (Playwright) ins Repo holen (`tests/web/`) und in die CI aufnehmen.
-- Link vom Guides-Abschnitt „Kurzvideos“ zur Clip-Hunter-Warteliste.
-- `setups.html` bei 320 px: Die Reiter „Streamer-Setups“ / „Hardware-Katalog“ laufen
-  minimal über (die Browser-Tests prüfen nur 390 und 360 px).
