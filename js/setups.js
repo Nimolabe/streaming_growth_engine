@@ -2,21 +2,49 @@
 //  Setups-Seite: Budget-Planer, Streamer-Setups, Hardware-Katalog
 // ============================================================
 import { CATEGORIES, GROUPS, TYPES, NEEDS, PRODUCTS, STREAMERS } from "./setups-data.js";
+import { SETUPS_EN } from "./setups-i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const byId = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]));
-const euro = (n) => n.toLocaleString("de-DE") + " €";
+
+// ---------- Sprache (Deutsch/Englisch über js/i18n.js) ----------
+window.SGE_I18N?.add(SETUPS_EN);
+const t = (s) => (window.SGE_I18N ? window.SGE_I18N.t(s) : s);
+// Vorlage mit {platzhaltern}; Werte werden unverändert eingesetzt (vorher escapen!)
+const tf = (s, vars) => t(s).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+const isEn = () => window.SGE_I18N?.getLanguage() === "en";
+const num = (n) => n.toLocaleString(isEn() ? "en-US" : "de-DE");
+
+const euro = (n) => num(n) + " €";
 // Software kann gratis sein oder ein Abo (Preis pro Monat)
-const priceLabel = (p, prefix = "ca. ") =>
-  p.billing === "gratis" || p.price === 0 ? "gratis" : p.billing === "abo" ? `${euro(p.price)}/Monat` : prefix + euro(p.price);
+const priceLabel = (p, prefix = true) =>
+  p.billing === "gratis" || p.price === 0
+    ? t("gratis")
+    : p.billing === "abo"
+      ? tf("{preis}/Monat", { preis: euro(p.price) })
+      : (prefix ? t("ca.") + " " : "") + euro(p.price);
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const typeLabel = (type) => t(TYPES[type].label);
+const catLabel = (cat) => t(CATEGORIES[cat].label);
 
 function rating(score) {
-  if (score >= 8.5) return { label: "Top", cls: "r-top" };
-  if (score >= 7) return { label: "Sehr gut", cls: "r-great" };
-  if (score >= 5.5) return { label: "Gut", cls: "r-good" };
-  return { label: "Einstieg", cls: "r-entry" };
+  if (score >= 8.5) return { label: t("Top"), cls: "r-top" };
+  if (score >= 7) return { label: t("Sehr gut"), cls: "r-great" };
+  if (score >= 5.5) return { label: t("Gut"), cls: "r-good" };
+  return { label: t("Einstieg"), cls: "r-entry" };
+}
+
+// Auswahllisten (<option>) übersetzt i18n.js nicht automatisch: Originaltext merken und selbst setzen
+function translateOptions(select) {
+  for (const opt of select.options) {
+    if (!opt.dataset.de) opt.dataset.de = opt.textContent;
+    opt.textContent = t(opt.dataset.de);
+  }
+  for (const group of select.querySelectorAll("optgroup")) {
+    if (!group.dataset.de) group.dataset.de = group.label;
+    group.label = t(group.dataset.de);
+  }
 }
 
 function chip(group, value, label, active, type = "radio") {
@@ -163,29 +191,33 @@ const budgetNumber = $("budget-number");
 const consoleRow = $("console-row");
 const currentCat = () => document.querySelector('[name="budget-cat"]:checked').value;
 
-$("budget-cats").innerHTML = Object.entries(CATEGORIES)
-  .map(([k, c], i) => chip("budget-cat", k, `${c.icon} ${c.label}`, i === 0))
-  .join("");
+function renderBudgetCats() {
+  const current = document.querySelector('[name="budget-cat"]:checked')?.value || Object.keys(CATEGORIES)[0];
+  $("budget-cats").innerHTML = Object.entries(CATEGORIES)
+    .map(([k, c]) => chip("budget-cat", k, `${c.icon} ${esc(t(c.label))}`, k === current))
+    .join("");
+}
+renderBudgetCats();
 
 // Liste aller Bauteile, gruppiert nach Bereich, mit drei Zuständen zum Anhaken
 function renderParts() {
   const cat = currentCat();
   const parts = partsFor(cat, $("budget-console").checked);
   const html = Object.entries(GROUPS)
-    .map(([g, info]) => {
+    .map(([g, group]) => {
       const rows = parts.filter((n) => TYPES[n.type].group === g);
       if (!rows.length) return "";
       return `<div class="part-group">
-        <p class="part-group-title">${info.icon} ${esc(info.label)}</p>
+        <p class="part-group-title">${group.icon} ${esc(t(group.label))}</p>
         ${rows
           .map((n) => {
-            const t = TYPES[n.type];
+            const info = TYPES[n.type];
             const state = stateOf(n.type);
             return `<div class="part-row state-${state}">
-              <span class="part-name"><span class="item-icon">${t.icon}</span>${esc(t.label)}${n.required ? ' <small class="req">Pflicht</small>' : ""}</span>
-              <div class="seg" role="radiogroup" aria-label="${esc(t.label)}">
+              <span class="part-name"><span class="item-icon">${info.icon}</span>${esc(t(info.label))}${n.required ? ` <small class="req">${esc(t("Pflicht"))}</small>` : ""}</span>
+              <div class="seg" role="radiogroup" aria-label="${esc(t(info.label))}">
                 ${STATES.map(
-                  (s) => `<label><input type="radio" name="state-${n.type}" value="${s.value}" ${state === s.value ? "checked" : ""}><span>${s.label}</span></label>`
+                  (s) => `<label><input type="radio" name="state-${n.type}" value="${s.value}" ${state === s.value ? "checked" : ""}><span>${esc(t(s.label))}</span></label>`
                 ).join("")}
               </div>
             </div>`;
@@ -208,14 +240,14 @@ function renderBudget() {
   const parts = partsFor(cat, onConsole);
   const owned = parts.filter((n) => stateOf(n.type) === "owned");
   const ownedHtml = owned.length
-    ? `<p class="hint owned-line">✅ Schon vorhanden: ${owned.map((n) => `${TYPES[n.type].icon} ${esc(TYPES[n.type].label)}`).join(", ")}</p>`
+    ? `<p class="hint owned-line">✅ ${esc(t("Schon vorhanden:"))} ${owned.map((n) => `${TYPES[n.type].icon} ${esc(typeLabel(n.type))}`).join(", ")}</p>`
     : "";
 
   if (!res.ok) {
     out.innerHTML = `<div class="box empty">
-      <h3>Das wird knapp 😅</h3>
-      <p>Für ein ${esc(CATEGORIES[cat].label)}-Setup mit deiner Auswahl brauchst du mindestens <strong>${euro(res.minNeeded)}</strong>.</p>
-      <button type="button" class="btn btn-small" id="set-min">Budget auf ${euro(res.minNeeded)} setzen</button>
+      <h3>${esc(t("Das wird knapp 😅"))}</h3>
+      <p>${tf("Für ein {kategorie}-Setup mit deiner Auswahl brauchst du mindestens {betrag}.", { kategorie: esc(catLabel(cat)), betrag: `<strong>${euro(res.minNeeded)}</strong>` })}</p>
+      <button type="button" class="btn btn-small" id="set-min">${tf("Budget auf {betrag} setzen", { betrag: euro(res.minNeeded) })}</button>
       ${ownedHtml}
     </div>`;
     $("set-min").onclick = () => setBudget(res.minNeeded);
@@ -223,7 +255,7 @@ function renderBudget() {
   }
 
   if (!res.items.length) {
-    out.innerHTML = `<div class="box empty"><h3>Du hast schon alles! 🎉</h3><p>Dann bleibt nur noch eins: Go Live.</p>${ownedHtml}</div>`;
+    out.innerHTML = `<div class="box empty"><h3>${esc(t("Du hast schon alles! 🎉"))}</h3><p>${esc(t("Dann bleibt nur noch eins: Go Live."))}</p>${ownedHtml}</div>`;
     return;
   }
 
@@ -240,16 +272,16 @@ function renderBudget() {
     const current = Object.fromEntries(res.items.map((p) => [p.type, p]));
     const added = up.items.filter((p) => !current[p.type] || p.score > current[p.type].score);
     if (added.length) {
-      upgrade = `<div class="upgrade">⬆️ <strong>Mit 100 € mehr</strong> bekommst du: ${added.map((p) => esc(p.name)).join(", ")}
-        <button type="button" class="link-btn" id="budget-up">Anzeigen</button></div>`;
+      upgrade = `<div class="upgrade">⬆️ <strong>${esc(t("Mit 100 € mehr"))}</strong> ${esc(t("bekommst du:"))} ${added.map((p) => esc(t(p.name))).join(", ")}
+        <button type="button" class="link-btn" id="budget-up">${esc(t("Anzeigen"))}</button></div>`;
     }
   }
 
   out.innerHTML = `<div class="box">
     <div class="result-head">
       <div>
-        <p class="eyebrow">Dein ${esc(CATEGORIES[cat].label)}-Setup</p>
-        <h3>${euro(res.total)} <small>von ${euro(budget)}</small></h3>
+        <p class="eyebrow">${tf("Dein {kategorie}-Setup", { kategorie: esc(catLabel(cat)) })}</p>
+        <h3>${euro(res.total)} <small>${tf("von {betrag}", { betrag: euro(budget) })}</small></h3>
       </div>
       <span class="rating ${r.cls}">${r.label}</span>
     </div>
@@ -259,16 +291,16 @@ function renderBudget() {
         .map(
           (p) => `<li>
             <span class="item-icon">${TYPES[p.type].icon}</span>
-            <div class="item-main"><strong>${esc(p.name)}</strong><small>${esc(TYPES[p.type].label)} · ${esc(p.note)}</small></div>
+            <div class="item-main"><strong>${esc(t(p.name))}</strong><small>${esc(typeLabel(p.type))} · ${esc(t(p.note))}</small></div>
             <span class="item-price">${priceLabel(p)}</span>
           </li>`
         )
         .join("")}
     </ul>
     ${ownedHtml}
-    ${missing.length ? `<p class="hint">Noch nicht drin (optional): ${missing.map((n) => TYPES[n.type].label).join(", ")}. Kannst du später nachrüsten.</p>` : ""}
-    ${res.impossible.length ? `<p class="hint">Für ${res.impossible.map((t) => TYPES[t].label).join(", ")} haben wir in dieser Kategorie noch keine Produkte.</p>` : ""}
-    ${rest > 0 ? `<p class="hint">Übrig: <strong>${euro(rest)}</strong>, gut für Kabel und Halterungen.</p>` : ""}
+    ${missing.length ? `<p class="hint">${tf("Noch nicht drin (optional): {liste}. Kannst du später nachrüsten.", { liste: esc(missing.map((n) => typeLabel(n.type)).join(", ")) })}</p>` : ""}
+    ${res.impossible.length ? `<p class="hint">${tf("Für {liste} haben wir in dieser Kategorie noch keine Produkte.", { liste: esc(res.impossible.map((type) => typeLabel(type)).join(", ")) })}</p>` : ""}
+    ${rest > 0 ? `<p class="hint">${tf("Übrig: {betrag}, gut für Kabel und Halterungen.", { betrag: `<strong>${euro(rest)}</strong>` })}</p>` : ""}
     ${upgrade}
   </div>`;
 
@@ -312,19 +344,29 @@ let favApi = null; // wird gesetzt, sobald jemand eingeloggt ist
 const setupTotal = (s) =>
   s.items.reduce((sum, id) => sum + (byId[id] && byId[id].billing !== "abo" ? byId[id].price : 0), 0);
 
-$("streamer-cats").innerHTML =
-  chip("streamer-cat", "", "Alle", true) +
-  Object.entries(CATEGORIES).map(([k, c]) => chip("streamer-cat", k, `${c.icon} ${c.label}`, false)).join("");
-// Bauteile im Filter "Enthält" nach Bereich gruppieren
-$("streamer-type").innerHTML += Object.entries(GROUPS)
-  .map(
-    ([g, info]) =>
-      `<optgroup label="${esc(info.label)}">${Object.entries(TYPES)
-        .filter(([, t]) => t.group === g)
-        .map(([k, t]) => `<option value="${k}">${t.icon} ${esc(t.label)}</option>`)
-        .join("")}</optgroup>`
-  )
-  .join("");
+function renderStreamerFilters() {
+  const currentCat = document.querySelector('[name="streamer-cat"]:checked')?.value || "";
+  $("streamer-cats").innerHTML =
+    chip("streamer-cat", "", esc(t("Alle")), currentCat === "") +
+    Object.entries(CATEGORIES).map(([k, c]) => chip("streamer-cat", k, `${c.icon} ${esc(t(c.label))}`, k === currentCat)).join("");
+  // Bauteile im Filter "Enthält" nach Bereich gruppieren
+  const select = $("streamer-type");
+  const value = select.value;
+  select.querySelectorAll("optgroup").forEach((g) => g.remove());
+  select.insertAdjacentHTML("beforeend", Object.entries(GROUPS)
+    .map(
+      ([g, group]) =>
+        `<optgroup label="${esc(t(group.label))}">${Object.entries(TYPES)
+          .filter(([, info]) => info.group === g)
+          .map(([k, info]) => `<option value="${k}">${info.icon} ${esc(t(info.label))}</option>`)
+          .join("")}</optgroup>`
+    )
+    .join(""));
+  select.value = value;
+  translateOptions(select);
+  translateOptions($("streamer-price"));
+}
+renderStreamerFilters();
 
 function renderStreamers() {
   const q = $("streamer-search").value.trim().toLowerCase();
@@ -342,16 +384,16 @@ function renderStreamers() {
     if (total < minPrice || total > maxPrice) return false;
     if (onlyFavs && !favorites.has(s.id)) return false;
     if (q) {
-      const hay = [s.name, s.games, CATEGORIES[s.cat].label, ...products.map((p) => p.name)].join(" ").toLowerCase();
+      const hay = [s.name, s.games, CATEGORIES[s.cat].label, catLabel(s.cat), ...products.flatMap((p) => [p.name, t(p.name)])].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
 
-  $("streamer-count").textContent = `${list.length} ${list.length === 1 ? "Setup" : "Setups"}`;
+  $("streamer-count").textContent = tf(list.length === 1 ? "{anzahl} Setup" : "{anzahl} Setups", { anzahl: list.length });
   $("streamer-grid").innerHTML = list.length
     ? list.map((s) => streamerCard(s, type)).join("")
-    : `<div class="box empty"><p>${onlyFavs && !favApi ? "Melde dich an, um Favoriten zu speichern." : "Keine Setups gefunden. Probier andere Filter."}</p></div>`;
+    : `<div class="box empty"><p>${esc(t(onlyFavs && !favApi ? "Melde dich an, um Favoriten zu speichern." : "Keine Setups gefunden. Probier andere Filter."))}</p></div>`;
 }
 
 function streamerCard(s, highlightType) {
@@ -367,9 +409,9 @@ function streamerCard(s, highlightType) {
       <div class="avatar">${esc(s.name[0])}</div>
       <div class="setup-title">
         <h3>${esc(s.name)}</h3>
-        <small>${CATEGORIES[s.cat].icon} ${esc(CATEGORIES[s.cat].label)} · ${s.followers.toLocaleString("de-DE")} Follower · seit ${s.since}</small>
+        <small>${CATEGORIES[s.cat].icon} ${esc(catLabel(s.cat))} · ${tf("{follower} Follower · seit {jahr}", { follower: num(s.followers), jahr: s.since })}</small>
       </div>
-      <button type="button" class="fav-btn ${isFav ? "on" : ""}" data-fav="${esc(s.id)}" aria-pressed="${isFav}" aria-label="${isFav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}" title="Favorit">${isFav ? "★" : "☆"}</button>
+      <button type="button" class="fav-btn ${isFav ? "on" : ""}" data-fav="${esc(s.id)}" aria-pressed="${isFav}" aria-label="${esc(t(isFav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"))}" title="${esc(t("Favorit"))}">${isFav ? "★" : "☆"}</button>
     </header>
     <p class="games">${esc(s.games)}</p>
     <ul class="item-list compact">
@@ -377,16 +419,16 @@ function streamerCard(s, highlightType) {
         .map(
           (p) => `<li class="${highlightType && p.type === highlightType ? "hl" : ""}">
             <span class="item-icon">${TYPES[p.type].icon}</span>
-            <div class="item-main"><strong>${esc(p.name)}</strong></div>
-            <span class="item-price">${priceLabel(p, "")}</span>
+            <div class="item-main"><strong>${esc(t(p.name))}</strong></div>
+            <span class="item-price">${priceLabel(p, false)}</span>
           </li>`
         )
         .join("")}
     </ul>
-    <blockquote>„${esc(s.tip)}“</blockquote>
+    <blockquote>${isEn() ? "“" : "„"}${esc(t(s.tip))}“</blockquote>
     <footer>
-      <span>Gesamt ca. <strong>${euro(total)}</strong></span>
-      ${s.source ? `<a href="${esc(s.source)}" target="_blank" rel="noopener">Quelle ↗</a>` : `<span class="badge">Beispiel</span>`}
+      <span>${esc(t("Gesamt ca."))} <strong>${euro(total)}</strong></span>
+      ${s.source ? `<a href="${esc(s.source)}" target="_blank" rel="noopener">${esc(t("Quelle ↗"))}</a>` : `<span class="badge">${esc(t("Beispiel"))}</span>`}
     </footer>
   </article>`;
 }
@@ -444,19 +486,29 @@ if (window.sgeAuth) onAuth(window.sgeAuth);
 // ============================================================
 //  3) Hardware-Katalog
 // ============================================================
-$("catalog-types").innerHTML =
-  chip("catalog-type", "", "Alle", true) +
-  Object.entries(TYPES).map(([k, t]) => chip("catalog-type", k, `${t.icon} ${t.label}`, false)).join("");
-$("catalog-cat").innerHTML += Object.entries(CATEGORIES)
-  .map(([k, c]) => `<option value="${k}">${c.icon} ${esc(c.label)}</option>`)
-  .join("");
+function renderCatalogFilters() {
+  const currentType = document.querySelector('[name="catalog-type"]:checked')?.value || "";
+  $("catalog-types").innerHTML =
+    chip("catalog-type", "", esc(t("Alle")), currentType === "") +
+    Object.entries(TYPES).map(([k, info]) => chip("catalog-type", k, `${info.icon} ${esc(t(info.label))}`, k === currentType)).join("");
+  const select = $("catalog-cat");
+  const value = select.value;
+  select.querySelectorAll("option:not([value=''])").forEach((o) => o.remove());
+  select.insertAdjacentHTML("beforeend", Object.entries(CATEGORIES)
+    .map(([k, c]) => `<option value="${k}">${c.icon} ${esc(t(c.label))}</option>`)
+    .join(""));
+  select.value = value;
+  translateOptions(select);
+  translateOptions($("catalog-sort"));
+}
+renderCatalogFilters();
 
 function renderCatalog() {
   const type = document.querySelector('[name="catalog-type"]:checked').value;
   const cat = $("catalog-cat").value;
   const max = Number($("catalog-price").value);
   const sort = $("catalog-sort").value;
-  $("catalog-price-label").textContent = max >= Number($("catalog-price").max) ? "egal" : euro(max);
+  $("catalog-price-label").textContent = max >= Number($("catalog-price").max) ? t("egal") : euro(max);
   const unlimited = max >= Number($("catalog-price").max);
 
   const list = PRODUCTS.filter(
@@ -470,7 +522,7 @@ function renderCatalog() {
     }[sort]
   );
 
-  $("catalog-count").textContent = `${list.length} ${list.length === 1 ? "Produkt" : "Produkte"}`;
+  $("catalog-count").textContent = tf(list.length === 1 ? "{anzahl} Produkt" : "{anzahl} Produkte", { anzahl: list.length });
   $("catalog-grid").innerHTML = list.length
     ? list
         .map((p) => {
@@ -480,20 +532,31 @@ function renderCatalog() {
               <span class="item-icon">${TYPES[p.type].icon}</span>
               <span class="rating ${r.cls}">${r.label}</span>
             </div>
-            <small class="eyebrow">${esc(TYPES[p.type].label)}</small>
-            <h3>${esc(p.name)}</h3>
-            <p>${esc(p.note)}</p>
+            <small class="eyebrow">${esc(typeLabel(p.type))}</small>
+            <h3>${esc(t(p.name))}</h3>
+            <p>${esc(t(p.note))}</p>
             <div class="score"><span style="width:${p.score * 10}%"></span></div>
             <div class="product-foot">
               <strong>${priceLabel(p)}</strong>
-              <span class="cats">${p.cats.map((c) => `<span title="${esc(CATEGORIES[c].label)}">${CATEGORIES[c].icon}</span>`).join("")}</span>
+              <span class="cats">${p.cats.map((c) => `<span title="${esc(catLabel(c))}">${CATEGORIES[c].icon}</span>`).join("")}</span>
             </div>
           </article>`;
         })
         .join("")
-    : `<div class="box empty"><p>Keine Produkte gefunden. Probier andere Filter.</p></div>`;
+    : `<div class="box empty"><p>${esc(t("Keine Produkte gefunden. Probier andere Filter."))}</p></div>`;
 }
 
 $("catalog-types").addEventListener("change", renderCatalog);
 ["catalog-cat", "catalog-price", "catalog-sort"].forEach((id) => $(id).addEventListener("input", renderCatalog));
 renderCatalog();
+
+// ---------- Sprachwechsel: alles neu zeichnen, Auswahl bleibt erhalten ----------
+document.addEventListener("sge:language", () => {
+  renderBudgetCats();
+  renderParts();
+  renderBudget();
+  renderStreamerFilters();
+  renderStreamers();
+  renderCatalogFilters();
+  renderCatalog();
+});

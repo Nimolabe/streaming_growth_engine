@@ -162,5 +162,10 @@
     translateRoot();
   }
   document.addEventListener("DOMContentLoaded", init);
-  window.SGE_I18N = { t: key => language === "en" ? (english.get(key) || key) : key, setLanguage, getLanguage: () => language, getCountry: () => country, setCountry, refresh: translateRoot };
+  // Seiten können eigene Übersetzungen anmelden (z. B. setups-i18n.js), statt alles hier zu sammeln.
+  function add(entries) {
+    Object.entries(entries || {}).forEach(([de, en]) => english.set(de, en));
+    if (document.body) translateRoot();
+  }
+  window.SGE_I18N = { t: key => language === "en" ? (english.get(key) || key) : key, add, setLanguage, getLanguage: () => language, getCountry: () => country, setCountry, refresh: translateRoot };
 })();
