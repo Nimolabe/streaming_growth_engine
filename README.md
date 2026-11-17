@@ -53,6 +53,7 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - `usernames/<name>`: reserviert Nutzernamen (klein geschrieben) → uid. Jeder Name nur einmal, nur der Besitzer kann ihn freigeben
 - `profiles/<uid>`: öffentliche Profile (Name, Nutzername, Bio, Plattform, Kanal-Link, Lieblingsspiele). Für alle lesbar, damit Profil-Links und Suche ohne Anmeldung funktionieren; nur der Besitzer schreibt. Indizes für die Suche: `usernameLower`, `nameLower`, `createdAt`
 - `following/<uid>/<ziel>` und `followers/<ziel>/<uid>`: wer wem folgt, nur der Folgende selbst darf schreiben
+- `waitlist/clipHunter/<uid>`: Beta-Warteliste (Zeitpunkt, optional Plattform aus dem Profil). Nur angemeldet, nur der eigene Eintrag, keine zusätzliche E-Mail. Wer sich vorgemerkt hat, steht in der Konsole unter **Realtime Database → Daten → waitlist**; die E-Mail-Adresse zur uid unter **Authentication → Nutzer**
 
 **Wichtig:** Nach jeder Änderung an `database.rules.json` die Regeln in der Firebase-Konsole veröffentlichen, sonst funktionieren Profile und Suche nicht.
 
