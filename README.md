@@ -19,6 +19,10 @@ css/social.css  → Design für Community, Profile und Nutzernamen-Feld
 js/auth.js      → Anmeldung (Firebase Authentication)
 js/setups.js    → Logik der Setups-Seite
 js/setups-data.js → Produkte, Kategorien und Streamer-Setups (hier neue Daten eintragen)
+layouts.html    → Layout-Baukasten (Startet gleich / Live / Pause / Ende, Export für OBS)
+overlay.html    → das Overlay selbst (Browser-Quelle in OBS, liest die Gestaltung aus der URL)
+js/layout-core.js → Prüfen und Kodieren der Layout-Einstellungen (Editor und Overlay)
+js/layouts.js   → Editor, Vorschau, OBS-Szenensammlung · js/layouts-share.js / js/layout-profile.js → Teilen im Profil
 js/firebase-config.js → Firebase-Zugangsdaten (hier eintragen)
 database.rules.json   → Sicherheitsregeln der Realtime Database
 assets/         → Bilder, Logos, Icons
@@ -52,6 +56,7 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 - `users/<uid>/favorites`: gespeicherte Lieblings-Setups (Setups-Seite)
 - `usernames/<name>`: reserviert Nutzernamen (klein geschrieben) → uid. Jeder Name nur einmal, nur der Besitzer kann ihn freigeben
 - `profiles/<uid>`: öffentliche Profile (Name, Nutzername, Bio, Plattform, Kanal-Link, Lieblingsspiele). Für alle lesbar, damit Profil-Links und Suche ohne Anmeldung funktionieren; nur der Besitzer schreibt. Indizes für die Suche: `usernameLower`, `nameLower`, `createdAt`
+- `layouts/<uid>`: im Profil geteiltes Stream-Layout (`params` = Einstellungen des Baukastens, `updatedAt`). Für alle lesbar, nur der Besitzer schreibt; wird beim Anzeigen immer neu geprüft
 - `following/<uid>/<ziel>` und `followers/<ziel>/<uid>`: wer wem folgt, nur der Folgende selbst darf schreiben
 - `waitlist/clipHunter/<uid>`: Beta-Warteliste (Zeitpunkt, optional Plattform aus dem Profil). Nur angemeldet, nur der eigene Eintrag, keine zusätzliche E-Mail. Wer sich vorgemerkt hat, steht in der Konsole unter **Realtime Database → Daten → waitlist**; die E-Mail-Adresse zur uid unter **Authentication → Nutzer**
 
@@ -66,7 +71,8 @@ Firebase-Konsole unter **Realtime Database → Regeln** einfügen und **Veröffe
 ## Ideen / Roadmap
 
 - [x] Guides-Seite: Plattform, OBS, erster Stream, Zeitplan, Wachstum, Twitch Affiliate (Inhalte in `js/guides.js`, Deutsch/Englisch, Fakten mit „Stand“ und Quelle)
-- [ ] Tool-Sammlung
+- [x] Layout-Baukasten: 4 Szenen, 3 Stile, Farbe/Name/Socials, OBS-Szenensammlung, Teilen per Link und im Profil
+- [ ] Weitere Tools
 - [x] Anmeldung (E-Mail + Google)
 - [x] Setups: Budget-Planer, Streamer-Setups, Hardware-Katalog, Favoriten
 - [ ] Echte Streamer-Setups mit Quellen eintragen

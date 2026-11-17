@@ -129,3 +129,9 @@ a.user-name:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .profile-card, .profile { animation: none; }
 }
+
+/* Geteiltes Stream-Layout im Profil */
+.profile-layout .layout-thumb { position: relative; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: 12px; border: 1px solid var(--border); background: #0b0a12; margin-bottom: .9rem; }
+.profile-layout iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0;
+  transform-origin: 0 0; pointer-events: none; }

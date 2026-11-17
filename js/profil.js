@@ -7,6 +7,7 @@ import {
   getProfile, uidForUsername, saveProfile, isUsernameFree, usernameProblem,
   followInfo, setFollow, avatarStyle, initials, escapeHtml, profileUrl, PLATFORMS, askForUsername,
 } from "./social.js";
+import { loadLayout, sanitize } from "./layout-profile.js";
 
 const T = (s) => (window.SGE_I18N ? window.SGE_I18N.t(s) : s);
 const root = document.getElementById("profile-root");
@@ -101,6 +102,8 @@ function view(info) {
       <p class="share-note" role="status"></p>
     </article>`;
 
+  showLayout(p.uid, mine);
+
   const act = (name, fn) => root.querySelector(`[data-act="${name}"]`)?.addEventListener("click", fn);
   act("edit", edit);
   act("login", () => openAuth(false));
@@ -128,6 +131,42 @@ function view(info) {
       btn.disabled = false;
     }
   });
+}
+
+// ---------- Geteiltes Stream-Layout (aus dem Layout-Baukasten) ----------
+async function showLayout(uid, mine) {
+  let params = null;
+  try {
+    params = sanitize(await loadLayout(app, uid));
+  } catch (err) {
+    console.warn("Layout konnte nicht geladen werden:", err);
+    return;
+  }
+  // Inzwischen anderes Profil oder Bearbeiten geöffnet? Dann nichts einfügen.
+  const note = root.querySelector(".profile .share-note");
+  if (params === null || !profile || profile.uid !== uid || !note) return;
+
+  const block = document.createElement("div");
+  block.className = "profile-block profile-layout";
+  const title = document.createElement("h2");
+  title.textContent = T("Stream-Layout");
+  const thumb = document.createElement("div");
+  thumb.className = "layout-thumb";
+  const frame = document.createElement("iframe");
+  frame.title = T("Vorschau des Stream-Layouts");
+  frame.loading = "lazy";
+  frame.tabIndex = -1;
+  frame.src = `overlay.html?${sanitize(params, "start")}`;
+  thumb.appendChild(frame);
+  const link = document.createElement("a");
+  link.className = "btn btn-small";
+  link.href = `layouts.html?${params}`;
+  link.textContent = mine ? T("Im Baukasten bearbeiten") : T("Design übernehmen");
+  block.append(title, thumb, link);
+  note.before(block);
+  const fit = () => { frame.style.transform = `scale(${thumb.clientWidth / 1920})`; };
+  fit();
+  new ResizeObserver(fit).observe(thumb);
 }
 
 // ---------- Bearbeiten ----------

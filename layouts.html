@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layout-Baukasten | Streaming Growth Engine</title>
+  <meta name="description" content="Kostenloser Layout-Baukasten: Startet gleich, Live, Pause und Ende im eigenen Stil – fertig zum Import in OBS.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/setups.css">
+  <link rel="stylesheet" href="css/layouts.css">
+  <link rel="stylesheet" href="css/social.css">
+</head>
+<body>
+  <!-- ===== Navigation ===== -->
+  <header class="nav">
+    <a href="index.html" class="logo">SGE<span>.</span></a>
+    <button class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    <nav class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="setups.html">Setups</a>
+      <a href="guides.html">Guides</a>
+      <a href="index.html#start">Erste Schritte</a>
+      <a href="community.html">Community</a>
+      <!-- Wird von js/auth.js gesteuert -->
+      <button type="button" class="btn btn-small" id="login-btn" data-open-auth="login">Anmelden</button>
+      <div class="user-menu" id="user-menu" hidden>
+        <a class="user-name" id="user-name" href="profil.html"></a>
+        <button type="button" class="btn btn-small btn-ghost" id="logout-btn">Abmelden</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===== Kopfbereich ===== -->
+    <section class="page-head">
+      <p class="tag">🎨 Layouts</p>
+      <h1>Dein Stream-Look in <span class="glow">fünf Minuten</span></h1>
+      <p class="lead">Wähle Stil, Farbe und Texte – und hol dir alle vier Szenen fertig für OBS. Kostenlos und ohne Anmeldung.</p>
+    </section>
+
+    <!-- ===== Baukasten ===== -->
+    <section class="builder">
+      <form class="builder-form box" id="layout-form" autocomplete="off" onsubmit="return false">
+        <fieldset>
+          <legend>1. Stil</legend>
+          <div class="choice-row" id="theme-choices">
+            <label class="choice"><input type="radio" name="theme" value="neon" checked><span>Neon</span></label>
+            <label class="choice"><input type="radio" name="theme" value="minimal"><span>Minimal</span></label>
+            <label class="choice"><input type="radio" name="theme" value="bold"><span>Kräftig</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Farbe</legend>
+          <div class="swatches" id="swatches"></div>
+          <label class="field-inline">
+            <span>Eigene Farbe</span>
+            <input type="color" id="color" value="#8b7cf6">
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Name und Texte</legend>
+          <label class="field"><span>Dein Kanalname</span><input type="text" id="name" maxlength="25" placeholder="z. B. LunaPlays"></label>
+          <label class="field"><span>Text „Startet gleich“</span><input type="text" id="start" maxlength="60"></label>
+          <label class="field"><span>Text „Pause“</span><input type="text" id="pause" maxlength="60"></label>
+          <label class="field"><span>Text „Ende“</span><input type="text" id="end" maxlength="60"></label>
+          <label class="field"><span>Nächster Stream (auf „Ende“)</span><input type="text" id="next" maxlength="40" placeholder="z. B. Donnerstag, 19 Uhr"></label>
+          <div class="field-pair">
+            <label class="field"><span>Countdown</span>
+              <select id="countdown">
+                <option value="0">aus</option>
+                <option value="3">3 Minuten</option>
+                <option value="5" selected>5 Minuten</option>
+                <option value="10">10 Minuten</option>
+                <option value="15">15 Minuten</option>
+              </select>
+            </label>
+            <label class="field"><span>Sprache der Szenen</span>
+              <select id="lang">
+                <option value="de">Deutsch</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>4. Socials (optional)</legend>
+          <div id="social-fields"></div>
+        </fieldset>
+      </form>
+
+      <div class="builder-preview">
+        <div class="tabs scene-tabs" role="tablist" id="scene-tabs">
+          <button type="button" class="tab active" role="tab" aria-selected="true" data-scene="start">Startet gleich</button>
+          <button type="button" class="tab" role="tab" aria-selected="false" data-scene="live">Live</button>
+          <button type="button" class="tab" role="tab" aria-selected="false" data-scene="pause">Pause</button>
+          <button type="button" class="tab" role="tab" aria-selected="false" data-scene="end">Ende</button>
+        </div>
+        <div class="preview-stage" id="preview-stage">
+          <div class="preview-game" aria-hidden="true"><span>Dein Spiel</span><span class="preview-cam">Webcam</span></div>
+          <iframe id="preview" title="Vorschau der Szene" tabindex="-1"></iframe>
+        </div>
+        <p class="hint" id="preview-hint">Vorschau in echt: 1920 × 1080. In der Live-Szene liegen Spiel und Webcam in OBS unter dem Overlay.</p>
+      </div>
+    </section>
+
+    <!-- ===== Export ===== -->
+    <section class="export box" id="export">
+      <h2>In OBS übernehmen</h2>
+      <ol class="export-steps">
+        <li>
+          <p>Szenensammlung für dein System herunterladen:</p>
+          <div class="export-row">
+            <select id="os" aria-label="Betriebssystem">
+              <option value="windows">Windows</option>
+              <option value="mac">macOS</option>
+              <option value="linux">Linux</option>
+            </select>
+            <button type="button" class="btn" id="download">Szenensammlung herunterladen</button>
+          </div>
+        </li>
+        <li><p>In OBS: Szenensammlung → Importieren, Datei auswählen, „Importieren“ klicken und die neue Sammlung danach im Menü „Szenensammlung“ auswählen.</p></li>
+        <li><p>Einstellungen → Video → Basis-(Leinwand-)Auflösung auf 1920 × 1080 stellen (die Ausgabe darf kleiner sein).</p></li>
+        <li><p id="os-step"></p></li>
+      </ol>
+
+      <details class="export-links">
+        <summary>Nur die Links (für Szenen, die du schon hast)</summary>
+        <p class="hint">In OBS als Browser-Quelle hinzufügen, Breite 1920, Höhe 1080, ganz nach oben in der Quellenliste.</p>
+        <div id="link-list"></div>
+      </details>
+
+      <div class="share">
+        <button type="button" class="btn btn-ghost" id="share">Link zu diesem Design kopieren</button>
+        <span class="share-status" id="share-status" aria-live="polite"></span>
+      </div>
+      <div class="share">
+        <button type="button" class="btn btn-ghost" id="profile-save">Im Profil zeigen</button>
+        <button type="button" class="btn btn-ghost" id="profile-remove" hidden>Aus dem Profil entfernen</button>
+        <span class="share-status" id="profile-status" aria-live="polite"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Streaming Growth Engine. Made for new streamers.</p>
+  </footer>
+
+  <!-- ===== Anmelde-Fenster ===== -->
+  <div class="modal" id="auth-modal" hidden>
+    <div class="modal-backdrop" data-close-auth></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button type="button" class="modal-close" data-close-auth aria-label="Schließen">✕</button>
+      <h2 id="auth-title">Anmelden</h2>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" data-tab="login">Anmelden</button>
+        <button type="button" class="auth-tab" data-tab="register">Registrieren</button>
+      </div>
+
+      <p class="auth-message" id="auth-message" hidden></p>
+
+      <form id="auth-form" novalidate>
+        <label class="field" id="username-field" hidden>
+          <span>Nutzername</span>
+          <span class="handle-input"><span aria-hidden="true">@</span><input type="text" id="auth-username" autocomplete="username" maxlength="20" placeholder="z. B. nightowl_tv"></span>
+          <small class="sge-field-hint">3–20 Zeichen: Buchstaben, Zahlen und _. Darüber finden dich andere.</small>
+        </label>
+        <label class="field" id="name-field" hidden>
+          <span>Streamer-Name</span>
+          <input type="text" id="auth-name" autocomplete="nickname" placeholder="z. B. NightOwlTV">
+        </label>
+        <label class="field">
+          <span>E-Mail</span>
+          <input type="email" id="auth-email" autocomplete="email" required placeholder="du@beispiel.de">
+        </label>
+        <label class="field">
+          <span>Passwort</span>
+          <input type="password" id="auth-password" autocomplete="current-password" required minlength="6" placeholder="Mindestens 6 Zeichen">
+        </label>
+        <button type="button" class="link-btn" id="forgot-btn">Passwort vergessen?</button>
+        <button type="submit" class="btn btn-block" id="auth-submit">Anmelden</button>
+      </form>
+
+      <div class="divider"><span>oder</span></div>
+
+      <button type="button" class="btn btn-ghost btn-block google-btn" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Mit Google fortfahren
+      </button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/i18n.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script src="js/layout-core.js"></script>
+  <script src="js/layouts.js"></script>
+  <script type="module" src="js/layouts-share.js"></script>
+</body>
+</html>

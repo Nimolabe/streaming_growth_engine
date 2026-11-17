@@ -37,6 +37,17 @@
       }
     },
 
+    "layouts": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['params', 'updatedAt'])",
+        "params": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "following": {
       "$uid": {
         ".read": true,
