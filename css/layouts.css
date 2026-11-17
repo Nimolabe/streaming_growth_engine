@@ -1,6 +1,7 @@
 /* ===== Layout-Baukasten ===== */
 .builder { max-width: 1200px; margin: 0 auto; padding: 0 5% 2rem; display: grid; gap: 1.5rem;
-  grid-template-columns: minmax(300px, 380px) 1fr; align-items: start; }
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; }
+.builder > * { min-width: 0; }
 .builder-form fieldset { border: none; padding: 0; margin: 0 0 1.4rem; }
 .builder-form legend { font-family: var(--font-head); font-weight: 700; font-size: 1.05rem; margin-bottom: .7rem; }
 .builder-form .field { display: grid; gap: .35rem; margin-bottom: .8rem; font-size: .9rem; color: var(--text-dim); }
@@ -57,7 +58,7 @@
 .share-status a { color: var(--accent); }
 
 @media (max-width: 900px) {
-  .builder { grid-template-columns: 1fr; }
+  .builder { grid-template-columns: minmax(0, 1fr); }
   .builder-preview { position: static; order: -1; }
   .link-row { grid-template-columns: 1fr auto; }
   .link-row span { grid-column: 1 / -1; }
