@@ -2,7 +2,8 @@
 
 Das Hochformat ist ein einfacher Mittenausschnitt (für TikTok, Shorts, Reels). Facecam- oder
 Untertitel-Layouts kommen später; bis dahin bitte jeden Clip vor dem Hochladen ansehen.
-Vorhandene Dateien werden nie überschrieben.
+Mit KI-Stufe wird deren Schnittvorschlag verwendet. Vorhandene Dateien werden nie
+überschrieben.
 """
 from collections.abc import Callable
 from pathlib import Path
@@ -15,8 +16,16 @@ VERTICAL_FILTER = "crop='min(iw,ih*9/16)':'min(ih,iw*16/9)',scale=1080:1920,sets
 MAX_EXPORT_SECONDS = 180
 
 
-def clip_filename(candidate: ClipCandidate, vertical: bool) -> str:
-    total = max(0, round(candidate.start_seconds))  # wie format_hms gerundet
+def clip_bounds(candidate: ClipCandidate, use_ai_cut: bool = True) -> tuple[float, float]:
+    """Schnitt eines Kandidaten – mit KI-Stufe deren Vorschlag, sonst die Erkennung."""
+    if use_ai_cut and candidate.ai is not None:
+        return candidate.ai.start_seconds, candidate.ai.end_seconds
+    return candidate.start_seconds, candidate.end_seconds
+
+
+def clip_filename(candidate: ClipCandidate, vertical: bool, use_ai_cut: bool = True) -> str:
+    start, _ = clip_bounds(candidate, use_ai_cut)
+    total = max(0, round(start))  # wie format_hms gerundet
     hours, rest = divmod(total, 3600)
     minutes, seconds = divmod(rest, 60)
     suffix = "_9x16" if vertical else ""
@@ -26,7 +35,7 @@ def clip_filename(candidate: ClipCandidate, vertical: bool) -> str:
 
 def export_candidates(recording: str | Path, candidates: list[ClipCandidate],
                       output_dir: str | Path, *, vertical: bool = False,
-                      runner: Callable[..., object] = run) -> list[Path]:
+                      use_ai_cut: bool = True, runner: Callable[..., object] = run) -> list[Path]:
     require_ffmpeg()
     source = check_media_path(recording)
     info = probe_media(source)
@@ -34,7 +43,7 @@ def export_candidates(recording: str | Path, candidates: list[ClipCandidate],
         raise MediaError("Für den Export wird eine Videodatei benötigt.")
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    planned = [(candidate, destination / clip_filename(candidate, vertical))
+    planned = [(candidate, destination / clip_filename(candidate, vertical, use_ai_cut))
                for candidate in candidates]
     existing = [path.name for _, path in planned if path.exists()]
     if existing:
@@ -45,8 +54,9 @@ def export_candidates(recording: str | Path, candidates: list[ClipCandidate],
     try:
         for candidate, output in planned:
             current = output
-            start = max(0.0, candidate.start_seconds)
-            end = min(candidate.end_seconds, info.duration_seconds)
+            cut_start, cut_end = clip_bounds(candidate, use_ai_cut)
+            start = max(0.0, cut_start)
+            end = min(cut_end, info.duration_seconds)
             length = end - start
             if not 0 < length <= MAX_EXPORT_SECONDS:
                 raise MediaError(f"Ungültige Clip-Länge bei Kandidat {candidate.rank}.")

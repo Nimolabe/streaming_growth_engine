@@ -4,6 +4,8 @@ Beispiele:
   python -m streaming_agents.clip_hunter record-chat meinkanal --out chat.jsonl
   python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl \
       --twitch-video 2345678901 --report bericht.html --export-dir clips --vertical
+  python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl \
+      --ai --transcribe --report bericht.html   # KI-Stufe, Standard: lokales Ollama
   python -m streaming_agents.clip_hunter viewer-clips --twitch-video 2345678901 --out clips.json
   python -m streaming_agents.clip_hunter evaluate --result ergebnis.json --viewer-clips clips.json
 """
@@ -16,11 +18,12 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
+from .ai_stage import AiError, OpenAICompatibleModel, WhisperTranscriber, review_candidates
 from .audio_signal import MediaError
 from .benchmark import BenchmarkError, evaluate, load_lightor
 from .chat_log import ChatLogError, ChatLogWriter, read_chat_log
 from .evaluation import EvaluationReport, evaluate_against_viewer_clips
-from .export import export_candidates
+from .export import clip_bounds, export_candidates
 from .fusion import CATEGORY_LABELS, format_hms
 from .hunter import hunt
 from .models import ChatLogHeader, HuntResult, HuntSettings
@@ -102,9 +105,13 @@ def _summary(result: HuntResult) -> None:
         return
     _print(f"{'#':>3}  {'von':>8}  {'bis':>8}  {'Art':<10} {'Wert':>4}  Sicherheit")
     for item in result.candidates:
-        _print(f"{item.rank:>3}  {format_hms(item.start_seconds):>8}  "
-               f"{format_hms(item.end_seconds):>8}  {labels[item.category]:<10} "
-               f"{item.score:>4}  {item.confidence}")
+        start, end = clip_bounds(item)
+        ai = ""
+        if item.ai is not None:
+            ai = ("  KI ✓ " if item.ai.clipworthy else "  KI ✗ ") + item.ai.title
+        _print(f"{item.rank:>3}  {format_hms(start):>8}  "
+               f"{format_hms(end):>8}  {labels[item.category]:<10} "
+               f"{item.score:>4}  {item.confidence}{ai}")
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
@@ -118,6 +125,12 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         raise CliError("--compare braucht --twitch-video.")
     if args.compare and args.viewer_clips:
         raise CliError("Entweder --compare oder --viewer-clips angeben, nicht beides.")
+    if (args.transcribe or args.ai_model or args.ai_max is not None) and not args.ai:
+        raise CliError("--transcribe, --ai-model und --ai-max gelten nur zusammen mit --ai.")
+    if args.transcribe and not args.video:
+        raise CliError("Für --transcribe wird --video benötigt.")
+    if args.ai_max is not None and not 1 <= args.ai_max <= 10:
+        raise CliError("--ai-max erlaubt 1 bis 10 Kandidaten.")
     out = _new_file(args.out, args.overwrite) if args.out else None
     report_path = _new_file(args.report, args.overwrite) if args.report else None
     settings = _settings(args)
@@ -137,9 +150,29 @@ def cmd_analyze(args: argparse.Namespace) -> int:
                 vod_start = video.started_at
                 _print(f"VOD-Start laut Twitch: {video.created_at.isoformat()}")
 
+    # KI vor der Analyse vorbereiten, damit Einstellungsfehler sofort auffallen.
+    ai_model = OpenAICompatibleModel.from_env(args.ai_model) if args.ai else None
+    transcriber = WhisperTranscriber(args.whisper_model) if args.transcribe else None
+    if ai_model is not None and not ai_model.is_local:
+        _print("Hinweis: Das Sprachmodell läuft nicht auf diesem Rechner – Chat-Auszüge"
+               + (" und Transkripte" if transcriber else "") + " werden an "
+               + ai_model.base_url + " gesendet (dort können Kosten entstehen).")
+
     _print("Analysiere … (lange VODs brauchen einige Minuten)")
     result = hunt(recording=args.video, chat_log=chat_log, vod_start=vod_start,
                   settings=settings, twitch_video_id=video_id)
+    if ai_model is not None and result.candidates:
+        if not chat_log and not transcriber:
+            _print("Hinweis: Ohne Chat braucht die KI-Stufe --transcribe; sie wird übersprungen.")
+        else:
+            outcome = review_candidates(
+                result, ai_model, settings=settings, chat_log=chat_log, vod_start=vod_start,
+                recording=args.video, transcriber=transcriber,
+                max_candidates=min(args.ai_max or 8, len(result.candidates)), progress=_print)
+            for warning in outcome.warnings:
+                _print(f"KI-Hinweis: {warning}")
+            result = outcome.result
+            _print(f"KI-Stufe: {outcome.reviewed} Kandidaten geprüft mit {ai_model.model}.")
     _summary(result)
 
     evaluation: EvaluationReport | None = None
@@ -262,6 +295,16 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--viewer-clips", help="Zuschauer-Clips (.json) zum Abgleich")
     analyze.add_argument("--compare", action="store_true",
                          help="Zuschauer-Clips direkt von Twitch holen und abgleichen")
+    analyze.add_argument("--ai", action="store_true",
+                         help="KI-Stufe: Sprachmodell prüft die besten Kandidaten, legt Schnitt, "
+                              "Titel und Hook fest (Standard: lokales Ollama, kostenlos)")
+    analyze.add_argument("--ai-max", type=int,
+                         help="So viele Top-Kandidaten prüft die KI (1–10, Standard 8)")
+    analyze.add_argument("--ai-model", help="Modellname (sonst SGE_CLIP_AI_MODEL oder qwen2.5:7b)")
+    analyze.add_argument("--transcribe", action="store_true",
+                         help="Sprache im Kandidaten-Fenster lokal mit Whisper transkribieren")
+    analyze.add_argument("--whisper-model", default="small",
+                         help="Whisper-Modellgröße: tiny, base, small, medium, large-v3")
     analyze.add_argument("--overwrite", action="store_true")
     analyze.set_defaults(handler=cmd_analyze)
 
@@ -297,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.handler(args)
     except (CliError, ChatLogError, MediaError, TwitchApiError, ChannelNameError,
-            BenchmarkError, ValidationError, ValueError) as exc:
+            BenchmarkError, AiError, ValidationError, ValueError) as exc:
         message = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
         if isinstance(exc, ValidationError):
             message = "Ungültige Einstellung: " + "; ".join(

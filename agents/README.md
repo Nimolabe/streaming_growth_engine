@@ -8,7 +8,7 @@ es gibt keine Verbindung zur Website und keine öffentliche Bereitstellung.
 | --- | --- | --- |
 | Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
 | Growth Analyst | Prototyp | Vergleicht selbst eingegebene Wochenwerte, wählt ein passendes Experiment und wertet es aus, ohne Wachstum zu versprechen |
-| Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Versteht noch keine Inhalte (kein Sprachmodell) |
+| Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Optional prüft eine **KI-Stufe** (lokal per Ollama, Whisper-Transkript) die besten Kandidaten und schreibt Schnitt, Titel und Hook |
 | Trend Scout | geplant | soll die Scouts aus dem Trend Radar auf Streaming-Kategorien umstellen |
 | Setup Advisor | geplant | wird über den Setup Intelligence Agent (`backend/setup_agent`) abgedeckt |
 
@@ -75,6 +75,9 @@ Clips ein von Menschen markiertes Highlight (nur Chat; Zufall: 17 %).
 Schritt-für-Schritt-Anleitung, Messung, Kalibrierung und Abgleich mit Zuschauer-Clips:
 [docs/clip-hunter.md](docs/clip-hunter.md). Nur für eigene Aufnahmen; die Kandidaten
 sind Stellen zum Ansehen, keine Vorhersage, ob ein Clip gut ankommt.
+
+Optional mit KI-Stufe (Standard: lokales Ollama-Modell, kostenlos; Transkript per Whisper):
+`... analyze ... --ai --transcribe`. Einrichtung: [docs/clip-hunter.md → KI-Stufe](docs/clip-hunter.md#ki-stufe-optional).
 
 Der ältere reine Audio-Scanner bleibt verfügbar:
 `python -m streaming_agents.clip_cli --input mein_stream.mp4 --json kandidaten.json`.

@@ -2,7 +2,8 @@
 
 Der Clip Hunter findet in einem Stream die Stellen, die sich als Clip für TikTok,
 YouTube Shorts oder Reels lohnen könnten. Er arbeitet **komplett lokal und kostenlos**.
-Ein Sprachmodell ist noch nicht im Spiel, siehe [Ausblick](#ausblick).
+Optional prüft eine [KI-Stufe](#ki-stufe-optional) die besten Kandidaten, legt den Schnitt
+fest und schreibt Titel und Hook – standardmäßig ebenfalls lokal und kostenlos.
 
 ## Wie er entscheidet
 
@@ -189,17 +190,73 @@ Ein abgebrochener Mitschnitt bleibt lesbar, denn eine halbe letzte Zeile wird ü
 
 ## Grenzen
 
-- Er versteht keine Inhalte. Leise Komik ohne Chat-Reaktion und rein visuelle Momente
-  können fehlen.
+- Ohne KI-Stufe versteht er keine Inhalte. Leise Komik ohne Chat-Reaktion und rein
+  visuelle Momente können fehlen – auch die KI-Stufe findet keine *neuen* Momente, sie
+  prüft nur die gefundenen.
 - Bei kleinem oder fehlendem Chat beruht die Auswahl fast nur auf Lautstärke. Dann gibt
   es mehr Fehlalarme, etwa durch Alert-Töne oder Musik.
 - Das Hochformat ist ein einfacher Mittenausschnitt. Facecam-Layouts und Untertitel fehlen noch.
 - Den Chat vergangener VODs gibt Twitch nicht offiziell heraus. Deshalb muss er **live**
   mitgeschnitten werden.
 
-## Ausblick
+## KI-Stufe (optional)
 
-Der nächste große Schritt ist die **KI-Stufe**. Ein Sprachmodell sieht sich nur die
-besten 5–10 Kandidaten an, also das Transkript (Whisper, lokal) und den Chat-Auszug.
-Es legt den genauen Schnitt fest und schreibt Titel und Hook. Weil die Vorauswahl schon
-fertig ist, kostet das pro VOD nur wenig.
+Mit `--ai` sieht sich ein Sprachmodell **nur die besten Kandidaten** an (Standard 8,
+höchstens 10). Pro Kandidat bekommt es das Fenster ±15 s um den Clip:
+
+- den **Chat-Auszug** (ohne Pseudonyme, ohne Bots und Befehle, höchstens 40 Zeilen),
+- mit `--transcribe` zusätzlich das **Transkript** des Streamers, lokal mit Whisper erstellt.
+
+Es antwortet mit: clipwürdig ja/nein, Sicherheit, genauer Schnitt, **Titel**, **Hook**
+(erste Texteinblendung), **Caption** und bis zu 5 Hashtags. Clipwürdige Kandidaten
+rücken nach vorn, der Export schneidet nach dem KI-Vorschlag, der Bericht zeigt alle Texte.
+
+Die Antwort wird streng geprüft: Der Schnitt bleibt im Fenster und zwischen 12 und 60 s,
+Texte werden gekürzt und bereinigt. Chat und Transkript gelten als fremde Daten – das
+Modell soll Anweisungen darin ignorieren, und seine Antwort wird nur als Daten verwendet.
+Scheitert ein Kandidat (keine gültige Antwort), bleibt er unverändert; ist der Server nicht
+erreichbar, läuft die Analyse ohne KI weiter.
+
+### Kostenlos auf dem eigenen Rechner (Standard)
+
+1. **Ollama** installieren: <https://ollama.com> → Download, danach läuft es im Hintergrund.
+2. Ein Modell laden (einmalig, etwa 4,7 GB):
+   ```powershell
+   ollama pull qwen2.5:7b
+   ```
+   Für schwächere Rechner: `qwen2.5:3b` und `--ai-model qwen2.5:3b`.
+3. Optional für Transkripte: `python -m pip install -e ".[whisper]"`. Das Whisper-Modell
+   (Standard `small`) wird beim ersten Mal automatisch geladen.
+4. Auswerten:
+   ```powershell
+   python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl `
+       --twitch-video 2345678901 --ai --transcribe --report bericht.html `
+       --export-dir clips --vertical
+   ```
+
+Ohne Grafikkarte braucht ein 7B-Modell je Kandidat grob eine halbe bis zwei Minuten.
+
+### Anderer Anbieter (kostet Geld)
+
+Jede OpenAI-kompatible Schnittstelle funktioniert (LM Studio, OpenRouter, OpenAI …).
+Einstellung nur über Umgebungsvariablen, nie in Dateien im Repo:
+
+| Variable | Bedeutung | Standard |
+| --- | --- | --- |
+| `SGE_CLIP_AI_BASE_URL` | Adresse der Schnittstelle (entfernt nur mit `https://`) | `http://localhost:11434/v1` |
+| `SGE_CLIP_AI_MODEL` | Modellname (oder `--ai-model`) | `qwen2.5:7b` |
+| `SGE_CLIP_AI_API_KEY` | Schlüssel, falls der Anbieter einen verlangt | – |
+| `SGE_CLIP_AI_TIMEOUT` | Wartezeit je Anfrage in Sekunden | 180 |
+
+Pro VOD gehen höchstens 10 Anfragen mit je grob 1.500 Eingabe- und bis zu 700
+Ausgabe-Token raus. Bei kleinen Modellen ist das meist ein Bruchteil eines Cents bis
+wenige Cent pro VOD – die aktuellen Preise des Anbieters vorher prüfen.
+**Datenschutz:** Bei einem entfernten Anbieter verlassen Chat-Auszüge (und Transkripte)
+den Rechner. Der Clip Hunter weist vor dem Start darauf hin.
+
+### Was die KI-Stufe (noch) nicht kann
+
+- Sie sieht **kein Bild**. Rein visuelle Momente beurteilt sie nur über Chat und Sprache.
+- Ihr Nutzen ist noch nicht an echten Streams gemessen, weil dafür VODs mit Ton nötig sind
+  (der LIGHTOR-Datensatz enthält nur Chat). Erst echte Tests zeigen, ob sie die Auswahl
+  wirklich verbessert. Bis dahin: Titel und Schnitt als Vorschlag sehen.

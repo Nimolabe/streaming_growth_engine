@@ -129,6 +129,28 @@ class AudioEvidence(BaseModel):
     level_db: float
 
 
+class AiReview(BaseModel):
+    """Urteil der KI-Stufe zu einem Kandidaten (Zeiten in Sekunden ab VOD-Beginn)."""
+
+    clipworthy: bool
+    confidence: float = Field(ge=0, le=1)
+    start_seconds: float = Field(ge=0)
+    end_seconds: float = Field(gt=0)
+    title: str = Field(default="", max_length=60)
+    hook: str = Field(default="", max_length=100)
+    caption: str = Field(default="", max_length=150)
+    hashtags: list[str] = Field(default_factory=list, max_length=5)
+    reason: str = Field(default="", max_length=200)
+    model: str = Field(default="", max_length=80)
+    transcript_used: bool = False
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("end_seconds must be after start_seconds")
+        return self
+
+
 class ClipCandidate(BaseModel):
     rank: int = Field(ge=1)
     start_seconds: float = Field(ge=0)
@@ -142,6 +164,7 @@ class ClipCandidate(BaseModel):
     audio: AudioEvidence | None = None
     reasons: list[str]
     vod_link: str | None = None
+    ai: AiReview | None = Field(default=None, description="Nur mit KI-Stufe (--ai)")
     needs_human_review: Literal[True] = True
 
 
@@ -155,6 +178,8 @@ class HuntResult(BaseModel):
     chat_moments_found: int = Field(default=0, ge=0)
     alignment_note: str | None = None
     candidates: list[ClipCandidate]
+    ai_model: str | None = Field(default=None, max_length=80)
+    ai_reviewed: int = Field(default=0, ge=0)
     limitations: list[str]
 
 
