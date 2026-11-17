@@ -1,0 +1,41 @@
+/* ===== Guides-Seite ===== */
+.guide-toc { display: flex; flex-wrap: wrap; gap: .5rem; }
+.guide-chip {
+  padding: .45rem .9rem; border-radius: 999px; font-size: .9rem; color: var(--text);
+  background: var(--bg-card); border: 1px solid var(--border); text-decoration: none;
+  transition: border-color .2s, color .2s;
+}
+.guide-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.guides { max-width: 860px; margin: 0 auto; padding: 1rem 5% 5rem; display: grid; gap: 1.5rem; }
+.guide { padding: 2rem 2.2rem; scroll-margin-top: 90px; }
+.guide-head { display: flex; align-items: center; gap: .8rem; }
+.guide-icon {
+  display: grid; place-items: center; flex: 0 0 2.8rem; height: 2.8rem; font-size: 1.3rem;
+  border-radius: 12px; background: rgba(139, 124, 246, .12); border: 1px solid rgba(139, 124, 246, .35);
+}
+.guide h2 { font-family: var(--font-head); font-size: clamp(1.35rem, 3vw, 1.7rem); line-height: 1.2; }
+.guide h3 { font-family: var(--font-head); font-size: 1.1rem; margin: 1.6rem 0 .6rem; }
+.guide-meta { color: var(--text-dim); font-size: .85rem; margin: .6rem 0 0; }
+.guide-intro { font-size: 1.05rem; margin: 1rem 0 .4rem; }
+.guide p { line-height: 1.65; }
+.guide-list, .guide-steps { margin: .4rem 0 0 1.3rem; display: grid; gap: .45rem; line-height: 1.6; }
+.guide-steps li::marker { color: var(--accent); font-weight: 700; }
+.guide-list li::marker { color: var(--accent); }
+.guide-note { margin-top: 1.2rem; padding: .9rem 1.1rem; border-radius: 10px; background: rgba(139, 124, 246, .08);
+  border-left: 3px solid var(--accent); }
+.guide-warn { background: rgba(255, 70, 85, .08); border-left-color: #ff4655; }
+.guide-table-wrap { overflow-x: auto; margin-top: 1rem; }
+.guide-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.guide-table th, .guide-table td { text-align: left; padding: .65rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.guide-table th { color: var(--text-dim); font-weight: 600; font-size: .85rem; }
+.guide-link { display: inline-block; margin-top: 1rem; color: var(--accent); font-weight: 500; }
+.guide-link:hover { text-decoration: underline; }
+.guide-sources { margin-top: 1.4rem; font-size: .85rem; color: var(--text-dim); }
+.guide-sources a { color: var(--text-dim); text-decoration: underline; }
+.guide-sources a:hover { color: var(--accent); }
+.guide-top { display: inline-block; margin-top: 1rem; font-size: .85rem; color: var(--text-dim); }
+@media (max-width: 640px) {
+  .guide { padding: 1.4rem 1.2rem; }
+  .guide-table { font-size: .88rem; }
+}
