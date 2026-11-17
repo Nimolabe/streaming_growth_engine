@@ -336,3 +336,5 @@ Prüfliste für Website-Änderungen:
   Beispieldatei, weil das Format nicht verifiziert ist.
 - Browser-Testskripte (Playwright) ins Repo holen (`tests/web/`) und in die CI aufnehmen.
 - Link vom Guides-Abschnitt „Kurzvideos“ zur Clip-Hunter-Warteliste.
+- `setups.html` bei 320 px: Die Reiter „Streamer-Setups“ / „Hardware-Katalog“ laufen
+  minimal über (die Browser-Tests prüfen nur 390 und 360 px).

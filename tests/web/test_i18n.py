@@ -95,12 +95,11 @@ def test_switching_back_restores_exact_german_text(context, base_url, path):
     assert errors == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Bekannter Fehler: i18n.js übersetzt kein title-Attribut; "
-    'layouts.html: <iframe id="preview" title="Vorschau der Szene"> bleibt Deutsch.',
-)
 def test_layouts_title_attribute_is_translated(context, base_url):
     page, _ = open_german(context, base_url, "layouts.html")
+    assert page.get_attribute("#preview", "title") == "Vorschau der Szene"
     switch(page, "en")
     assert german_leftovers(page, ["title"]) == []
+    assert page.get_attribute("#preview", "title") == "Scene preview"
+    switch(page, "de")
+    assert page.get_attribute("#preview", "title") == "Vorschau der Szene"
