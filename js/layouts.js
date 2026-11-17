@@ -289,6 +289,11 @@
     });
   }
 
+  // i18n.js übersetzt keine title-Attribute – den Titel der Vorschau hier setzen.
+  function previewTitle() {
+    preview.title = T("Vorschau der Szene");
+  }
+
   function osStep() {
     const os = $("os").value;
     const step = $("os-step");
@@ -321,7 +326,7 @@
   $("os").addEventListener("change", osStep);
   $("share").addEventListener("click", () => copy(shareUrl(read()), null, $("share-status")));
   new ResizeObserver(scalePreview).observe(stage);
-  document.addEventListener("sge:language", () => { osStep(); translateOptions(); renderLinks(read()); });
+  document.addEventListener("sge:language", () => { previewTitle(); osStep(); translateOptions(); renderLinks(read()); });
 
   // ---------- Start: geteilter Link > gespeicherter Stand > Standard ----------
   let start = null;
@@ -340,6 +345,7 @@
   if (/Mac/i.test(navigator.platform || navigator.userAgent)) $("os").value = "mac";
   else if (/Linux/i.test(navigator.platform || "") && !/Android/i.test(navigator.userAgent)) $("os").value = "linux";
   write(start);
+  previewTitle();
   translateOptions();
   osStep();
   scalePreview();

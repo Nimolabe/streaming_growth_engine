@@ -7,8 +7,9 @@
 }
 .guide-chip:hover { border-color: var(--accent); color: var(--accent); }
 
-.guides { max-width: 860px; margin: 0 auto; padding: 1rem 5% 5rem; display: grid; gap: 1.5rem; }
-.guide { padding: 2rem 2.2rem; scroll-margin-top: 90px; }
+.guides { max-width: 860px; margin: 0 auto; padding: 1rem 5% 5rem; display: grid; gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr); }
+.guide { padding: 2rem 2.2rem; scroll-margin-top: 90px; min-width: 0; }
 .guide-head { display: flex; align-items: center; gap: .8rem; }
 .guide-icon {
   display: grid; place-items: center; flex: 0 0 2.8rem; height: 2.8rem; font-size: 1.3rem;
