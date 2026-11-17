@@ -1,0 +1,39 @@
+name: Website Browser-Tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "*.html"
+      - "js/**"
+      - "css/**"
+      - "database.rules.json"
+      - "tests/web/**"
+      - ".github/workflows/web-tests.yml"
+  pull_request:
+    paths:
+      - "*.html"
+      - "js/**"
+      - "css/**"
+      - "database.rules.json"
+      - "tests/web/**"
+      - ".github/workflows/web-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Abhängigkeiten installieren
+        run: python -m pip install pytest playwright
+      - name: Chromium installieren
+        run: python -m playwright install --with-deps chromium
+      - name: Browser-Tests ausführen
+        run: python -m pytest tests/web -q

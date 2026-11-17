@@ -294,6 +294,9 @@ wurden Browser-Tests mit Playwright (Headless Chrome) gemacht. Firebase wurde da
 Routing nachgebaut (`gstatic.com/firebasejs/...` durch Stub-Module ersetzt). Diese
 Testskripte liegen **nicht** im Repo. Bei Bedarf als `tests/web/` anlegen.
 
+Die Browser-Tests liegen jetzt unter `tests/web/` (`python -m pytest tests/web -q`,
+Anleitung in `tests/web/README.md`) und laufen in der CI (`.github/workflows/web-tests.yml`).
+
 Prüfliste für Website-Änderungen:
 - Deutsch und Englisch, auch beim Umschalten; keine deutschen Reste im Englischen.
 - Desktop und Handy (390 px, kein seitliches Scrollen); keine JS-Fehler in der Konsole.
