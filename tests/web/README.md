@@ -86,3 +86,7 @@ Die Datenbank-Regeln (`database.rules.json`) prüft der Nachbau **nicht**.
   `set_language(context, "de")`.
 - Bekannte Website-Fehler stehen als `xfail(strict=True)` im Test. Ist der Fehler behoben,
   schlägt der Test als „XPASS“ fehl. Dann die Markierung entfernen.
+- Ausnahme: Die Handy-Tests auf 390 px hängen von den installierten Ersatzschriften ab, weil
+  die Webfonts geblockt sind (lokal mit „Inter“ oft grün, in der CI mit „DejaVu Sans“ rot).
+  Deren bekannte Fehler (`KNOWN_OVERFLOW` in `test_pages.py`) sind deshalb nicht strikt
+  markiert. Nach einer Reparatur den Eintrag dort entfernen.
