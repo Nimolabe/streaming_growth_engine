@@ -1,11 +1,14 @@
 // ============================================================
 //  Setups-Seite: Budget-Planer, Streamer-Setups, Hardware-Katalog
 // ============================================================
-import { CATEGORIES, TYPES, NEEDS, PRODUCTS, STREAMERS } from "./setups-data.js";
+import { CATEGORIES, GROUPS, TYPES, NEEDS, PRODUCTS, STREAMERS } from "./setups-data.js";
 
 const $ = (id) => document.getElementById(id);
 const byId = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]));
 const euro = (n) => n.toLocaleString("de-DE") + " €";
+// Software kann gratis sein oder ein Abo (Preis pro Monat)
+const priceLabel = (p, prefix = "ca. ") =>
+  p.billing === "gratis" || p.price === 0 ? "gratis" : p.billing === "abo" ? `${euro(p.price)}/Monat` : prefix + euro(p.price);
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -45,93 +48,182 @@ showPanel(location.hash.slice(1));
 // ============================================================
 //  1) Budget-Planer
 // ============================================================
-// Findet die Kombination mit dem höchsten (Gewicht × Bewertung),
-// die ins Budget passt. Bei so wenigen Produkten probieren wir einfach alle durch.
-function planSetup(budget, cat, onConsole, owned) {
-  let needs = NEEDS[cat].filter((n) => !owned.has(n.type));
-  if (cat === "gaming" && onConsole && !owned.has("capture")) {
-    needs = [...needs, { type: "capture", weight: 2.5, required: true }];
-  }
+// Jedes Bauteil hat einen von drei Zuständen:
+//   need  = brauche ich  → wird ins Budget eingerechnet
+//   owned = habe ich schon → 0 €, wird als vorhanden angezeigt
+//   skip  = brauche ich nicht → fällt komplett raus
+const STATES = [
+  { value: "need", label: "Brauche ich" },
+  { value: "owned", label: "Habe ich" },
+  { value: "skip", label: "Nicht nötig" },
+];
+const partState = {}; // merkt sich die Auswahl pro Bauteil, auch beim Kategorie-Wechsel
+const stateOf = (type) => partState[type] || TYPES[type].defaultState || "need";
 
-  const options = needs.map((n) => {
-    const list = PRODUCTS.filter((p) => p.type === n.type && p.cats.includes(cat)).sort((a, b) => a.price - b.price);
-    return n.required ? list : [null, ...list];
+// Welche Bauteile gehören zur aktuellen Auswahl?
+function partsFor(cat, onConsole) {
+  const parts = NEEDS[cat].map((n) => ({ ...n }));
+  if (cat === "gaming" && onConsole) parts.push({ type: "capture", weight: 2.5, required: true });
+  return parts;
+}
+
+// Passende Produkte für ein Bauteil (Abo-Software zählt nicht ins einmalige Budget)
+function productsFor(type, cat, onConsole) {
+  return PRODUCTS.filter(
+    (p) =>
+      p.type === type &&
+      p.cats.includes(cat) &&
+      p.billing !== "abo" &&
+      (type !== "pc" || p.platform === (onConsole ? "konsole" : "pc"))
+  );
+}
+
+// Findet die Kombination mit dem höchsten (Gewicht × Bewertung), die ins Budget passt.
+// Rechenweg: "Rucksack-Problem" mit einer Tabelle über alle Euro-Beträge bis zum Budget.
+// Das ist auch mit vielen Bauteilen schnell, im Gegensatz zum Durchprobieren aller Kombinationen.
+function planSetup(budget, cat, onConsole) {
+  budget = Math.floor(budget);
+  const needs = partsFor(cat, onConsole).filter((n) => stateOf(n.type) === "need");
+  const needIndex = Object.fromEntries(needs.map((n, i) => [n.type, i]));
+
+  // Jede Gruppe = eine Liste von Optionen { items, cost, value }. "Nichts" ist eine Option bei optionalen Teilen.
+  const groups = needs.map((n) => {
+    const opts = productsFor(n.type, cat, onConsole)
+      .filter((p) => !p.requires || stateOf(p.requires) === "owned" || p.requires in needIndex)
+      .map((p) => ({ items: [p], cost: p.price, value: p.score * n.weight }));
+    return { types: [n.type], required: !!n.required, opts: n.required ? opts : [{ items: [], cost: 0, value: 0 }, ...opts] };
   });
 
-  // Mindestbudget = günstigstes Teil jedes Pflicht-Bauteils
-  const minNeeded = options.reduce((sum, o) => sum + (o[0] ? o[0].price : 0), 0);
+  // Teile, die ein anderes Teil voraussetzen (z. B. XLR-Mikro → Interface): beide Gruppen zusammenlegen
+  const merged = new Set();
+  groups.forEach((g, i) => {
+    if (merged.has(i)) return;
+    const reqTypes = new Set(g.opts.flatMap((o) => o.items.map((p) => p.requires)).filter((t) => t && stateOf(t) !== "owned"));
+    reqTypes.forEach((t) => {
+      const j = needIndex[t];
+      if (j === undefined || j === i || merged.has(j)) return;
+      const other = groups[j];
+      const combos = [];
+      for (const a of g.opts)
+        for (const b of other.opts) {
+          if (a.items.some((p) => p.requires === t) && !b.items.length) continue;
+          combos.push({ items: [...a.items, ...b.items], cost: a.cost + b.cost, value: a.value + b.value });
+        }
+      g.opts = combos;
+      g.types.push(...other.types);
+      merged.add(j);
+    });
+  });
+  const active = groups.filter((g, i) => !merged.has(i) && g.opts.length);
+  const impossible = groups.filter((g, i) => !merged.has(i) && !g.opts.length).flatMap((g) => g.types);
+
+  // Mindestbudget = günstigste Option jeder Gruppe
+  const minNeeded = active.reduce((sum, g) => sum + Math.min(...g.opts.map((o) => o.cost)), 0);
   if (minNeeded > budget) return { ok: false, minNeeded };
 
-  let best = { value: -1, total: Infinity, items: [] };
-  const chosen = [];
-  (function search(i, total, value) {
-    if (total > budget) return;
-    if (i === options.length) {
-      // Teile, die ein anderes Teil voraussetzen (z. B. XLR-Mikro → Interface)
-      const picked = chosen.filter(Boolean);
-      const usable = picked.every(
-        (p) => !p.requires || owned.has(p.requires) || picked.some((q) => q.type === p.requires)
-      );
-      if (!usable) return;
-      if (value > best.value || (value === best.value && total < best.total)) {
-        best = { value, total, items: picked };
-      }
-      return;
+  // dp[c] = bester Wert bei genau c Euro Gesamtpreis
+  let dp = new Float64Array(budget + 1).fill(-Infinity);
+  dp[0] = 0;
+  const picks = [];
+  for (const g of active) {
+    const next = new Float64Array(budget + 1).fill(-Infinity);
+    const pick = new Int16Array(budget + 1).fill(-1);
+    for (let c = 0; c <= budget; c++) {
+      if (dp[c] === -Infinity) continue;
+      g.opts.forEach((o, k) => {
+        const nc = c + o.cost;
+        if (nc > budget) return;
+        const v = dp[c] + o.value;
+        if (v > next[nc]) {
+          next[nc] = v;
+          pick[nc] = k;
+        }
+      });
     }
-    for (const p of options[i]) {
-      // Liste ist nach Preis sortiert → ab hier wird es nur teurer
-      if (p && total + p.price > budget) break;
-      chosen[i] = p;
-      search(i + 1, total + (p ? p.price : 0), value + (p ? p.score * needs[i].weight : 0));
-    }
-    chosen[i] = undefined;
-  })(0, 0, 0);
+    dp = next;
+    picks.push(pick);
+  }
 
-  return { ok: true, ...best, needs };
+  // Höchster Wert; bei Gleichstand der günstigere Preis
+  let total = 0;
+  for (let c = 1; c <= budget; c++) if (dp[c] > dp[total] + 1e-9) total = c;
+  const items = [];
+  for (let gi = active.length - 1, c = total; gi >= 0; gi--) {
+    const o = active[gi].opts[picks[gi][c]];
+    items.push(...o.items);
+    c -= o.cost;
+  }
+  const order = Object.keys(TYPES);
+  items.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+  return { ok: true, value: dp[total], total, items, needs, impossible };
 }
 
 const budgetRange = $("budget-range");
 const budgetNumber = $("budget-number");
 const consoleRow = $("console-row");
+const currentCat = () => document.querySelector('[name="budget-cat"]:checked').value;
 
 $("budget-cats").innerHTML = Object.entries(CATEGORIES)
   .map(([k, c], i) => chip("budget-cat", k, `${c.icon} ${c.label}`, i === 0))
   .join("");
 
-function renderOwnedChips() {
+// Liste aller Bauteile, gruppiert nach Bereich, mit drei Zuständen zum Anhaken
+function renderParts() {
   const cat = currentCat();
-  const types = NEEDS[cat].map((n) => n.type);
-  if (cat === "gaming" && $("budget-console").checked) types.push("capture");
-  const before = new Set([...document.querySelectorAll('[name="owned"]:checked')].map((i) => i.value));
-  $("budget-owned").innerHTML = types
-    .map((t) => chip("owned", t, `${TYPES[t].icon} ${TYPES[t].label}`, before.has(t), "checkbox"))
+  const parts = partsFor(cat, $("budget-console").checked);
+  const html = Object.entries(GROUPS)
+    .map(([g, info]) => {
+      const rows = parts.filter((n) => TYPES[n.type].group === g);
+      if (!rows.length) return "";
+      return `<div class="part-group">
+        <p class="part-group-title">${info.icon} ${esc(info.label)}</p>
+        ${rows
+          .map((n) => {
+            const t = TYPES[n.type];
+            const state = stateOf(n.type);
+            return `<div class="part-row state-${state}">
+              <span class="part-name"><span class="item-icon">${t.icon}</span>${esc(t.label)}${n.required ? ' <small class="req">Pflicht</small>' : ""}</span>
+              <div class="seg" role="radiogroup" aria-label="${esc(t.label)}">
+                ${STATES.map(
+                  (s) => `<label><input type="radio" name="state-${n.type}" value="${s.value}" ${state === s.value ? "checked" : ""}><span>${s.label}</span></label>`
+                ).join("")}
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>`;
+    })
     .join("");
+  $("budget-parts").innerHTML = html;
 }
-
-const currentCat = () => document.querySelector('[name="budget-cat"]:checked').value;
 
 function renderBudget() {
   const budget = Math.max(0, Number(budgetNumber.value) || 0);
   const cat = currentCat();
   const onConsole = $("budget-console").checked;
   consoleRow.hidden = cat !== "gaming";
-  const owned = new Set([...document.querySelectorAll('[name="owned"]:checked')].map((i) => i.value));
 
-  const res = planSetup(budget, cat, onConsole, owned);
+  const res = planSetup(budget, cat, onConsole);
   const out = $("budget-result");
+  const parts = partsFor(cat, onConsole);
+  const owned = parts.filter((n) => stateOf(n.type) === "owned");
+  const ownedHtml = owned.length
+    ? `<p class="hint owned-line">✅ Schon vorhanden: ${owned.map((n) => `${TYPES[n.type].icon} ${esc(TYPES[n.type].label)}`).join(", ")}</p>`
+    : "";
 
   if (!res.ok) {
     out.innerHTML = `<div class="box empty">
       <h3>Das wird knapp 😅</h3>
-      <p>Für ein ${esc(CATEGORIES[cat].label)}-Setup brauchst du mindestens <strong>${euro(res.minNeeded)}</strong>.</p>
+      <p>Für ein ${esc(CATEGORIES[cat].label)}-Setup mit deiner Auswahl brauchst du mindestens <strong>${euro(res.minNeeded)}</strong>.</p>
       <button type="button" class="btn btn-small" id="set-min">Budget auf ${euro(res.minNeeded)} setzen</button>
+      ${ownedHtml}
     </div>`;
     $("set-min").onclick = () => setBudget(res.minNeeded);
     return;
   }
 
   if (!res.items.length) {
-    out.innerHTML = `<div class="box empty"><h3>Du hast schon alles! 🎉</h3><p>Dann bleibt nur noch eins: Go Live.</p></div>`;
+    out.innerHTML = `<div class="box empty"><h3>Du hast schon alles! 🎉</h3><p>Dann bleibt nur noch eins: Go Live.</p>${ownedHtml}</div>`;
     return;
   }
 
@@ -142,7 +234,7 @@ function renderBudget() {
 
   // Upgrade-Tipp: Was bekäme man für 100 € mehr?
   let upgrade = "";
-  const up = planSetup(budget + 100, cat, onConsole, owned);
+  const up = planSetup(budget + 100, cat, onConsole);
   if (up.ok && up.value > res.value) {
     // Nur echte Verbesserungen zeigen: neuer Bauteil-Typ oder besser bewertet
     const current = Object.fromEntries(res.items.map((p) => [p.type, p]));
@@ -168,13 +260,15 @@ function renderBudget() {
           (p) => `<li>
             <span class="item-icon">${TYPES[p.type].icon}</span>
             <div class="item-main"><strong>${esc(p.name)}</strong><small>${esc(TYPES[p.type].label)} · ${esc(p.note)}</small></div>
-            <span class="item-price">ca. ${euro(p.price)}</span>
+            <span class="item-price">${priceLabel(p)}</span>
           </li>`
         )
         .join("")}
     </ul>
+    ${ownedHtml}
     ${missing.length ? `<p class="hint">Noch nicht drin (optional): ${missing.map((n) => TYPES[n.type].label).join(", ")}. Kannst du später nachrüsten.</p>` : ""}
-    ${rest > 0 ? `<p class="hint">Übrig: <strong>${euro(rest)}</strong>, gut für Kabel, Halterungen oder einen Mikrofonarm.</p>` : ""}
+    ${res.impossible.length ? `<p class="hint">Für ${res.impossible.map((t) => TYPES[t].label).join(", ")} haben wir in dieser Kategorie noch keine Produkte.</p>` : ""}
+    ${rest > 0 ? `<p class="hint">Übrig: <strong>${euro(rest)}</strong>, gut für Kabel und Halterungen.</p>` : ""}
     ${upgrade}
   </div>`;
 
@@ -197,11 +291,16 @@ budgetNumber.addEventListener("input", () => {
   renderBudget();
 });
 $("budget-form").addEventListener("change", (e) => {
-  if (e.target.name === "budget-cat" || e.target.id === "budget-console") renderOwnedChips();
+  if (e.target.name?.startsWith("state-")) {
+    const type = e.target.name.slice(6);
+    partState[type] = e.target.value;
+    e.target.closest(".part-row").className = `part-row state-${e.target.value}`;
+  }
+  if (e.target.name === "budget-cat" || e.target.id === "budget-console") renderParts();
   renderBudget();
 });
 
-renderOwnedChips();
+renderParts();
 renderBudget();
 
 // ============================================================
@@ -210,27 +309,37 @@ renderBudget();
 let favorites = new Set();
 let favApi = null; // wird gesetzt, sobald jemand eingeloggt ist
 
-const setupTotal = (s) => s.items.reduce((sum, id) => sum + (byId[id]?.price || 0), 0);
+const setupTotal = (s) =>
+  s.items.reduce((sum, id) => sum + (byId[id] && byId[id].billing !== "abo" ? byId[id].price : 0), 0);
 
 $("streamer-cats").innerHTML =
   chip("streamer-cat", "", "Alle", true) +
   Object.entries(CATEGORIES).map(([k, c]) => chip("streamer-cat", k, `${c.icon} ${c.label}`, false)).join("");
-$("streamer-type").innerHTML += Object.entries(TYPES)
-  .map(([k, t]) => `<option value="${k}">${t.icon} ${esc(t.label)}</option>`)
+// Bauteile im Filter "Enthält" nach Bereich gruppieren
+$("streamer-type").innerHTML += Object.entries(GROUPS)
+  .map(
+    ([g, info]) =>
+      `<optgroup label="${esc(info.label)}">${Object.entries(TYPES)
+        .filter(([, t]) => t.group === g)
+        .map(([k, t]) => `<option value="${k}">${t.icon} ${esc(t.label)}</option>`)
+        .join("")}</optgroup>`
+  )
   .join("");
 
 function renderStreamers() {
   const q = $("streamer-search").value.trim().toLowerCase();
   const cat = document.querySelector('[name="streamer-cat"]:checked').value;
   const type = $("streamer-type").value;
-  const maxPrice = Number($("streamer-price").value) || Infinity;
+  // Budget-Bereich, z. B. "500-1000" oder "3000-" (= ab 3.000 €)
+  const [minPrice, maxPrice] = ($("streamer-price").value || "0-").split("-").map((v, i) => (v === "" ? (i ? Infinity : 0) : Number(v)));
   const onlyFavs = $("streamer-favs").checked;
 
   const list = STREAMERS.filter((s) => {
     const products = s.items.map((id) => byId[id]).filter(Boolean);
     if (cat && s.cat !== cat) return false;
     if (type && !products.some((p) => p.type === type)) return false;
-    if (setupTotal(s) > maxPrice) return false;
+    const total = setupTotal(s);
+    if (total < minPrice || total > maxPrice) return false;
     if (onlyFavs && !favorites.has(s.id)) return false;
     if (q) {
       const hay = [s.name, s.games, CATEGORIES[s.cat].label, ...products.map((p) => p.name)].join(" ").toLowerCase();
@@ -246,7 +355,11 @@ function renderStreamers() {
 }
 
 function streamerCard(s, highlightType) {
-  const products = s.items.map((id) => byId[id]).filter(Boolean);
+  const order = Object.keys(TYPES);
+  const products = s.items
+    .map((id) => byId[id])
+    .filter(Boolean)
+    .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
   const total = setupTotal(s);
   const isFav = favorites.has(s.id);
   return `<article class="setup-card">
@@ -265,7 +378,7 @@ function streamerCard(s, highlightType) {
           (p) => `<li class="${highlightType && p.type === highlightType ? "hl" : ""}">
             <span class="item-icon">${TYPES[p.type].icon}</span>
             <div class="item-main"><strong>${esc(p.name)}</strong></div>
-            <span class="item-price">${euro(p.price)}</span>
+            <span class="item-price">${priceLabel(p, "")}</span>
           </li>`
         )
         .join("")}
@@ -353,7 +466,7 @@ function renderCatalog() {
       score: (a, b) => b.score - a.score || a.price - b.price,
       "price-asc": (a, b) => a.price - b.price,
       "price-desc": (a, b) => b.price - a.price,
-      value: (a, b) => b.score / b.price - a.score / a.price,
+      value: (a, b) => b.score / Math.max(b.price, 1) - a.score / Math.max(a.price, 1),
     }[sort]
   );
 
@@ -372,7 +485,7 @@ function renderCatalog() {
             <p>${esc(p.note)}</p>
             <div class="score"><span style="width:${p.score * 10}%"></span></div>
             <div class="product-foot">
-              <strong>ca. ${euro(p.price)}</strong>
+              <strong>${priceLabel(p)}</strong>
               <span class="cats">${p.cats.map((c) => `<span title="${esc(CATEGORIES[c].label)}">${CATEGORIES[c].icon}</span>`).join("")}</span>
             </div>
           </article>`;

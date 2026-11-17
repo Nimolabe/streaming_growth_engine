@@ -15,39 +15,72 @@ export const CATEGORIES = {
   creative: { label: "Kreativ / Art", icon: "🎨" },
 };
 
-// ---------- Hardware-Typen ----------
+// ---------- Bereiche (zum Gruppieren der Bauteile) ----------
+export const GROUPS = {
+  bild:      { label: "Bild",           icon: "🎥" },
+  ton:       { label: "Ton",            icon: "🔊" },
+  technik:   { label: "Technik",        icon: "🧠" },
+  steuerung: { label: "Steuerung",      icon: "🕹️" },
+  software:  { label: "Software",       icon: "🧩" },
+  komfort:   { label: "Komfort",        icon: "🛋️" },
+  unterwegs: { label: "Unterwegs (IRL)", icon: "🎒" },
+};
+
+// ---------- Bauteile eines Setups ----------
+// group        = Bereich aus GROUPS
+// defaultState = Vorauswahl im Budget-Planer: "need" (brauche ich), "owned" (habe ich schon), "skip" (brauche ich nicht)
+//                PC/Konsole und Bildschirm haben die meisten schon, deshalb "owned".
 export const TYPES = {
-  mikrofon:   { label: "Mikrofon",       icon: "🎙️" },
-  headset:    { label: "Headset / Kopfhörer", icon: "🎧" },
-  kamera:     { label: "Kamera",         icon: "📷" },
-  licht:      { label: "Licht",          icon: "💡" },
-  maus:       { label: "Maus",           icon: "🖱️" },
-  tastatur:   { label: "Tastatur",       icon: "⌨️" },
-  streamdeck: { label: "Stream-Controller", icon: "🎛️" },
-  capture:    { label: "Capture Card",   icon: "📺" },
-  interface:  { label: "Audio-Interface", icon: "🎚️" },
-  zubehoer:   { label: "Zubehör",        icon: "🔋" },
+  kamera:      { label: "Kamera",              icon: "📷", group: "bild" },
+  licht:       { label: "Licht",               icon: "💡", group: "bild" },
+  greenscreen: { label: "Green Screen",        icon: "🟩", group: "bild" },
+  mikrofon:    { label: "Mikrofon",            icon: "🎙️", group: "ton" },
+  mikrofonarm: { label: "Mikrofonarm",         icon: "🦾", group: "ton" },
+  headset:     { label: "Headset / Kopfhörer", icon: "🎧", group: "ton" },
+  interface:   { label: "Audio-Interface",     icon: "🎚️", group: "ton" },
+  pc:          { label: "PC / Konsole",        icon: "💻", group: "technik", defaultState: "owned" },
+  bildschirm:  { label: "Bildschirm",          icon: "🖥️", group: "technik", defaultState: "owned" },
+  capture:     { label: "Capture Card",        icon: "📺", group: "technik" },
+  maus:        { label: "Maus",                icon: "🖱️", group: "steuerung" },
+  tastatur:    { label: "Tastatur",            icon: "⌨️", group: "steuerung" },
+  streamdeck:  { label: "Stream Deck",         icon: "🎛️", group: "steuerung" },
+  software:    { label: "Streaming-Software",  icon: "💿", group: "software" },
+  stuhl:       { label: "Stuhl",               icon: "🪑", group: "komfort" },
+  schreibtisch:{ label: "Schreibtisch",        icon: "🗄️", group: "komfort" },
+  zubehoer:    { label: "Powerbank & Zubehör", icon: "🔋", group: "unterwegs" },
 };
 
 // ---------- Was braucht man pro Kategorie? ----------
 // weight   = wie wichtig das Teil für diese Kategorie ist (höher = wichtiger)
-// required = muss im Setup enthalten sein
+// required = Pflicht-Teil: muss im Setup enthalten sein (außer man hat es schon oder braucht es nicht)
 export const NEEDS = {
   gaming: [
+    { type: "pc", weight: 3, required: true },
     { type: "mikrofon", weight: 3, required: true },
     { type: "headset", weight: 2, required: true },
+    { type: "software", weight: 1, required: true },
+    { type: "bildschirm", weight: 1.5 },
     { type: "kamera", weight: 2 },
     { type: "licht", weight: 1.5 },
     { type: "maus", weight: 1.2 },
     { type: "tastatur", weight: 1 },
+    { type: "mikrofonarm", weight: 0.8 },
     { type: "streamdeck", weight: 0.6 },
+    { type: "stuhl", weight: 0.5 },
+    { type: "greenscreen", weight: 0.3 },
   ],
   chatting: [
+    { type: "pc", weight: 3, required: true },
     { type: "mikrofon", weight: 3, required: true },
     { type: "kamera", weight: 3, required: true },
     { type: "licht", weight: 2.5, required: true },
+    { type: "software", weight: 1, required: true },
+    { type: "bildschirm", weight: 1 },
+    { type: "mikrofonarm", weight: 1 },
     { type: "headset", weight: 1 },
     { type: "streamdeck", weight: 0.6 },
+    { type: "greenscreen", weight: 0.5 },
+    { type: "stuhl", weight: 0.4 },
   ],
   irl: [
     { type: "kamera", weight: 3, required: true },
@@ -55,24 +88,37 @@ export const NEEDS = {
     { type: "zubehoer", weight: 1.5 },
   ],
   music: [
+    { type: "pc", weight: 3, required: true },
     { type: "mikrofon", weight: 3, required: true },
     { type: "headset", weight: 2.5, required: true },
+    { type: "software", weight: 1, required: true },
     { type: "interface", weight: 2 },
     { type: "kamera", weight: 2 },
     { type: "licht", weight: 1 },
+    { type: "mikrofonarm", weight: 1 },
+    { type: "bildschirm", weight: 0.8 },
+    { type: "stuhl", weight: 0.4 },
   ],
   creative: [
+    { type: "pc", weight: 3, required: true },
     { type: "mikrofon", weight: 3, required: true },
+    { type: "software", weight: 1, required: true },
     { type: "kamera", weight: 2 },
     { type: "licht", weight: 1.5 },
     { type: "headset", weight: 1.5 },
+    { type: "bildschirm", weight: 1.2 },
     { type: "streamdeck", weight: 1 },
+    { type: "mikrofonarm", weight: 0.8 },
+    { type: "stuhl", weight: 0.6 },
+    { type: "schreibtisch", weight: 0.4 },
   ],
 };
 
 // ---------- Hardware-Katalog ----------
 // cats     = für welche Kategorien das Produkt geeignet ist
 // requires = funktioniert nur zusammen mit diesem Typ (z. B. XLR-Mikro → Interface)
+// platform = nur bei PC / Konsole: "pc" oder "konsole"
+// billing  = nur bei Software: "gratis", "einmalig" oder "abo" (dann ist price der Preis pro Monat)
 export const PRODUCTS = [
   // Mikrofone
   { id: "fifine-k669b", type: "mikrofon", name: "Fifine K669B", price: 30, score: 5, cats: ["gaming", "chatting", "creative"], note: "Günstiger USB-Einstieg, klingt deutlich besser als jedes Headset-Mikro." },
@@ -129,6 +175,43 @@ export const PRODUCTS = [
 
   // Zubehör
   { id: "powerbank-20k", type: "zubehoer", name: "Anker Powerbank 20.000 mAh", price: 50, score: 6.5, cats: ["irl"], note: "Damit Handy und Kamera den ganzen Stream durchhalten." },
+
+  // ---------- Neu in Phase 1 (Richtpreise, werden mit echten Quellen noch geprüft) ----------
+
+  // PC / Konsole (als ein Teil gerechnet)
+  { id: "pc-einsteiger", type: "pc", platform: "pc", name: "Gaming-PC Einsteiger (z. B. Ryzen 5, RTX 5060)", price: 850, score: 6.5, cats: ["gaming", "chatting", "music", "creative"], note: "Reicht für 1080p-Streams der meisten Spiele. Richtwert für Fertig-PC oder Eigenbau." },
+  { id: "pc-mittel", type: "pc", platform: "pc", name: "Gaming-PC Mittelklasse (z. B. Ryzen 7, RTX 5070)", price: 1300, score: 8, cats: ["gaming", "chatting", "music", "creative"], note: "Spielen und Streamen gleichzeitig ohne Ruckler, auch bei neuen Spielen." },
+  { id: "pc-highend", type: "pc", platform: "pc", name: "Gaming-PC High-End (z. B. Ryzen 7 9800X3D, RTX 5080)", price: 2300, score: 9.5, cats: ["gaming", "creative"], note: "Für 1440p/4K-Gaming mit Stream in hoher Qualität." },
+  { id: "ps5", type: "pc", platform: "konsole", name: "PlayStation 5", price: 500, score: 8, cats: ["gaming"], note: "Kann direkt streamen. Mit Capture Card und PC wird der Stream deutlich besser." },
+  { id: "xbox-series-s", type: "pc", platform: "konsole", name: "Xbox Series S", price: 350, score: 6.5, cats: ["gaming"], note: "Günstigste aktuelle Konsole, ideal mit Game Pass." },
+  { id: "switch-2", type: "pc", platform: "konsole", name: "Nintendo Switch 2", price: 470, score: 7.5, cats: ["gaming"], note: "Zum Streamen braucht man eine Capture Card." },
+
+  // Bildschirme
+  { id: "aoc-24g4x", type: "bildschirm", name: "AOC Gaming 24G4X (24\", 180 Hz)", price: 130, score: 6.5, cats: ["gaming", "chatting", "music", "creative"], note: "Günstiger, schneller Gaming-Monitor in Full HD." },
+  { id: "lg-27gs75q", type: "bildschirm", name: "LG UltraGear 27GS75Q (27\", 1440p)", price: 230, score: 8, cats: ["gaming", "chatting", "music", "creative"], note: "Mehr Platz und schärferes Bild, gut für Spiel und Chat nebeneinander." },
+  { id: "dell-p2425h", type: "bildschirm", name: "Dell P2425H (24\", Zweitmonitor)", price: 150, score: 7, cats: ["gaming", "chatting", "music", "creative"], note: "Als zweiter Bildschirm für Chat, OBS und Alerts." },
+
+  // Streaming-Software
+  { id: "obs", type: "software", billing: "gratis", name: "OBS Studio", price: 0, score: 9, cats: ["gaming", "chatting", "music", "creative"], note: "Der kostenlose Standard. Sehr flexibel, viele Plugins." },
+  { id: "streamlabs-desktop", type: "software", billing: "gratis", name: "Streamlabs Desktop", price: 0, score: 7, cats: ["gaming", "chatting", "music", "creative"], note: "Einsteigerfreundlich, Alerts und Overlays schon eingebaut." },
+  { id: "streamelements", type: "software", billing: "gratis", name: "StreamElements (Overlays & Alerts)", price: 0, score: 7.5, cats: ["gaming", "chatting", "music", "creative"], note: "Kostenlose Overlays, Alerts und Chatbot, läuft zusammen mit OBS." },
+  { id: "streamlabs-ultra", type: "software", billing: "abo", name: "Streamlabs Ultra", price: 20, score: 7, cats: ["gaming", "chatting", "music", "creative"], note: "Premium-Overlays, Apps und Multistreaming. Lohnt sich erst später." },
+
+  // Mikrofonarme
+  { id: "tonor-t20", type: "mikrofonarm", name: "Tonor T20 Mikrofonarm", price: 25, score: 5.5, cats: ["gaming", "chatting", "music", "creative"], note: "Günstig, bringt das Mikro nah an den Mund." },
+  { id: "wave-arm-lp", type: "mikrofonarm", name: "Elgato Wave Mic Arm LP", price: 100, score: 8, cats: ["gaming", "chatting", "music", "creative"], note: "Flacher Arm, verdeckt das Gesicht vor der Kamera nicht." },
+  { id: "rode-psa1plus", type: "mikrofonarm", name: "Rode PSA1+", price: 110, score: 8.5, cats: ["gaming", "chatting", "music", "creative"], note: "Sehr stabil, auch für schwere Mikros wie das SM7B." },
+
+  // Green Screens
+  { id: "neewer-greenscreen", type: "greenscreen", name: "Neewer faltbarer Green Screen", price: 60, score: 5.5, cats: ["gaming", "chatting", "creative"], note: "Günstiger Einstieg zum Freistellen." },
+  { id: "elgato-greenscreen", type: "greenscreen", name: "Elgato Green Screen", price: 170, score: 8.5, cats: ["gaming", "chatting", "creative"], note: "In Sekunden aufgebaut, faltenfrei." },
+
+  // Stühle
+  { id: "ikea-markus", type: "stuhl", name: "IKEA Markus", price: 180, score: 6.5, cats: ["gaming", "chatting", "music", "creative"], note: "Bequemer Bürostuhl mit Netzrücken für lange Streams." },
+  { id: "secretlab-titan", type: "stuhl", name: "Secretlab Titan Evo", price: 550, score: 9, cats: ["gaming", "chatting", "creative"], note: "Sehr beliebt bei Streamern, viele Einstellmöglichkeiten." },
+
+  // Schreibtische
+  { id: "flexispot-e5", type: "schreibtisch", name: "FlexiSpot E5 (höhenverstellbar)", price: 260, score: 7.5, cats: ["gaming", "chatting", "music", "creative"], note: "Im Sitzen und Stehen streamen, gut für den Rücken." },
 ];
 
 // ---------- Setups von Streamern ----------
@@ -136,13 +219,13 @@ export const PRODUCTS = [
 // Echte Setups von Streamern bitte nur mit Quelle (z. B. Twitch-Panel, Video) eintragen:
 // source: "https://..."
 export const STREAMERS = [
-  { id: "nachtfalke", name: "NachtfalkeTV", cat: "gaming", followers: 48200, since: 2019, games: "Valorant, CS2", tip: "Investiere zuerst in Mikro und Licht. Die Kamera kann warten.", items: ["shure-mv7plus", "arctis-nova7", "mx-brio", "keylight", "superlight2", "wooting-60he", "streamdeck-mk2"] },
-  { id: "startersam", name: "StarterSam", cat: "gaming", followers: 850, since: 2025, games: "Minecraft, Fortnite", tip: "Mein ganzes Setup hat unter 250 € gekostet. Fang einfach an!", items: ["fifine-k669b", "cloud-stinger2", "c920", "ringlight-10", "g203", "redragon-k552"] },
-  { id: "konsolenkoenigin", name: "KonsolenKönigin", cat: "gaming", followers: 12600, since: 2022, games: "EA FC, Call of Duty (PS5)", tip: "Mit Passthrough spielst du ohne Verzögerung, während der Stream läuft.", items: ["fifine-am8", "cloud-iii", "elgato-facecam", "hd60x", "keylight-mini"] },
-  { id: "lenalounge", name: "LenaLiveLounge", cat: "chatting", followers: 31500, since: 2020, games: "Just Chatting, Reactions", tip: "Bei Just Chatting bist DU der Content: gutes Licht ist alles.", items: ["shure-sm7b", "scarlett-solo", "sony-zv-e10", "keylight", "streamdeck-mk2"] },
-  { id: "quickchat", name: "QuickChatQuinn", cat: "chatting", followers: 2300, since: 2024, games: "Just Chatting, Q&A", tip: "Ein Key Light Mini hat mein Bild mehr verbessert als jede Kamera.", items: ["fifine-am8", "c920", "keylight-mini"] },
+  { id: "nachtfalke", name: "NachtfalkeTV", cat: "gaming", followers: 48200, since: 2019, games: "Valorant, CS2", tip: "Investiere zuerst in Mikro und Licht. Die Kamera kann warten.", items: ["pc-highend", "lg-27gs75q", "dell-p2425h", "obs", "rode-psa1plus", "shure-mv7plus", "arctis-nova7", "mx-brio", "keylight", "superlight2", "wooting-60he", "streamdeck-mk2"] },
+  { id: "startersam", name: "StarterSam", cat: "gaming", followers: 850, since: 2025, games: "Minecraft, Fortnite", tip: "Mein Zubehör hat unter 250 € gekostet, der PC war gebraucht. Fang einfach an!", items: ["pc-einsteiger", "aoc-24g4x", "obs", "fifine-k669b", "cloud-stinger2", "c920", "ringlight-10", "g203", "redragon-k552"] },
+  { id: "konsolenkoenigin", name: "KonsolenKönigin", cat: "gaming", followers: 12600, since: 2022, games: "EA FC, Call of Duty (PS5)", tip: "Mit Passthrough spielst du ohne Verzögerung, während der Stream läuft.", items: ["ps5", "pc-einsteiger", "aoc-24g4x", "obs", "fifine-am8", "cloud-iii", "elgato-facecam", "hd60x", "keylight-mini"] },
+  { id: "lenalounge", name: "LenaLiveLounge", cat: "chatting", followers: 31500, since: 2020, games: "Just Chatting, Reactions", tip: "Bei Just Chatting bist DU der Content: gutes Licht ist alles.", items: ["pc-mittel", "lg-27gs75q", "obs", "rode-psa1plus", "elgato-greenscreen", "shure-sm7b", "scarlett-solo", "sony-zv-e10", "keylight", "streamdeck-mk2"] },
+  { id: "quickchat", name: "QuickChatQuinn", cat: "chatting", followers: 2300, since: 2024, games: "Just Chatting, Q&A", tip: "Ein Key Light Mini hat mein Bild mehr verbessert als jede Kamera.", items: ["pc-einsteiger", "streamlabs-desktop", "fifine-am8", "c920", "keylight-mini"] },
   { id: "urbanwalks", name: "UrbanWalksBerlin", cat: "irl", followers: 19800, since: 2021, games: "IRL, Travel", tip: "Nimm immer eine zweite Powerbank mit. Immer.", items: ["osmo-pocket3", "rode-wireless-go3", "powerbank-20k"] },
   { id: "spazierpaul", name: "SpazierPaul", cat: "irl", followers: 1400, since: 2025, games: "IRL, Wandern", tip: "Dein Handy reicht für den Anfang. Ein Gimbal macht das Bild ruhig.", items: ["osmo-mobile", "dji-mic-mini", "powerbank-20k"] },
-  { id: "beatbaukasten", name: "BeatBaukasten", cat: "music", followers: 9400, since: 2021, games: "Music Production, Live-Beats", tip: "Für Musik zählt der Ton doppelt. Spar nicht am Interface.", items: ["shure-sm7b", "scarlett-solo", "dt770-pro", "elgato-facecam", "keylight-mini"] },
-  { id: "cozypixel", name: "CozyPixelArt", cat: "creative", followers: 6700, since: 2023, games: "Pixel Art, Illustration", tip: "Eine zweite Kamera auf die Hände macht Art-Streams viel spannender.", items: ["podmic-usb", "elgato-facecam", "keylight-mini", "cloud-iii", "streamdeck-neo"] },
+  { id: "beatbaukasten", name: "BeatBaukasten", cat: "music", followers: 9400, since: 2021, games: "Music Production, Live-Beats", tip: "Für Musik zählt der Ton doppelt. Spar nicht am Interface.", items: ["pc-mittel", "aoc-24g4x", "obs", "rode-psa1plus", "shure-sm7b", "scarlett-solo", "dt770-pro", "elgato-facecam", "keylight-mini"] },
+  { id: "cozypixel", name: "CozyPixelArt", cat: "creative", followers: 6700, since: 2023, games: "Pixel Art, Illustration", tip: "Eine zweite Kamera auf die Hände macht Art-Streams viel spannender.", items: ["pc-mittel", "lg-27gs75q", "obs", "wave-arm-lp", "ikea-markus", "podmic-usb", "elgato-facecam", "keylight-mini", "cloud-iii", "streamdeck-neo"] },
 ];
