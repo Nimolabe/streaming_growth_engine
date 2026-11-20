@@ -328,9 +328,11 @@ def test_fonts_have_german_characters(context, base_url, family, weight):
           await document.fonts.load(`${weight} 80px "${family}"`, chars);
           const ctx = document.createElement("canvas").getContext("2d");
           const width = (font, ch) => { ctx.font = font; return ctx.measureText(ch).width; };
-          // Fehlt ein Zeichen, springt die Ersatzschrift ein und die Breite gleicht ihr exakt.
+          // Fehlt ein Zeichen, springt die Ersatzschrift ein und die Breite gleicht ihr exakt –
+          // und zwar bei JEDER Ersatzschrift. Eine einzelne Übereinstimmung kann Zufall sein
+          // (in der CI war z. B. Antons „ö“ genau so breit wie das der Monospace-Schrift).
           return [...chars].filter((ch) =>
-            ["monospace", "serif"].some((fb) => width(`${weight} 80px "${family}", ${fb}`, ch) === width(`${weight} 80px ${fb}`, ch)));
+            ["monospace", "serif", "sans-serif"].every((fb) => width(`${weight} 80px "${family}", ${fb}`, ch) === width(`${weight} 80px ${fb}`, ch)));
         }""",
         [family, weight],
     )
