@@ -1,68 +1,153 @@
-/* ===== Overlay (OBS-Browser-Quelle, feste Größe 1920 × 1080) ===== */
+/* ===== Overlay (OBS-Browser-Quelle, feste Größe 1920 × 1080) =====
+   Läuft in OBS dauerhaft: Animationen nur über transform/opacity, keine animierten Filter.
+   Farben kommen als CSS-Variablen aus js/overlay.js (aus der Akzentfarbe abgeleitet). */
+
+/* ---------- Schriften (selbst gehostet, SIL Open Font License, siehe fonts/<name>/OFL.txt) ---------- */
+@font-face { font-family: "SGE Oxanium"; font-weight: 700; font-style: normal; font-display: block;
+  src: url("../fonts/oxanium/oxanium-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "SGE Sora"; font-weight: 600; font-style: normal; font-display: block;
+  src: url("../fonts/sora/sora-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "SGE Anton"; font-weight: 400; font-style: normal; font-display: block;
+  src: url("../fonts/anton/anton-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "SGE Manrope"; font-weight: 400; font-style: normal; font-display: block;
+  src: url("../fonts/manrope/manrope-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "SGE Manrope"; font-weight: 600; font-style: normal; font-display: block;
+  src: url("../fonts/manrope/manrope-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "SGE Manrope"; font-weight: 700; font-style: normal; font-display: block;
+  src: url("../fonts/manrope/manrope-latin-700-normal.woff2") format("woff2"); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
 body {
-  --accent: #8b7cf6; --on-accent: #fff; --text: #f2f1f7; --dim: rgba(242, 241, 247, .65);
-  --panel: rgba(14, 13, 22, .78);
-  font-family: "Inter", system-ui, sans-serif; color: var(--text);
+  --accent: #8b7cf6; --accent-rgb: 139, 124, 246; --glow-rgb: 165, 151, 248; --accent-text: #a597f8; --accent-deep: #4f4689;
+  --accent-soft: #b6acf9; --on-accent: #fff;
+  --text: #f2f1f7; --dim: rgba(242, 241, 247, .7); --panel: rgba(14, 13, 22, .82); --dark: #0b0a12;
+  --font-head: "SGE Oxanium", system-ui, sans-serif; --head-weight: 700;
+  --font-body: "SGE Manrope", system-ui, sans-serif;
+  --cam-border: 6px;
+  font-family: var(--font-body); color: var(--text);
 }
+.theme-minimal { --font-head: "SGE Sora", system-ui, sans-serif; --head-weight: 600; --cam-border: 3px; }
+.theme-bold { --font-head: "SGE Anton", Impact, sans-serif; --head-weight: 400; --cam-border: 10px; }
 #overlay { position: relative; width: 100%; height: 100%; }
 
 /* ---------- Vollbild-Szenen (Startet gleich, Pause, Ende) ---------- */
 .screen { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
-.bg { position: absolute; inset: 0; background: #0b0a12; }
-.blob { position: absolute; border-radius: 50%; filter: blur(120px); opacity: .55; background: var(--accent);
-  animation: drift 18s ease-in-out infinite alternate; }
-.blob-1 { width: 900px; height: 900px; left: -250px; top: -300px; }
-.blob-2 { width: 700px; height: 700px; right: -200px; bottom: -250px; animation-duration: 22s; opacity: .4; }
-.blob-3 { width: 420px; height: 420px; left: 55%; top: 15%; animation-duration: 26s; opacity: .25; }
-@keyframes drift { to { transform: translate(120px, 80px) scale(1.12); } }
+.bg { position: absolute; inset: 0; overflow: hidden; background: var(--dark); }
+.bg > * { position: absolute; pointer-events: none; }
 
-.center { position: relative; text-align: center; max-width: 1500px; padding: 0 60px; }
-.kicker { font: 600 34px/1.2 "Inter", sans-serif; letter-spacing: .28em; text-transform: uppercase; color: var(--accent); }
-.title { margin-top: 28px; font: 700 128px/1.05 "Space Grotesk", sans-serif; letter-spacing: -.02em; }
-.sub { margin-top: 40px; min-height: 64px; font: 600 52px/1.2 "Space Grotesk", sans-serif; color: var(--dim); }
-.sub.is-time { font-variant-numeric: tabular-nums; color: var(--text); }
+.center { position: relative; text-align: center; max-width: 1560px; padding: 0 60px; }
+.kicker { font: 700 34px/1.2 var(--font-body); letter-spacing: .28em; text-transform: uppercase; color: var(--accent-text); }
+.title { margin-top: 26px; font-family: var(--font-head); font-weight: var(--head-weight); font-size: 124px;
+  line-height: 1.08; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.title.is-long { font-size: 92px; }
+.sub { margin-top: 40px; min-height: 64px; font: 600 52px/1.2 var(--font-body); color: var(--dim); }
+.sub.is-time { font-weight: 700; font-size: 60px; font-variant-numeric: tabular-nums; color: var(--text); letter-spacing: .04em; }
 
-.socials { position: absolute; left: 0; right: 0; bottom: 70px; display: flex; justify-content: center;
+.socials { position: absolute; left: 0; right: 0; bottom: 64px; display: flex; justify-content: center;
   flex-wrap: wrap; gap: 22px 46px; list-style: none; padding: 0 80px; }
-.social { display: flex; align-items: center; gap: 14px; font: 600 30px/1 "Inter", sans-serif; color: var(--text); }
+.social { display: flex; align-items: center; gap: 14px; font: 600 30px/1 var(--font-body); color: var(--text); }
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); flex: none; }
 
-/* ---------- Live-Szene: transparent, Rahmen für die Webcam ---------- */
-.cam-frame { position: absolute; left: 60px; top: 640px; width: 480px; height: 270px;
-  border: 6px solid var(--accent); border-radius: 18px; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
-.cam-label { position: absolute; left: -6px; bottom: -64px; padding: 12px 26px; border-radius: 0 0 14px 14px;
-  font: 700 30px/1 "Space Grotesk", sans-serif; background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+/* ---------- Live-Szene: transparent, Rahmen für die Webcam (Position aus js/overlay.js) ---------- */
+.cam-frame { position: absolute; width: 480px; height: 270px;
+  border: var(--cam-border) solid var(--accent); border-radius: 18px; box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
+.cam-label { position: absolute; top: calc(100% + var(--cam-border)); left: calc(-1 * var(--cam-border));
+  height: 58px; padding: 0 26px; border-radius: 0 0 14px 14px; max-width: 480px; overflow: hidden; text-overflow: ellipsis;
+  font: var(--head-weight) 30px/58px var(--font-head); background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+.cam-tr .cam-label, .cam-br .cam-label { left: auto; right: calc(-1 * var(--cam-border)); }
 .social-badge { position: absolute; right: 60px; bottom: 60px; display: flex; align-items: center; gap: 14px;
-  padding: 18px 28px; border-radius: 14px; background: var(--panel); font: 600 30px/1 "Inter", sans-serif;
+  max-width: 900px; padding: 18px 28px; border-radius: 14px; background: var(--panel); font: 600 30px/1 var(--font-body);
   border-left: 6px solid var(--accent); }
+.social-badge.is-left { right: auto; left: 60px; }
+.social-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .social-badge.swap { animation: pop .6s cubic-bezier(.2, .7, .2, 1); }
 @keyframes pop { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
 
-/* ---------- Stil: Neon ---------- */
-.theme-neon .title { text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 70%, transparent); }
-.theme-neon .cam-frame { box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 2px rgba(0, 0, 0, .35); }
+/* ========== Stil: Neon – leuchtendes Perspektivgitter und Lichtlinien ========== */
+.theme-neon .bg {
+  background:
+    radial-gradient(ellipse 60% 38% at 50% 64%, rgba(var(--glow-rgb), .26), transparent 70%),
+    linear-gradient(180deg, #06050b 0%, #0a0815 58%, #120d22 100%);
+}
+.theme-neon .horizon { left: 0; right: 0; top: 700px; height: 3px; background: rgb(var(--glow-rgb));
+  box-shadow: 0 0 24px 4px rgba(var(--glow-rgb), .7), 0 0 120px 30px rgba(var(--glow-rgb), .2); }
+.theme-neon .floor { left: 0; right: 0; top: 702px; bottom: 0; overflow: hidden; perspective: 380px; perspective-origin: 50% 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%); mask-image: linear-gradient(180deg, transparent 0%, #000 45%); }
+.theme-neon .grid { position: absolute; left: -150%; width: 400%; top: -96px; height: 1400px; transform-origin: 50% 0;
+  background-image:
+    linear-gradient(rgba(var(--glow-rgb), .8) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(var(--glow-rgb), .55) 2px, transparent 2px);
+  background-size: 96px 96px; transform: rotateX(64deg); animation: grid-run 2.6s linear infinite; }
+@keyframes grid-run { from { transform: rotateX(64deg) translateY(0); } to { transform: rotateX(64deg) translateY(96px); } }
+.theme-neon .streak { height: 2px; width: 520px; left: 0; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgb(var(--glow-rgb)) 60%, #fff 85%, transparent);
+  animation: streak 11s linear infinite; }
+.theme-neon .streak-1 { top: 64px; }
+.theme-neon .streak-2 { top: 168px; animation-delay: -4s; animation-duration: 14s; }
+.theme-neon .streak-3 { top: 664px; animation-delay: -8s; animation-duration: 9s; }
+@keyframes streak {
+  0% { transform: translateX(-600px); opacity: 0; } 10% { opacity: .8; }
+  80% { opacity: .8; } 100% { transform: translateX(2000px); opacity: 0; }
+}
+.theme-neon .center { transform: translateY(-90px); }
+.theme-neon .title { text-shadow: 0 0 32px rgba(var(--glow-rgb), .6), 0 3px 0 rgba(0, 0, 0, .45); }
+.theme-neon .sub.is-time { text-shadow: 0 0 22px rgba(var(--glow-rgb), .5); }
+.theme-neon .socials { bottom: 56px; }
+.theme-neon .social { padding: 12px 20px; border-radius: 12px; background: rgba(6, 5, 11, .72); }
+.theme-neon .cam-frame { border-color: rgb(var(--glow-rgb)); box-shadow: 0 0 36px rgba(var(--glow-rgb), .7), 0 0 0 2px rgba(0, 0, 0, .35); }
+.theme-neon .dot { background: rgb(var(--glow-rgb)); }
 
-/* ---------- Stil: Minimal ---------- */
+/* ========== Stil: Minimal – feine Linien, Punkte, viel Weißraum ========== */
 .theme-minimal .bg { background: #111216; }
-.theme-minimal .blob { display: none; }
-.theme-minimal .title::after { content: ""; display: block; width: 160px; height: 6px; margin: 40px auto 0;
-  background: var(--accent); border-radius: 3px; }
-.theme-minimal .title { font-weight: 500; }
+.theme-minimal .dots { inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, .2) 2px, transparent 2.2px); background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 55% 55% at 50% 48%, transparent 45%, #000 100%);
+  mask-image: radial-gradient(ellipse 55% 55% at 50% 48%, transparent 45%, #000 100%); }
+.theme-minimal .arc { width: 760px; height: 760px; right: -170px; top: -330px; border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .09); border-bottom-color: rgb(var(--glow-rgb)); border-left-color: rgba(var(--glow-rgb), .4);
+  transform: rotate(-20deg); animation: glide 16s ease-in-out infinite alternate; }
+.theme-minimal .ring { width: 560px; height: 560px; left: -200px; bottom: -260px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .14); }
+.theme-minimal .rule { left: 120px; top: 132px; width: 260px; height: 3px; background: rgb(var(--glow-rgb)); }
+.theme-minimal .rule-2 { left: 120px; top: 132px; width: 3px; height: 140px; background: rgba(255, 255, 255, .3); }
+.theme-minimal .square { right: 92px; top: 514px; width: 52px; height: 52px; border: 3px solid rgb(var(--glow-rgb));
+  animation: float 7s ease-in-out infinite alternate; }
+@keyframes glide { from { transform: rotate(-20deg) translate(0, 0); } to { transform: rotate(-8deg) translate(-24px, 18px); } }
+@keyframes float { from { transform: translateY(-12px) rotate(0deg); } to { transform: translateY(12px) rotate(45deg); } }
+.theme-minimal .title { letter-spacing: -.02em; }
+.theme-minimal .title::after { content: ""; display: block; width: 140px; height: 5px; margin: 40px auto 0;
+  background: rgb(var(--glow-rgb)); border-radius: 3px; }
 .theme-minimal .kicker { color: var(--dim); }
-.theme-minimal .cam-frame { border-width: 3px; border-color: rgba(255, 255, 255, .85); }
-.theme-minimal .cam-label { background: #111216; color: var(--text); border-bottom: 4px solid var(--accent); }
+.theme-minimal .cam-frame { border-color: rgba(255, 255, 255, .85); }
+.theme-minimal .cam-label { background: #111216; color: var(--text); box-shadow: inset 0 -4px 0 rgb(var(--glow-rgb)); }
+.theme-minimal .dot { background: rgb(var(--glow-rgb)); }
 
-/* ---------- Stil: Kräftig ---------- */
+/* ========== Stil: Kräftig – große diagonale Flächen in Akzent- und Kontrastfarbe ========== */
 .theme-bold .bg { background: var(--accent); }
-.theme-bold .blob { background: #000; opacity: .18; }
-.theme-bold .center, .theme-bold .social { color: var(--on-accent); }
-.theme-bold .kicker { color: var(--on-accent); opacity: .8; }
-.theme-bold .sub { color: var(--on-accent); opacity: .85; }
+.theme-bold .stripes { right: -260px; top: -240px; width: 1100px; height: 560px; transform: rotate(-8deg); overflow: hidden; }
+.theme-bold .stripes-inner { position: absolute; inset: 0 -60px 0 0; animation: slide 5s linear infinite;
+  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, .16) 0 30px, transparent 30px 60px); }
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-60px); } }
+.theme-bold .band { left: -10%; right: -10%; top: 208px; height: 74px; background: var(--accent-deep); transform: rotate(-6deg); }
+.theme-bold .slab { left: -10%; right: -10%; top: 270px; height: 560px; background: var(--dark); transform: rotate(-6deg);
+  box-shadow: 0 30px 0 rgba(0, 0, 0, .25); }
+.theme-bold .wedge { left: -120px; bottom: -160px; width: 640px; height: 420px; background: var(--accent-soft);
+  clip-path: polygon(0 100%, 0 30%, 100% 100%); opacity: .55; }
+.theme-bold .center { color: #fff; }
+.theme-bold .kicker { color: var(--accent-text); }
+.theme-bold .title { text-transform: uppercase; font-size: 150px; line-height: 1; letter-spacing: .01em; }
+.theme-bold .title.is-long { font-size: 104px; }
+.theme-bold .sub { color: rgba(255, 255, 255, .82); }
+.theme-bold .sub.is-time { color: #fff; }
+.theme-bold .social { color: var(--on-accent); background: var(--accent); padding: 12px 20px; box-shadow: 0 6px 0 rgba(0, 0, 0, .25); }
 .theme-bold .dot { background: var(--on-accent); }
-.theme-bold .title { text-transform: uppercase; font-size: 140px; }
-.theme-bold .cam-frame { border-width: 10px; border-radius: 4px; }
+.theme-bold .cam-frame { border-radius: 4px; box-shadow: 0 0 0 3px rgba(255, 255, 255, .55), 0 0 0 5px rgba(0, 0, 0, .35); }
 .theme-bold .cam-label { border-radius: 0; }
 .theme-bold .social-badge { background: var(--accent); color: var(--on-accent); border-left: none; }
 .theme-bold .social-badge .dot { background: var(--on-accent); }
+
+/* Weniger Bewegung, wenn das System es wünscht */
+@media (prefers-reduced-motion: reduce) {
+  .bg *, .social-badge.swap { animation: none !important; }
+}

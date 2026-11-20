@@ -10,9 +10,15 @@
   const root = document.getElementById("overlay");
   const body = document.body;
 
-  body.className = `theme-${config.theme} scene-${config.scene}`;
+  body.className = `theme-${config.theme} scene-${config.scene} cam-${config.cam}`;
+  const colors = L.palette(config.color);
   body.style.setProperty("--accent", config.color);
-  body.style.setProperty("--on-accent", L.contrastOn(config.color));
+  body.style.setProperty("--accent-rgb", colors.rgb);
+  body.style.setProperty("--accent-text", colors.text);
+  body.style.setProperty("--glow-rgb", colors.glowRgb);
+  body.style.setProperty("--accent-deep", colors.deep);
+  body.style.setProperty("--accent-soft", colors.soft);
+  body.style.setProperty("--on-accent", colors.onAccent);
   document.documentElement.lang = config.lang;
 
   const el = (tag, className, text) => {
@@ -36,10 +42,22 @@
   function fullScreen(titleKey) {
     const screen = el("div", "screen");
     const bg = el("div", "bg");
-    for (let i = 0; i < 3; i++) bg.appendChild(el("span", `blob blob-${i + 1}`));
+    // Hintergrund-Elemente je Stil (gezeichnet in css/overlay.css)
+    const decor = {
+      neon: ["horizon", "floor", "streak streak-1", "streak streak-2", "streak streak-3"],
+      minimal: ["dots", "arc", "ring", "rule", "rule-2", "square"],
+      bold: ["stripes", "band", "slab", "wedge"],
+    }[config.theme];
+    decor.forEach((name) => {
+      const part = el("span", name);
+      if (name === "floor") part.appendChild(el("span", "grid"));
+      if (name === "stripes") part.appendChild(el("span", "stripes-inner"));
+      bg.appendChild(part);
+    });
     const center = el("div", "center");
     if (config.name) center.appendChild(el("p", "kicker", config.name));
-    center.appendChild(el("h1", "title", L.textFor(config, titleKey)));
+    const title = L.textFor(config, titleKey);
+    center.appendChild(el("h1", title.length > 26 ? "title is-long" : "title", title));
     const sub = el("p", "sub");
     center.appendChild(sub);
     screen.append(bg, center);
@@ -64,10 +82,14 @@
 
   function live() {
     const cam = el("div", "cam-frame");
+    const rect = L.camRect(config.cam);
+    cam.style.left = `${rect.x}px`;
+    cam.style.top = `${rect.y}px`;
     if (config.name) cam.appendChild(el("span", "cam-label", config.name));
     root.appendChild(cam);
     if (!socials.length) return;
-    const badge = el("div", "social-badge");
+    // Sitzt die Facecam unten rechts, weicht der Hinweis nach unten links aus.
+    const badge = el("div", config.cam === "br" ? "social-badge is-left" : "social-badge");
     const text = el("span", "social-text");
     badge.append(el("span", "dot"), text);
     root.appendChild(badge);

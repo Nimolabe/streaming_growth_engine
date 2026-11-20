@@ -9,6 +9,18 @@
 
   const SCENES = ["start", "live", "pause", "end"];
   const THEMES = ["neon", "minimal", "bold"];
+  // Facecam-Ecke in der Live-Szene: oben/unten × links/rechts. "bl" ist der alte Standard.
+  const CAMS = ["tl", "tr", "bl", "br"];
+  // Webcam-Rahmen (außen, inkl. Rahmenlinie) im 1920 × 1080-Bild. Unten links bleibt genau
+  // wie vor der Einführung von "cam" (x=60, y=640), damit bestehende OBS-Szenen weiter passen.
+  // Seitlich 60 px Abstand; Rahmen + Namensschild (58 px darunter) halten oben und unten
+  // denselben Abstand von 112 px zum Bildrand.
+  const CAM_SIZE = { w: 480, h: 270 };
+  const CAM_RECTS = {
+    tl: { x: 60, y: 112 }, tr: { x: 1380, y: 112 },
+    bl: { x: 60, y: 640 }, br: { x: 1380, y: 640 },
+  };
+  const camRect = (cam) => ({ ...(CAM_RECTS[cam] || CAM_RECTS.bl), ...CAM_SIZE });
   const SOCIALS = [
     // key, Anzeige-Präfix
     ["tw", "twitch.tv/"],
@@ -32,7 +44,7 @@
   };
 
   const DEFAULTS = {
-    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de",
+    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de", cam: "bl",
     start: "", pause: "", end: "", next: "", countdown: 5,
     tw: "", yt: "", tt: "", ig: "", x: "",
   };
@@ -55,6 +67,8 @@
     if (SCENES.includes(scene)) config.scene = scene;
     const theme = get("theme") ?? get("t");
     if (THEMES.includes(theme)) config.theme = theme;
+    const cam = get("cam");
+    if (CAMS.includes(cam)) config.cam = cam;
     const lang = get("lang") ?? get("l");
     if (lang === "de" || lang === "en") config.lang = lang;
     config.name = cleanText(get("name") ?? get("n"), LIMITS.name);
@@ -80,6 +94,7 @@
     put("t", c.theme, DEFAULTS.theme);
     put("c", c.color.slice(1), DEFAULTS.color.slice(1));
     put("l", c.lang, DEFAULTS.lang);
+    put("cam", c.cam, DEFAULTS.cam);
     put("n", c.name);
     put("ms", c.start);
     put("mp", c.pause);
@@ -117,8 +132,39 @@
     return luminance > 0.4 ? "#0b0a12" : "#ffffff";
   }
 
+  // Farben aus der Akzentfarbe ableiten (ohne color-mix, damit auch ältere OBS-Browser
+  // es können). Liefert u. a. eine Textfarbe, die auf dunklem Grund sicher lesbar ist.
+  function rgbOf(hex) {
+    return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  }
+  function luminance([r, g, b]) {
+    const ch = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+  }
+  const contrast = (a, b) => {
+    const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (l1 + 0.05) / (l2 + 0.05);
+  };
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const hexOf = (rgb) => "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
+  function palette(hex) {
+    const accent = rgbOf(hex);
+    const dark = [11, 10, 18]; // Grundfarbe der dunklen Hintergründe
+    // So weit mit Weiß aufhellen, bis der Kontrast auf dem dunklen Grund mindestens 4,5 ist
+    let text = accent;
+    for (let t = 0; t <= 1.0001 && contrast(text, dark) < 4.5; t += 0.05) text = mix(accent, [255, 255, 255], t);
+    return {
+      rgb: accent.join(", "),
+      text: hexOf(text),
+      glowRgb: text.join(", "), // Leuchtfarbe: wie text, also auch bei dunklen Akzenten sichtbar
+      deep: hexOf(mix(accent, dark, 0.55)),
+      soft: hexOf(mix(accent, [255, 255, 255], 0.35)),
+      onAccent: contrastOn(hex),
+    };
+  }
+
   window.SGE_LAYOUT = {
-    SCENES, THEMES, SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
-    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn,
+    SCENES, THEMES, CAMS, CAM_SIZE, SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
+    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn, camRect, palette,
   };
 })();
