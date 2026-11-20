@@ -54,6 +54,7 @@
       next: $("next").value,
       countdown: $("countdown").value,
       lang: $("lang").value,
+      cam: form.querySelector("input[name=cam]:checked")?.value,
     };
     L.SOCIALS.forEach(([key]) => { raw[key] = $(`social-${key}`).value; });
     return L.normalize(raw);
@@ -62,6 +63,8 @@
   function write(config) {
     const radio = form.querySelector(`input[name=theme][value="${config.theme}"]`);
     if (radio) radio.checked = true;
+    const camRadio = form.querySelector(`input[name=cam][value="${config.cam}"]`);
+    if (camRadio) camRadio.checked = true;
     $("color").value = config.color;
     ["name", "start", "pause", "end", "next"].forEach((key) => { $(key).value = config[key]; });
     const countdown = $("countdown");
@@ -107,6 +110,7 @@
       placeholders(config);
       preview.src = overlayUrl(config, scene);
       stage.classList.toggle("is-live", scene === "live");
+      stage.dataset.cam = config.cam; // Platzhalter „Webcam“ folgt der gewählten Ecke
       document.querySelectorAll(".swatch").forEach((s) =>
         s.classList.toggle("active", s.dataset.color === config.color));
       renderLinks(config);
@@ -228,7 +232,8 @@
         { capture_mode: "any_fullscreen" });
       const cam = source("Webcam", "dshow_input", {});
       sources.push(game, cam);
-      liveItems.push(item(game, 1, { w: 1920, h: 1080 }), item(cam, 2, { x: 60, y: 640, w: 480, h: 270 }));
+      // Webcam genau dort, wo der Rahmen der gewählten Ecke liegt (js/layout-core.js)
+      liveItems.push(item(game, 1, { w: 1920, h: 1080 }), item(cam, 2, L.camRect(config.cam)));
     }
     const liveOverlay = overlay("live");
     liveItems.push(item(liveOverlay, liveItems.length + 1, { locked: true }));
