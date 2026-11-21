@@ -40,6 +40,22 @@
 .cam-choice input:checked + .cam-pic i { background: var(--accent); }
 .cam-choice input:checked ~ .cam-name { color: var(--text); }
 .cam-choice input:focus-visible + .cam-pic { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Facecam-Rahmen: zwei kleine Vorschaubilder */
+.cam-sub { margin: 1rem 0 .5rem; font-size: .9rem; color: var(--text-dim); }
+.frame-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; max-width: 16rem; }
+.frame-pic { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; border: 1px solid var(--border);
+  background: repeating-linear-gradient(135deg, #1b2a3a 0 6px, #172433 6px 12px); transition: border-color .2s; }
+.frame-pic i { position: absolute; left: 22%; top: 18%; width: 56%; height: 52%; }
+.frame-pic-color i { border: 3px solid var(--accent); border-radius: 4px; }
+.frame-pic-color b { position: absolute; left: 22%; top: 70%; width: 26%; height: 12%; background: var(--accent); border-radius: 0 0 3px 3px; }
+.frame-pic-plain i { border: solid #0f0f12; border-width: 7px 2px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .12); }
+.frame-pic-plain b { position: absolute; left: 30%; top: 19%; width: 40%; height: 2px; background: var(--accent); }
+.cam-choice input:checked + .frame-pic { border-color: var(--accent); }
+.cam-choice input:focus-visible + .frame-pic { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check-field { display: flex; align-items: center; gap: .55rem; margin-top: .9rem; font-size: .9rem; cursor: pointer; }
+.check-field input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.check-field.is-off { opacity: .55; }
+.check-hint { margin: .25rem 0 0 1.6rem; }
 .social-field { grid-template-columns: auto 1fr !important; align-items: center; }
 .social-field span { font-family: ui-monospace, monospace; font-size: .8rem; }
 
@@ -52,11 +68,9 @@
 .preview-game { position: absolute; inset: 0; display: none; place-items: center; color: rgba(255, 255, 255, .35);
   font-family: var(--font-head); font-size: clamp(1rem, 3vw, 2rem); letter-spacing: .1em; text-transform: uppercase;
   background: repeating-linear-gradient(135deg, #1b2a3a 0 40px, #172433 40px 80px); }
+/* Position und Größe setzt js/layouts.js (placeCam) aus js/layout-core.js */
 .preview-cam { position: absolute; left: 3.125%; top: 59.26%; width: 25%; height: 25%; display: grid; place-items: center;
   font-size: .7em; background: #2c3442; }
-.preview-stage[data-cam="tl"] .preview-cam { top: 10.37%; }
-.preview-stage[data-cam="tr"] .preview-cam { top: 10.37%; left: 71.875%; }
-.preview-stage[data-cam="br"] .preview-cam { left: 71.875%; }
 .preview-stage.is-live .preview-game { display: grid; }
 .builder-preview .hint { margin-top: .7rem; }
 
