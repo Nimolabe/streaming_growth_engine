@@ -6,15 +6,28 @@ aus den offiziellen Dateien der Plattformen, die ihr selbst hier ablegt.
 
 ## Dateien
 
-Genau diese Namen, im SVG-Format:
+Genau diese Namen, als SVG oder PNG. Das Overlay sucht zuerst `<name>.svg`, dann
+`<name>.png`:
 
 | Datei | Plattform |
 | --- | --- |
-| `twitch.svg` | Twitch |
-| `youtube.svg` | YouTube |
-| `instagram.svg` | Instagram |
-| `tiktok.svg` | TikTok |
-| `x.svg` | X |
+| `twitch.svg` / `twitch.png` | Twitch |
+| `youtube.svg` / `youtube.png` | YouTube |
+| `instagram.svg` / `instagram.png` | Instagram |
+| `tiktok.svg` / `tiktok.png` | TikTok |
+| `x.svg` / `x.png` | X |
+
+### Anforderungen an die Dateien
+
+- **Transparenter Hintergrund.** JPEG geht nicht, ebenso wenig ein PNG mit weißem oder
+  farbigem Hintergrund.
+- **Nur das Zeichen, ohne Kachel.** Das Overlay färbt das Logo einfarbig ein und übernimmt
+  dabei nur die Form der deckenden Pixel. Eine App-Kachel (z. B. das lila Twitch-Quadrat oder
+  das rote YouTube-Rechteck) würde zu einem einfarbigen Klotz, das eigentliche Zeichen wäre
+  nicht mehr zu sehen. Die Markenseiten bieten dafür eigene Fassungen an, z. B. das
+  Twitch-„Glitch“-Logo, das YouTube-Icon, das Instagram-Glyph, das TikTok-Notensymbol ohne
+  Schriftzug und das X-Logo.
+- **SVG ohne Skripte, ohne Event-Attribute (`onload` usw.) und ohne externe Verweise.**
 
 ## Woher
 
@@ -33,6 +46,16 @@ YouTube, Instagram/Meta, TikTok und X). Nicht aus Icon-Sammlungen oder von Dritt
   nach einer Partnerschaft mit der Plattform aussieht.
 - Es gelten die jeweiligen **Markenrichtlinien** der Plattformen. Die Rechte an den Logos
   liegen bei den Plattformen. Sie stehen nicht unter der Lizenz dieses Repos.
+
+## Herkunft der abgelegten Dateien
+
+| Datei | Quelle | heruntergeladen am |
+| --- | --- | --- |
+| – | – | – |
+
+Noch keine Datei abgelegt. Die am 21.11.2026 gelieferten Dateien (Instagram PNG, TikTok
+JPEG, Twitch PNG, YouTube PNG) erfüllten die Anforderungen nicht: keine Transparenz, App-Kachel
+bzw. weißer Hintergrund. X fehlte. Sie wurden deshalb nicht übernommen.
 
 ## Verhalten
 
