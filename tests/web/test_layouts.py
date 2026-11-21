@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from urllib.parse import quote
 
 import pytest
@@ -272,7 +273,7 @@ def test_cam_choice_translated(context, base_url):
     page, _ = open_layouts(context, base_url)
     page.select_option("[data-sge-language] >> nth=0", "en")
     page.wait_for_function("() => document.documentElement.lang === 'en'")
-    names = [t.strip() for t in page.locator(".cam-name").all_text_contents()]
+    names = [t.strip() for t in page.locator("#cam-choices .cam-name").all_text_contents()]
     assert names == ["Top left", "Top right", "Bottom left", "Bottom right"]
     assert page.locator("#cam-choices").locator("xpath=..").locator("legend").text_content() == (
         "5. Facecam position"
@@ -337,3 +338,254 @@ def test_fonts_have_german_characters(context, base_url, family, weight):
         [family, weight],
     )
     assert missing == [], f"{family} {weight}: fehlende Zeichen {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Facecam-Rahmen "schlicht", Socials am Rahmen, Logos
+# ---------------------------------------------------------------------------
+
+ICON_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "social-icons"
+
+# Schlichter Rahmen: 6 px Saum, 42 px Leisten, Kamerabild 480 × 270 (js/layout-core.js)
+PLAIN_FRAMES = {
+    "tl": {"x": 60, "y": 112, "w": 492, "h": 354},
+    "tr": {"x": 1368, "y": 112, "w": 492, "h": 354},
+    "bl": {"x": 60, "y": 614, "w": 492, "h": 354},
+    "br": {"x": 1368, "y": 614, "w": 492, "h": 354},
+}
+PLAIN_CAMS = {
+    k: {"x": v["x"] + 6, "y": v["y"] + 42, "w": 480, "h": 270} for k, v in PLAIN_FRAMES.items()
+}
+EXPECTED_CAM = {"color": CAM_RECTS, "plain": PLAIN_CAMS}
+
+INNER_JS = """() => { const e = document.querySelector('.cam-frame'); const r = e.getBoundingClientRect();
+  const cs = getComputedStyle(e); const px = (v) => parseFloat(cs[v]);
+  return { outer: { x: r.left, y: r.top, w: r.width, h: r.height },
+           inner: { x: r.left + px('borderLeftWidth'), y: r.top + px('borderTopWidth'),
+                    w: r.width - px('borderLeftWidth') - px('borderRightWidth'),
+                    h: r.height - px('borderTopWidth') - px('borderBottomWidth') } }; }"""
+
+
+def route_icons(context):
+    """Anfragen an assets/social-icons/ mit den Testformen beantworten (fehlende → 404)."""
+    requested = []
+
+    def handle(route):
+        name = route.request.url.split("?")[0].rsplit("/", 1)[-1]
+        requested.append(name)
+        path = ICON_FIXTURES / name
+        if path.is_file():
+            route.fulfill(status=200, path=str(path), content_type="image/svg+xml")
+        else:
+            route.fulfill(status=404, body="")
+
+    context.route("**/assets/social-icons/*", handle)
+    return requested
+
+
+def real_errors(errors):
+    """JS-Fehler ohne die Konsolenmeldung des Browsers zu absichtlich fehlenden Icon-Dateien."""
+    return [e for e in errors if "Failed to load resource" not in e]
+
+
+@pytest.mark.parametrize("theme", ["neon", "bold"])
+@pytest.mark.parametrize("cam", ["tl", "tr", "bl", "br"])
+def test_plain_frame_in_overlay(context, base_url, cam, theme):
+    query = f"s=live&t={theme}&cam={cam}&frame=plain&fs=1&n=MatrixxJJ&tw=a&yt=b&ig=c"
+    page, errors = open_overlay(context, base_url, query)
+    box = page.evaluate(INNER_JS)
+    assert box["outer"] == PLAIN_FRAMES[cam]
+    assert box["inner"] == PLAIN_CAMS[cam]  # genau die Fläche, auf die der Export die Webcam legt
+    for sel in (".cam-frame", ".cam-bar-top", ".cam-bar-bottom", ".cam-strokes", ".cam-ticks"):
+        r = page.evaluate(RECT_JS, sel)
+        assert r["l"] >= 0 and r["t"] >= 0 and r["r"] <= 1920 and r["b"] <= 1080, (sel, r)
+    # Kanalname nur als Text in der unteren Leiste, kein Schild, kein Symbol davor
+    assert page.locator(".cam-bar-bottom .cam-name").text_content() == "MatrixxJJ"
+    assert page.locator(".cam-label").count() == 0
+    assert (
+        page.locator(".cam-bar-bottom img, .cam-bar-bottom svg, .cam-bar-bottom .fs-icon").count()
+        == 0
+    )
+    assert errors == []
+
+
+@pytest.mark.parametrize("frame", ["color", "plain"])
+@pytest.mark.parametrize("cam", ["tl", "tr", "bl", "br"])
+def test_obs_export_matches_camera_area(context, base_url, frame, cam):
+    page, errors = open_layouts(context, base_url, f"?n=Testkanal&frame={frame}&cam={cam}")
+    data = download_collection(page, "windows")
+    by_uuid = {s["uuid"]: s for s in data["sources"]}
+    live = [s for s in data["sources"] if s["id"] == "scene"][1]
+    cam_item = next(
+        i for i in live["settings"]["items"] if by_uuid[i["source_uuid"]]["id"] == "dshow_input"
+    )
+    expected = EXPECTED_CAM[frame][cam]
+    assert cam_item["pos"] == {"x": expected["x"], "y": expected["y"]}
+    assert cam_item["bounds"] == {"x": expected["w"], "y": expected["h"]}
+
+    # Die Fläche im Overlay (innerhalb des Rahmens) liegt genau dort
+    overlay = next(
+        s
+        for s in data["sources"]
+        if s["id"] == "browser_source" and "s=live" in s["settings"]["url"]
+    )
+    ov, _ = open_overlay(context, base_url, overlay["settings"]["url"].split("?", 1)[1])
+    box = ov.evaluate(INNER_JS)
+    assert box["inner" if frame == "plain" else "outer"] == expected
+    assert errors == []
+
+
+def test_frame_socials_as_text_and_rotation(context, base_url):
+    page = context.new_page()
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    errors = collect_errors(page)
+    page.clock.install()
+    page.goto(
+        f"{base_url}/overlay.html?s=live&frame=plain&fs=1&n=Luna"
+        "&tw=lunaplays&yt=luna&tt=luna_tt&ig=luna_ig&x=luna_x",
+        wait_until="load",
+    )
+
+    def items():
+        return [t.strip() for t in page.locator(".fs-item").all_text_contents()]
+
+    assert items() == ["Twitch /lunaplays", "YouTube /@luna", "TikTok @luna_tt"]
+    # Nur Text: keine Bilder, keine Icons
+    assert page.locator(".cam-frame img, .cam-frame svg, .fs-icon").count() == 0
+    # Socials stehen am Rahmen → kein Hinweis in der Ecke
+    assert page.locator(".social-badge").count() == 0
+
+    page.clock.run_for(9000)  # nach 8 s blendet die nächste Gruppe ein
+    assert items() == ["Instagram @luna_ig", "X @luna_x"]
+    page.clock.run_for(8000)
+    assert items() == ["Twitch /lunaplays", "YouTube /@luna", "TikTok @luna_tt"]
+    assert errors == []
+
+
+def test_long_social_names_are_shortened(context, base_url):
+    page, errors = open_overlay(
+        context, base_url, f"s=live&frame=plain&fs=1&tw={'a' * 30}&yt=b&tt={'c' * 30}"
+    )
+    bar = page.evaluate(RECT_JS, ".cam-bar-top")
+    for i in range(page.locator(".fs-item").count()):
+        r = page.evaluate(
+            f"() => {{ const b = document.querySelectorAll('.fs-item')[{i}].getBoundingClientRect(); return {{ l: b.left, r: b.right }}; }}"
+        )
+        assert bar["l"] <= r["l"] and r["r"] <= bar["r"]
+    clipped = page.evaluate(
+        "[...document.querySelectorAll('.fs-text')].map(e => e.scrollWidth > e.clientWidth)"
+    )
+    assert clipped[0] and clipped[2]  # lange Namen werden mit „…“ gekürzt
+    assert (
+        page.evaluate("getComputedStyle(document.querySelector('.fs-text')).textOverflow")
+        == "ellipsis"
+    )
+    assert errors == []
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "s=live&n=Alt&tw=a",  # alter Link ohne frame
+        "s=live&n=Alt&tw=a&frame=zz",
+        "s=live&n=Alt&tw=a&frame=PLAIN",
+        "s=live&n=Alt&tw=a&fs=1",  # Socials am Rahmen nur beim schlichten Rahmen
+    ],
+)
+def test_invalid_frame_or_old_link_keeps_colored_frame(context, base_url, query):
+    page, errors = open_overlay(context, base_url, query)
+    assert page.evaluate("document.body.classList.contains('frame-color')")
+    assert page.locator(".cam-frame.is-plain, .fs-row").count() == 0
+    assert page.locator(".cam-label").text_content() == "Alt"
+    assert page.locator(".social-badge").count() == 1
+    assert errors == []
+
+
+def test_plain_frame_without_frame_socials_keeps_corner_hint(context, base_url):
+    page, errors = open_overlay(context, base_url, "s=live&frame=plain&n=Luna&tw=luna")
+    assert page.locator(".fs-row").count() == 0
+    assert page.locator(".social-text").text_content() == "twitch.tv/luna"
+    assert errors == []
+
+
+def test_logos_from_official_files_with_text_fallback(context, base_url):
+    requested = route_icons(context)
+    page = context.new_page()
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    errors = collect_errors(page)
+    page.goto(
+        f"{base_url}/overlay.html?s=live&frame=plain&fs=1&fi=1&tw=luna&yt=luna&ig=luna",
+        wait_until="load",
+    )
+    page.wait_for_function("() => document.querySelectorAll('.fs-icon').length === 2")
+    entries = page.evaluate(
+        """[...document.querySelectorAll('.fs-item')].map(e => ({
+             key: e.dataset.social, text: e.textContent.trim(),
+             mask: e.querySelector('.fs-icon') ? getComputedStyle(e.querySelector('.fs-icon')).maskImage
+                   || getComputedStyle(e.querySelector('.fs-icon')).webkitMaskImage : null }))"""
+    )
+    assert entries[0]["key"] == "tw" and "assets/social-icons/twitch.svg" in entries[0]["mask"]
+    assert entries[0]["text"] == "/luna"
+    assert entries[1]["key"] == "yt" and "assets/social-icons/youtube.svg" in entries[1]["mask"]
+    assert entries[1]["text"] == "/@luna"
+    # instagram.svg fehlt → Textformat, kein leerer Platz
+    assert entries[2] == {"key": "ig", "text": "Instagram @luna", "mask": None}
+    # Logos nur als CSS-Maske, nie als Bild oder eingebettetes SVG
+    assert page.locator(".cam-frame img, .cam-frame svg").count() == 0
+    assert sorted(set(requested)) == ["instagram.svg", "twitch.svg", "youtube.svg"]
+    assert real_errors(errors) == []
+
+
+def test_no_logos_when_option_is_off(context, base_url):
+    requested = route_icons(context)
+    page, errors = open_overlay(context, base_url, "s=live&frame=plain&fs=1&tw=luna&yt=luna")
+    page.wait_for_timeout(300)
+    assert page.locator(".fs-icon, .cam-frame img").count() == 0
+    assert requested == []  # Logo-Dateien werden gar nicht erst geladen
+    assert errors == []
+
+
+def test_editor_frame_options_preview_and_share(context, base_url):
+    page, errors = open_layouts(context, base_url, "?n=Luna&cam=tr&tw=luna")
+    assert page.is_checked('input[name="frame"][value="color"]')
+    assert not page.is_checked("#fs") and not page.is_checked("#fi")
+    page.click('[data-scene="live"]')
+    page.check('input[name="frame"][value="plain"]', force=True)
+    page.check("#fs")
+    page.check("#fi")
+    page.wait_for_function("() => document.getElementById('preview').src.includes('frame=plain')")
+    src = page.get_attribute("#preview", "src")
+    assert "fs=1" in src and "fi=1" in src
+    share = page.evaluate("SGE_LAYOUT_EXPORT.shareUrl(SGE_LAYOUT_EXPORT.read())")
+    assert "frame=plain" in share and "fs=1" in share and "fi=1" in share
+
+    # Platzhalter „Webcam“ in der Vorschau liegt auf dem Kamerabild des schlichten Rahmens
+    # Innenfläche der Bühne (ohne ihren 1-px-Rand), darin liegt der Platzhalter
+    stage = page.evaluate(
+        """() => { const s = document.getElementById('preview-stage'); const r = s.getBoundingClientRect();
+          return { l: r.left + s.clientLeft, t: r.top + s.clientTop, w: s.clientWidth }; }"""
+    )
+    cam = page.evaluate(RECT_JS, ".preview-cam")
+    scale = stage["w"] / 1920
+    expected = PLAIN_CAMS["tr"]
+    assert abs((cam["l"] - stage["l"]) / scale - expected["x"]) < 1.5
+    assert abs((cam["t"] - stage["t"]) / scale - expected["y"]) < 1.5
+    assert abs((cam["r"] - cam["l"]) / scale - expected["w"]) < 1.5
+
+    # Geteilter Link füllt die Optionen wieder ein
+    page2, _ = open_layouts(context, base_url, "?frame=plain&fs=1&fi=1")
+    assert page2.is_checked('input[name="frame"][value="plain"]')
+    assert page2.is_checked("#fs") and page2.is_checked("#fi")
+    # Die Vorschau fragt die (noch nicht abgelegten) Logo-Dateien an → nur 404-Meldungen erlaubt
+    assert real_errors(errors) == []
+
+
+def test_frame_options_translated(context, base_url):
+    page, _ = open_layouts(context, base_url)
+    page.select_option("[data-sge-language] >> nth=0", "en")
+    page.wait_for_function("() => document.documentElement.lang === 'en'")
+    names = [t.strip() for t in page.locator("#frame-choices .cam-name").all_text_contents()]
+    assert names == ["Colored", "Plain"]
+    hints = [t.strip() for t in page.locator(".check-field span, .check-hint").all_text_contents()]
+    assert "Socials on the frame" in hints and "Show logos" in hints
+    assert "Logos appear once the official files are placed in assets/social-icons/." in hints
