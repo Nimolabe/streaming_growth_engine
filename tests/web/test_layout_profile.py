@@ -22,6 +22,7 @@ ALLOWED_KEYS = {
     "l",
     "cam",
     "frame",
+    "cs",
     "fs",
     "fi",
     "n",
@@ -115,7 +116,7 @@ def test_foreign_profile_shows_preview_and_take_over(make_context, base_url):
     data = base_data()
     data["layouts"] = {
         OWNER: {
-            "params": "t=bold&c=ff4655&cam=tr&frame=plain&fs=1&fi=1&n=Anna+live",
+            "params": "t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live",
             "updatedAt": 1,
         }
     }
@@ -125,9 +126,10 @@ def test_foreign_profile_shows_preview_and_take_over(make_context, base_url):
     login(page, VIEWER, "Ben")
     frame_src, href, label = layout_block(page)
     assert label == "Design übernehmen"
-    assert href == "layouts.html?t=bold&c=ff4655&cam=tr&frame=plain&fs=1&fi=1&n=Anna+live"
+    assert href == "layouts.html?t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live"
     assert (
-        frame_src == "overlay.html?s=start&t=bold&c=ff4655&cam=tr&frame=plain&fs=1&fi=1&n=Anna+live"
+        frame_src
+        == "overlay.html?s=start&t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live"
     )
     assert errors == []
 
@@ -146,6 +148,7 @@ def test_foreign_profile_shows_preview_and_take_over(make_context, base_url):
     assert page.is_checked('input[name="cam"][value="tr"]')
     assert page.is_checked('input[name="frame"][value="plain"]')
     assert page.is_checked("#fs") and page.is_checked("#fi")
+    assert page.is_checked('input[name="cs"][value="m"]')
     assert errors == []
 
 
@@ -161,7 +164,7 @@ def test_own_profile_offers_edit_instead(context, base_url):
 def test_manipulated_layout_is_cleaned_when_shown(context, base_url):
     data = base_data()
     evil = (
-        "t=evil&c=zzzzzz&s=live&foo=bar&cd=999&cam=zz&frame=zz&fs=ja&fi=2"
+        "t=evil&c=zzzzzz&s=live&foo=bar&cd=999&cam=zz&frame=zz&fs=ja&fi=2&cs=xl"
         "&n=%3Cimg%20src%3Dx%20onerror%3D__x%3D1%3E%0Aabc"
         "&tw=%40%40bad!!&ms=" + "A" * 100
     )
