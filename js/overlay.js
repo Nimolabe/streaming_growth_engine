@@ -81,27 +81,36 @@
   }
 
   // ---------- Socials am schlichten Rahmen ----------
-  // Logos nur aus assets/social-icons/<name>.svg (offizielle Dateien, vom Nutzer abgelegt).
-  // Ob eine Datei da ist, zeigt ein Testladen; bis dahin – und wenn sie fehlt – steht Text.
+  // Logos nur aus assets/social-icons/<name>.svg oder .png (offizielle Dateien, vom Nutzer
+  // abgelegt; zuerst .svg, dann .png). Ob eine Datei da ist, zeigt ein Testladen; bis dahin –
+  // und wenn keine da ist – steht der Text.
   const ICON_DIR = "assets/social-icons/";
-  const iconState = new Map(); // icon -> "ok" | "missing" | "loading"
+  const iconUrl = new Map(); // icon -> URL der gefundenen Datei | null (keine) | undefined (lädt)
   function loadIcon(name, done) {
-    if (iconState.has(name)) return;
-    iconState.set(name, "loading");
-    const probe = new Image();
-    probe.onload = () => { iconState.set(name, "ok"); done(); };
-    probe.onerror = () => { iconState.set(name, "missing"); };
-    probe.src = ICON_DIR + name + ".svg";
+    if (iconUrl.has(name)) return;
+    iconUrl.set(name, undefined);
+    const tryNext = (exts) => {
+      if (!exts.length) { iconUrl.set(name, null); done(); return; }
+      const url = `${ICON_DIR}${name}.${exts[0]}`;
+      const probe = new Image();
+      probe.onload = () => { iconUrl.set(name, url); done(); };
+      probe.onerror = () => tryNext(exts.slice(1));
+      probe.src = url;
+    };
+    tryNext(["svg", "png"]);
   }
 
   function frameSocialItem(item) {
     const entry = el("span", "fs-item");
     entry.dataset.social = item.key;
-    if (config.fi && iconState.get(item.icon) === "ok") {
+    entry.dataset.len = String(item.name.length);
+    const url = config.fi ? iconUrl.get(item.icon) : null;
+    if (url) {
+      // Mit Logo: nur Logo + Name, ohne Plattformwort
+      entry.classList.add("has-icon");
       const icon = el("span", "fs-icon");
-      const url = `url("${ICON_DIR}${item.icon}.svg")`;
-      icon.style.webkitMaskImage = url;
-      icon.style.maskImage = url;
+      icon.style.webkitMaskImage = `url("${url}")`;
+      icon.style.maskImage = `url("${url}")`;
       icon.setAttribute("role", "img");
       icon.setAttribute("aria-label", item.label);
       entry.append(icon, el("span", "fs-text", item.handle));
@@ -111,45 +120,67 @@
     return entry;
   }
 
+  // Handles bis zu dieser Länge werden nie gekürzt (lieber weniger Einträge pro Seite)
+  const FULL_HANDLE = 15;
+
   function frameSocials(bar) {
     const items = L.frameSocialsOf(config);
     if (!items.length) return;
-    const PER_PAGE = 3; // mehr passen bei 480 px Breite nicht sauber nebeneinander
-    const pages = [];
-    for (let i = 0; i < items.length; i += PER_PAGE) pages.push(items.slice(i, i + PER_PAGE));
     const row = el("div", "fs-row");
     bar.appendChild(row);
-    let page = 0;
-    const render = () => row.replaceChildren(...pages[page].map(frameSocialItem));
+    // Höchstens 3 Einträge mit Logos, höchstens 2 als Text (ein fehlendes Logo → Text-Regel).
+    const maxPerPage = () => (config.fi && items.every((i) => iconUrl.get(i.icon)) ? 3 : 2);
+    const fits = () => [...row.children].every((entry) => {
+      const text = entry.querySelector(".fs-text");
+      return Number(entry.dataset.len) > FULL_HANDLE || text.scrollWidth <= text.clientWidth;
+    });
+    let start = 0;
+    let shown = 0;
+    const render = () => {
+      if (start >= items.length) start = 0;
+      // So viele wie vollständig passen, aber nicht mehr als erlaubt
+      for (let n = Math.min(maxPerPage(), items.length - start); n >= 1; n -= 1) {
+        row.dataset.count = String(n);
+        row.replaceChildren(...items.slice(start, start + n).map(frameSocialItem));
+        shown = n;
+        if (n === 1 || fits()) break;
+      }
+    };
     render();
+    if (document.fonts) document.fonts.ready.then(render); // Breiten erst mit der echten Schrift
     if (config.fi) items.forEach((item) => loadIcon(item.icon, render));
-    if (pages.length > 1) {
-      setInterval(() => {
-        row.classList.add("is-hidden"); // sanft ausblenden (opacity)
-        setTimeout(() => {
-          page = (page + 1) % pages.length;
-          render();
-          row.classList.remove("is-hidden");
-        }, 600);
-      }, 8000);
-    }
+    setInterval(() => {
+      if (items.length <= shown) return;
+      row.classList.add("is-hidden"); // sanft ausblenden (opacity)
+      setTimeout(() => {
+        start += shown;
+        render();
+        row.classList.remove("is-hidden");
+      }, 600);
+    }, 8000);
   }
 
   function live() {
     const plain = config.frame === "plain";
-    const rect = L.frameRect(config.cam, config.frame);
+    const rect = L.frameRect(config);
     const cam = el("div", plain ? "cam-frame is-plain" : "cam-frame");
     cam.style.left = `${rect.x}px`;
     cam.style.top = `${rect.y}px`;
+    cam.style.width = `${rect.w}px`;
+    cam.style.height = `${rect.h}px`;
     if (plain) {
-      cam.style.width = `${rect.w}px`;
-      cam.style.height = `${rect.h}px`;
-      const top = el("div", "cam-bar cam-bar-top");
+      const b = L.plainBorders(config);
+      cam.style.borderWidth = `${b.top}px ${b.side}px ${b.bottom}px`;
       const bottom = el("div", "cam-bar cam-bar-bottom");
-      if (config.fs) frameSocials(top);
       if (config.name) bottom.appendChild(el("span", "cam-name", config.name));
       bottom.appendChild(el("span", "cam-ticks"));
-      cam.append(top, bottom, el("span", "cam-strokes"));
+      // Obere Leiste nur mit Socials am Rahmen; sonst bleibt oben nur der schmale Saum.
+      if (config.fs) {
+        const top = el("div", "cam-bar cam-bar-top");
+        frameSocials(top);
+        cam.appendChild(top);
+      }
+      cam.append(bottom, el("span", "cam-strokes"));
     } else if (config.name) {
       cam.appendChild(el("span", "cam-label", config.name));
     }

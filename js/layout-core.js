@@ -16,21 +16,32 @@
   const FRAMES = ["color", "plain"];
 
   // ---------- Geometrie der Facecam (einzige Stelle für alle Maße) ----------
-  // Das Kamerabild ist immer 480 × 270 (16:9). Die ganze Facecam-Gruppe hält in jeder Ecke
-  // seitlich 60 px Abstand, oben beginnt sie bei y=112, unten endet sie bei y=968.
-  // Unten links mit farbigem Rahmen ergibt das genau die alte Position (x=60, y=640).
-  const CAM_SIZE = { w: 480, h: 270 };
+  // Kamerabild in drei Größen (16:9): klein (Standard, wie bisher), mittel, groß.
+  // Die ganze Facecam-Gruppe hält in jeder Ecke seitlich 60 px Abstand, oben beginnt sie bei
+  // y=112, unten endet sie bei y=968. Klein + farbig + unten links ergibt genau die alte
+  // Position (x=60, y=640).
+  const CAM_SIZES = { s: { w: 480, h: 270 }, m: { w: 640, h: 360 }, l: { w: 800, h: 450 } };
+  const CAM_SIZE = CAM_SIZES.s;
   const EDGE = { side: 60, top: 112, bottom: 968 };
   const LABEL_H = 58; // Namensschild unter dem farbigen Rahmen
-  const PLAIN = { side: 6, top: 42, bottom: 42 }; // Leisten und Seitensaum des schlichten Rahmens
+  // Schlichter Rahmen: 6 px Saum; Leiste unten (Kanalname) 42 px; oben 42 px nur mit
+  // Socials am Rahmen, sonst nur ein Saum wie an den Seiten.
+  const PLAIN = { side: 6, bar: 42 };
   const corner = (cam) => (CAMS.includes(cam) ? cam : "bl");
 
-  // Äußerer Rahmen (was das Overlay zeichnet)
-  function frameRect(cam, frame) {
-    const c = corner(cam);
-    const plain = frame === "plain";
-    const w = plain ? CAM_SIZE.w + 2 * PLAIN.side : CAM_SIZE.w;
-    const h = plain ? CAM_SIZE.h + PLAIN.top + PLAIN.bottom : CAM_SIZE.h;
+  // Ränder des schlichten Rahmens (oben, Seite, unten) für eine Einstellung
+  function plainBorders(config) {
+    return { top: config.fs ? PLAIN.bar : PLAIN.side, side: PLAIN.side, bottom: PLAIN.bar };
+  }
+
+  // Äußerer Rahmen (was das Overlay zeichnet). Erwartet geprüfte Einstellungen (normalize).
+  function frameRect(config) {
+    const c = corner(config.cam);
+    const size = CAM_SIZES[config.cs] || CAM_SIZE;
+    const plain = config.frame === "plain";
+    const b = plainBorders(config);
+    const w = plain ? size.w + 2 * b.side : size.w;
+    const h = plain ? size.h + b.top + b.bottom : size.h;
     const groupH = plain ? h : h + LABEL_H;
     const x = c.endsWith("l") ? EDGE.side : 1920 - EDGE.side - w;
     const y = c.startsWith("t") ? EDGE.top : EDGE.bottom - groupH;
@@ -38,10 +49,11 @@
   }
   // Fläche des Kamerabilds (wohin die Webcam in OBS gehört). Beim farbigen Rahmen
   // ist das wie bisher das Rechteck des Rahmens selbst.
-  function camRect(cam, frame) {
-    const outer = frameRect(cam, frame);
-    if (frame !== "plain") return outer;
-    return { x: outer.x + PLAIN.side, y: outer.y + PLAIN.top, ...CAM_SIZE };
+  function camRect(config) {
+    const outer = frameRect(config);
+    if (config.frame !== "plain") return outer;
+    const b = plainBorders(config);
+    return { x: outer.x + b.side, y: outer.y + b.top, w: outer.w - 2 * b.side, h: outer.h - b.top - b.bottom };
   }
   const SOCIALS = [
     // key, Anzeige-Präfix
@@ -74,7 +86,7 @@
   };
 
   const DEFAULTS = {
-    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de", cam: "bl", frame: "color", fs: false, fi: false,
+    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de", cam: "bl", frame: "color", cs: "s", fs: false, fi: false,
     start: "", pause: "", end: "", next: "", countdown: 5,
     tw: "", yt: "", tt: "", ig: "", x: "",
   };
@@ -101,6 +113,8 @@
     if (CAMS.includes(cam)) config.cam = cam;
     const frame = get("frame");
     if (FRAMES.includes(frame)) config.frame = frame;
+    const cs = get("cs");
+    if (["s", "m", "l"].includes(cs)) config.cs = cs;
     const on = (value) => value === true || value === "1";
     config.fs = on(get("fs"));
     config.fi = on(get("fi"));
@@ -131,6 +145,7 @@
     put("l", c.lang, DEFAULTS.lang);
     put("cam", c.cam, DEFAULTS.cam);
     put("frame", c.frame, DEFAULTS.frame);
+    put("cs", c.cs, DEFAULTS.cs);
     if (c.fs) params.set("fs", "1");
     if (c.fi) params.set("fi", "1");
     put("n", c.name);
@@ -160,7 +175,7 @@
     return SOCIALS.filter(([key]) => config[key]).map(([key]) => {
       const meta = FRAME_SOCIALS[key];
       const handle = meta.prefix + config[key];
-      return { key, label: meta.label, handle, text: `${meta.label} ${handle}`, icon: meta.icon };
+      return { key, name: config[key], label: meta.label, handle, text: `${meta.label} ${handle}`, icon: meta.icon };
     });
   }
 
@@ -211,7 +226,7 @@
   }
 
   window.SGE_LAYOUT = {
-    SCENES, THEMES, CAMS, FRAMES, CAM_SIZE, PLAIN, SOCIALS, FRAME_SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
-    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn, camRect, frameRect, frameSocialsOf, palette,
+    SCENES, THEMES, CAMS, FRAMES, CAM_SIZE, CAM_SIZES, PLAIN, SOCIALS, FRAME_SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
+    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn, camRect, frameRect, plainBorders, frameSocialsOf, palette,
   };
 })();
