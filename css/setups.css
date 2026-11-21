@@ -153,15 +153,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 /* ---------- Handy ---------- */
 @media (max-width: 860px) {
-  .planner { grid-template-columns: 1fr; }
+  .planner { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
   .page-head { padding-top: 2.5rem; }
   .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .tab { padding: 0.7rem 0.6rem; font-size: 0.9rem; white-space: nowrap; }
-  .setup-grid { grid-template-columns: 1fr; }
+  .setup-grid { grid-template-columns: minmax(0, 1fr); }
   .filters .field, .filters .field.grow { min-width: 100%; }
   .result-head h3 { font-size: 1.6rem; }
+}
+@media (max-width: 400px) {
+  /* Sehr schmal: Reiter umbrechen statt seitlich wischen, damit alle sichtbar sind */
+  .tabs { flex-wrap: wrap; overflow-x: visible; gap: 0 0.25rem; }
+  .tab { padding: 0.6rem 0.45rem; }
 }
 
 /* ---------- Bauteile mit drei Zuständen (Budget-Planer) ---------- */

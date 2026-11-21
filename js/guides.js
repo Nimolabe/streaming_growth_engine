@@ -195,7 +195,7 @@
             { de: "Hochformat. In den ersten zwei Sekunden muss klar sein, worum es geht.", en: "Vertical format. Within the first two seconds it must be clear what it's about." },
             { de: "Den Kanal in der Bio verlinken und Streamzeiten nennen.", en: "Link your channel in your bio and mention your stream times." },
           ],
-          link: { href: "index.html#features", label: { de: "Highlights automatisch finden: Clip Hunter →", en: "Find highlights automatically: Clip Hunter →" } },
+          link: { href: "index.html#clip-hunter", label: { de: "Highlights automatisch finden: für die Clip-Hunter-Beta vormerken →", en: "Find highlights automatically: join the Clip Hunter beta →" } },
         },
         {
           h: { de: "Community", en: "Community" },
