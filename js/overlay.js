@@ -10,9 +10,15 @@
   const root = document.getElementById("overlay");
   const body = document.body;
 
-  body.className = `theme-${config.theme} scene-${config.scene}`;
+  body.className = `theme-${config.theme} scene-${config.scene} cam-${config.cam} frame-${config.frame}`;
+  const colors = L.palette(config.color);
   body.style.setProperty("--accent", config.color);
-  body.style.setProperty("--on-accent", L.contrastOn(config.color));
+  body.style.setProperty("--accent-rgb", colors.rgb);
+  body.style.setProperty("--accent-text", colors.text);
+  body.style.setProperty("--glow-rgb", colors.glowRgb);
+  body.style.setProperty("--accent-deep", colors.deep);
+  body.style.setProperty("--accent-soft", colors.soft);
+  body.style.setProperty("--on-accent", colors.onAccent);
   document.documentElement.lang = config.lang;
 
   const el = (tag, className, text) => {
@@ -36,10 +42,22 @@
   function fullScreen(titleKey) {
     const screen = el("div", "screen");
     const bg = el("div", "bg");
-    for (let i = 0; i < 3; i++) bg.appendChild(el("span", `blob blob-${i + 1}`));
+    // Hintergrund-Elemente je Stil (gezeichnet in css/overlay.css)
+    const decor = {
+      neon: ["horizon", "floor", "streak streak-1", "streak streak-2", "streak streak-3"],
+      minimal: ["dots", "arc", "ring", "rule", "rule-2", "square"],
+      bold: ["stripes", "band", "slab", "wedge"],
+    }[config.theme];
+    decor.forEach((name) => {
+      const part = el("span", name);
+      if (name === "floor") part.appendChild(el("span", "grid"));
+      if (name === "stripes") part.appendChild(el("span", "stripes-inner"));
+      bg.appendChild(part);
+    });
     const center = el("div", "center");
     if (config.name) center.appendChild(el("p", "kicker", config.name));
-    center.appendChild(el("h1", "title", L.textFor(config, titleKey)));
+    const title = L.textFor(config, titleKey);
+    center.appendChild(el("h1", title.length > 26 ? "title is-long" : "title", title));
     const sub = el("p", "sub");
     center.appendChild(sub);
     screen.append(bg, center);
@@ -62,12 +80,115 @@
     tick();
   }
 
+  // ---------- Socials am schlichten Rahmen ----------
+  // Logos nur aus assets/social-icons/<name>.svg oder .png (offizielle Dateien, vom Nutzer
+  // abgelegt; zuerst .svg, dann .png). Ob eine Datei da ist, zeigt ein Testladen; bis dahin –
+  // und wenn keine da ist – steht der Text.
+  const ICON_DIR = "assets/social-icons/";
+  const iconUrl = new Map(); // icon -> URL der gefundenen Datei | null (keine) | undefined (lädt)
+  function loadIcon(name, done) {
+    if (iconUrl.has(name)) return;
+    iconUrl.set(name, undefined);
+    const tryNext = (exts) => {
+      if (!exts.length) { iconUrl.set(name, null); done(); return; }
+      const url = `${ICON_DIR}${name}.${exts[0]}`;
+      const probe = new Image();
+      probe.onload = () => { iconUrl.set(name, url); done(); };
+      probe.onerror = () => tryNext(exts.slice(1));
+      probe.src = url;
+    };
+    tryNext(["svg", "png"]);
+  }
+
+  function frameSocialItem(item) {
+    const entry = el("span", "fs-item");
+    entry.dataset.social = item.key;
+    entry.dataset.len = String(item.name.length);
+    const url = config.fi ? iconUrl.get(item.icon) : null;
+    if (url) {
+      // Mit Logo: nur Logo + Name, ohne Plattformwort
+      entry.classList.add("has-icon");
+      const icon = el("span", "fs-icon");
+      icon.style.webkitMaskImage = `url("${url}")`;
+      icon.style.maskImage = `url("${url}")`;
+      icon.setAttribute("role", "img");
+      icon.setAttribute("aria-label", item.label);
+      entry.append(icon, el("span", "fs-text", item.handle));
+    } else {
+      entry.append(el("span", "fs-text", item.text));
+    }
+    return entry;
+  }
+
+  // Handles bis zu dieser Länge werden nie gekürzt (lieber weniger Einträge pro Seite)
+  const FULL_HANDLE = 15;
+
+  function frameSocials(bar) {
+    const items = L.frameSocialsOf(config);
+    if (!items.length) return;
+    const row = el("div", "fs-row");
+    bar.appendChild(row);
+    // Höchstens 3 Einträge mit Logos, höchstens 2 als Text (ein fehlendes Logo → Text-Regel).
+    const maxPerPage = () => (config.fi && items.every((i) => iconUrl.get(i.icon)) ? 3 : 2);
+    const fits = () => [...row.children].every((entry) => {
+      const text = entry.querySelector(".fs-text");
+      return Number(entry.dataset.len) > FULL_HANDLE || text.scrollWidth <= text.clientWidth;
+    });
+    let start = 0;
+    let shown = 0;
+    const render = () => {
+      if (start >= items.length) start = 0;
+      // So viele wie vollständig passen, aber nicht mehr als erlaubt
+      for (let n = Math.min(maxPerPage(), items.length - start); n >= 1; n -= 1) {
+        row.dataset.count = String(n);
+        row.replaceChildren(...items.slice(start, start + n).map(frameSocialItem));
+        shown = n;
+        if (n === 1 || fits()) break;
+      }
+    };
+    render();
+    if (document.fonts) document.fonts.ready.then(render); // Breiten erst mit der echten Schrift
+    if (config.fi) items.forEach((item) => loadIcon(item.icon, render));
+    setInterval(() => {
+      if (items.length <= shown) return;
+      row.classList.add("is-hidden"); // sanft ausblenden (opacity)
+      setTimeout(() => {
+        start += shown;
+        render();
+        row.classList.remove("is-hidden");
+      }, 600);
+    }, 8000);
+  }
+
   function live() {
-    const cam = el("div", "cam-frame");
-    if (config.name) cam.appendChild(el("span", "cam-label", config.name));
+    const plain = config.frame === "plain";
+    const rect = L.frameRect(config);
+    const cam = el("div", plain ? "cam-frame is-plain" : "cam-frame");
+    cam.style.left = `${rect.x}px`;
+    cam.style.top = `${rect.y}px`;
+    cam.style.width = `${rect.w}px`;
+    cam.style.height = `${rect.h}px`;
+    if (plain) {
+      const b = L.plainBorders(config);
+      cam.style.borderWidth = `${b.top}px ${b.side}px ${b.bottom}px`;
+      const bottom = el("div", "cam-bar cam-bar-bottom");
+      if (config.name) bottom.appendChild(el("span", "cam-name", config.name));
+      bottom.appendChild(el("span", "cam-ticks"));
+      // Obere Leiste nur mit Socials am Rahmen; sonst bleibt oben nur der schmale Saum.
+      if (config.fs) {
+        const top = el("div", "cam-bar cam-bar-top");
+        frameSocials(top);
+        cam.appendChild(top);
+      }
+      cam.append(bottom, el("span", "cam-strokes"));
+    } else if (config.name) {
+      cam.appendChild(el("span", "cam-label", config.name));
+    }
     root.appendChild(cam);
-    if (!socials.length) return;
-    const badge = el("div", "social-badge");
+    // Stehen die Socials am Rahmen, entfällt der Hinweis in der Ecke.
+    if (!socials.length || (plain && config.fs)) return;
+    // Sitzt die Facecam unten rechts, weicht der Hinweis nach unten links aus.
+    const badge = el("div", config.cam === "br" ? "social-badge is-left" : "social-badge");
     const text = el("span", "social-text");
     badge.append(el("span", "dot"), text);
     root.appendChild(badge);

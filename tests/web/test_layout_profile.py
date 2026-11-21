@@ -16,7 +16,27 @@ from conftest import (
 
 OWNER = "user-anna"
 VIEWER = "user-ben"
-ALLOWED_KEYS = {"t", "c", "l", "n", "ms", "mp", "me", "nx", "cd", "tw", "yt", "tt", "ig", "x"}
+ALLOWED_KEYS = {
+    "t",
+    "c",
+    "l",
+    "cam",
+    "frame",
+    "cs",
+    "fs",
+    "fi",
+    "n",
+    "ms",
+    "mp",
+    "me",
+    "nx",
+    "cd",
+    "tw",
+    "yt",
+    "tt",
+    "ig",
+    "x",
+}
 
 
 def base_data():
@@ -94,15 +114,23 @@ def test_show_in_profile_permission_denied(context, base_url):
 
 def test_foreign_profile_shows_preview_and_take_over(make_context, base_url):
     data = base_data()
-    data["layouts"] = {OWNER: {"params": "t=bold&c=ff4655&n=Anna+live", "updatedAt": 1}}
+    data["layouts"] = {
+        OWNER: {
+            "params": "t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live",
+            "updatedAt": 1,
+        }
+    }
 
     # Angemeldet als jemand anderes
     page, errors = open_page(make_context(), base_url, "profil.html?u=anna", data)
     login(page, VIEWER, "Ben")
     frame_src, href, label = layout_block(page)
     assert label == "Design übernehmen"
-    assert href == "layouts.html?t=bold&c=ff4655&n=Anna+live"
-    assert frame_src == "overlay.html?s=start&t=bold&c=ff4655&n=Anna+live"
+    assert href == "layouts.html?t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live"
+    assert (
+        frame_src
+        == "overlay.html?s=start&t=bold&c=ff4655&cam=tr&frame=plain&cs=m&fs=1&fi=1&n=Anna+live"
+    )
     assert errors == []
 
     # Abgemeldet sieht man dasselbe
@@ -117,6 +145,10 @@ def test_foreign_profile_shows_preview_and_take_over(make_context, base_url):
     assert page.input_value("#name") == "Anna live"
     assert page.is_checked('input[name="theme"][value="bold"]')
     assert page.input_value("#color") == "#ff4655"
+    assert page.is_checked('input[name="cam"][value="tr"]')
+    assert page.is_checked('input[name="frame"][value="plain"]')
+    assert page.is_checked("#fs") and page.is_checked("#fi")
+    assert page.is_checked('input[name="cs"][value="m"]')
     assert errors == []
 
 
@@ -132,7 +164,7 @@ def test_own_profile_offers_edit_instead(context, base_url):
 def test_manipulated_layout_is_cleaned_when_shown(context, base_url):
     data = base_data()
     evil = (
-        "t=evil&c=zzzzzz&s=live&foo=bar&cd=999"
+        "t=evil&c=zzzzzz&s=live&foo=bar&cd=999&cam=zz&frame=zz&fs=ja&fi=2&cs=xl"
         "&n=%3Cimg%20src%3Dx%20onerror%3D__x%3D1%3E%0Aabc"
         "&tw=%40%40bad!!&ms=" + "A" * 100
     )
@@ -143,6 +175,9 @@ def test_manipulated_layout_is_cleaned_when_shown(context, base_url):
     params = query_of(href)
     assert set(params) <= ALLOWED_KEYS, params
     assert "t" not in params and "c" not in params  # ungültig → Standardwert, fällt weg
+    assert (
+        "cam" not in params and "frame" not in params and "fs" not in params and "fi" not in params
+    )
     assert params["cd"] == "30"
     assert params["tw"] == "bad"
     # Zeilenumbruch → Leerzeichen, dann auf 25 Zeichen gekürzt; bleibt reiner Text

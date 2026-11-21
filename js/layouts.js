@@ -54,6 +54,11 @@
       next: $("next").value,
       countdown: $("countdown").value,
       lang: $("lang").value,
+      cam: form.querySelector("input[name=cam]:checked")?.value,
+      frame: form.querySelector("input[name=frame]:checked")?.value,
+      cs: form.querySelector("input[name=cs]:checked")?.value,
+      fs: $("fs").checked,
+      fi: $("fi").checked,
     };
     L.SOCIALS.forEach(([key]) => { raw[key] = $(`social-${key}`).value; });
     return L.normalize(raw);
@@ -62,6 +67,14 @@
   function write(config) {
     const radio = form.querySelector(`input[name=theme][value="${config.theme}"]`);
     if (radio) radio.checked = true;
+    const camRadio = form.querySelector(`input[name=cam][value="${config.cam}"]`);
+    if (camRadio) camRadio.checked = true;
+    const frameRadio = form.querySelector(`input[name=frame][value="${config.frame}"]`);
+    if (frameRadio) frameRadio.checked = true;
+    const sizeRadio = form.querySelector(`input[name=cs][value="${config.cs}"]`);
+    if (sizeRadio) sizeRadio.checked = true;
+    $("fs").checked = config.fs;
+    $("fi").checked = config.fi;
     $("color").value = config.color;
     ["name", "start", "pause", "end", "next"].forEach((key) => { $(key).value = config[key]; });
     const countdown = $("countdown");
@@ -107,11 +120,25 @@
       placeholders(config);
       preview.src = overlayUrl(config, scene);
       stage.classList.toggle("is-live", scene === "live");
+      stage.dataset.cam = config.cam;
+      placeCam(config);
+      $("fs").closest(".check-field").classList.toggle("is-off", config.frame !== "plain");
+      $("fi").closest(".check-field").classList.toggle("is-off", config.frame !== "plain" || !config.fs);
       document.querySelectorAll(".swatch").forEach((s) =>
         s.classList.toggle("active", s.dataset.color === config.color));
       renderLinks(config);
       try { localStorage.setItem(STORE, L.toParams(config).toString()); } catch { /* privat/voll */ }
     }, 120);
+  }
+
+  // Platzhalter „Webcam“ in der Vorschau genau auf das Kamerabild legen (Maße aus layout-core)
+  function placeCam(config) {
+    const r = L.camRect(config);
+    const box = document.querySelector(".preview-cam");
+    box.style.left = `${(r.x / 1920) * 100}%`;
+    box.style.top = `${(r.y / 1080) * 100}%`;
+    box.style.width = `${(r.w / 1920) * 100}%`;
+    box.style.height = `${(r.h / 1080) * 100}%`;
   }
 
   function sceneLabel(name, language) {
@@ -228,7 +255,8 @@
         { capture_mode: "any_fullscreen" });
       const cam = source("Webcam", "dshow_input", {});
       sources.push(game, cam);
-      liveItems.push(item(game, 1, { w: 1920, h: 1080 }), item(cam, 2, { x: 60, y: 640, w: 480, h: 270 }));
+      // Webcam genau dort, wo der Rahmen der gewählten Ecke liegt (js/layout-core.js)
+      liveItems.push(item(game, 1, { w: 1920, h: 1080 }), item(cam, 2, L.camRect(config)));
     }
     const liveOverlay = overlay("live");
     liveItems.push(item(liveOverlay, liveItems.length + 1, { locked: true }));
@@ -323,6 +351,13 @@
     update();
   });
   $("download").addEventListener("click", () => download(read(), $("os").value));
+  // Wer „Socials am Rahmen“ einschaltet, bekommt „Logos anzeigen“ mit dazu – solange er
+  // die Logo-Option nicht selbst angefasst hat. In der URL bleibt der Standard „aus“.
+  let logosTouched = false;
+  $("fi").addEventListener("change", () => { logosTouched = true; });
+  $("fs").addEventListener("change", () => {
+    if ($("fs").checked && !logosTouched) $("fi").checked = true;
+  });
   $("os").addEventListener("change", osStep);
   $("share").addEventListener("click", () => copy(shareUrl(read()), null, $("share-status")));
   new ResizeObserver(scalePreview).observe(stage);
