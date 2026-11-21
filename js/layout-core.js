@@ -11,16 +11,38 @@
   const THEMES = ["neon", "minimal", "bold"];
   // Facecam-Ecke in der Live-Szene: oben/unten × links/rechts. "bl" ist der alte Standard.
   const CAMS = ["tl", "tr", "bl", "br"];
-  // Webcam-Rahmen (außen, inkl. Rahmenlinie) im 1920 × 1080-Bild. Unten links bleibt genau
-  // wie vor der Einführung von "cam" (x=60, y=640), damit bestehende OBS-Szenen weiter passen.
-  // Seitlich 60 px Abstand; Rahmen + Namensschild (58 px darunter) halten oben und unten
-  // denselben Abstand von 112 px zum Bildrand.
+  // Art des Facecam-Rahmens: "color" = farbiger Rahmen mit Namensschild (Standard, wie bisher),
+  // "plain" = schlichter dunkler Rahmen mit Leiste oben (Socials) und unten (Kanalname).
+  const FRAMES = ["color", "plain"];
+
+  // ---------- Geometrie der Facecam (einzige Stelle für alle Maße) ----------
+  // Das Kamerabild ist immer 480 × 270 (16:9). Die ganze Facecam-Gruppe hält in jeder Ecke
+  // seitlich 60 px Abstand, oben beginnt sie bei y=112, unten endet sie bei y=968.
+  // Unten links mit farbigem Rahmen ergibt das genau die alte Position (x=60, y=640).
   const CAM_SIZE = { w: 480, h: 270 };
-  const CAM_RECTS = {
-    tl: { x: 60, y: 112 }, tr: { x: 1380, y: 112 },
-    bl: { x: 60, y: 640 }, br: { x: 1380, y: 640 },
-  };
-  const camRect = (cam) => ({ ...(CAM_RECTS[cam] || CAM_RECTS.bl), ...CAM_SIZE });
+  const EDGE = { side: 60, top: 112, bottom: 968 };
+  const LABEL_H = 58; // Namensschild unter dem farbigen Rahmen
+  const PLAIN = { side: 6, top: 42, bottom: 42 }; // Leisten und Seitensaum des schlichten Rahmens
+  const corner = (cam) => (CAMS.includes(cam) ? cam : "bl");
+
+  // Äußerer Rahmen (was das Overlay zeichnet)
+  function frameRect(cam, frame) {
+    const c = corner(cam);
+    const plain = frame === "plain";
+    const w = plain ? CAM_SIZE.w + 2 * PLAIN.side : CAM_SIZE.w;
+    const h = plain ? CAM_SIZE.h + PLAIN.top + PLAIN.bottom : CAM_SIZE.h;
+    const groupH = plain ? h : h + LABEL_H;
+    const x = c.endsWith("l") ? EDGE.side : 1920 - EDGE.side - w;
+    const y = c.startsWith("t") ? EDGE.top : EDGE.bottom - groupH;
+    return { x, y, w, h };
+  }
+  // Fläche des Kamerabilds (wohin die Webcam in OBS gehört). Beim farbigen Rahmen
+  // ist das wie bisher das Rechteck des Rahmens selbst.
+  function camRect(cam, frame) {
+    const outer = frameRect(cam, frame);
+    if (frame !== "plain") return outer;
+    return { x: outer.x + PLAIN.side, y: outer.y + PLAIN.top, ...CAM_SIZE };
+  }
   const SOCIALS = [
     // key, Anzeige-Präfix
     ["tw", "twitch.tv/"],
@@ -31,6 +53,14 @@
   ];
   const PRESET_COLORS = ["#8b7cf6", "#ff4655", "#20c997", "#f5b301", "#4dabf7", "#ff7ac6"];
   const LIMITS = { name: 25, text: 60, next: 40, handle: 30 };
+  // Socials am schlichten Rahmen: Plattformname + Schreibweise des Namens, Logo-Datei
+  const FRAME_SOCIALS = {
+    tw: { label: "Twitch", prefix: "/", icon: "twitch" },
+    yt: { label: "YouTube", prefix: "/@", icon: "youtube" },
+    tt: { label: "TikTok", prefix: "@", icon: "tiktok" },
+    ig: { label: "Instagram", prefix: "@", icon: "instagram" },
+    x: { label: "X", prefix: "@", icon: "x" },
+  };
 
   const TEXTS = {
     de: {
@@ -44,7 +74,7 @@
   };
 
   const DEFAULTS = {
-    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de", cam: "bl",
+    scene: "start", name: "", theme: "neon", color: "#8b7cf6", lang: "de", cam: "bl", frame: "color", fs: false, fi: false,
     start: "", pause: "", end: "", next: "", countdown: 5,
     tw: "", yt: "", tt: "", ig: "", x: "",
   };
@@ -69,6 +99,11 @@
     if (THEMES.includes(theme)) config.theme = theme;
     const cam = get("cam");
     if (CAMS.includes(cam)) config.cam = cam;
+    const frame = get("frame");
+    if (FRAMES.includes(frame)) config.frame = frame;
+    const on = (value) => value === true || value === "1";
+    config.fs = on(get("fs"));
+    config.fi = on(get("fi"));
     const lang = get("lang") ?? get("l");
     if (lang === "de" || lang === "en") config.lang = lang;
     config.name = cleanText(get("name") ?? get("n"), LIMITS.name);
@@ -95,6 +130,9 @@
     put("c", c.color.slice(1), DEFAULTS.color.slice(1));
     put("l", c.lang, DEFAULTS.lang);
     put("cam", c.cam, DEFAULTS.cam);
+    put("frame", c.frame, DEFAULTS.frame);
+    if (c.fs) params.set("fs", "1");
+    if (c.fi) params.set("fi", "1");
     put("n", c.name);
     put("ms", c.start);
     put("mp", c.pause);
@@ -115,6 +153,15 @@
 
   function socialsOf(config) {
     return SOCIALS.filter(([key]) => config[key]).map(([key, prefix]) => ({ key, text: prefix + config[key] }));
+  }
+
+  // Socials für die obere Leiste des schlichten Rahmens, z. B. "Twitch /name"
+  function frameSocialsOf(config) {
+    return SOCIALS.filter(([key]) => config[key]).map(([key]) => {
+      const meta = FRAME_SOCIALS[key];
+      const handle = meta.prefix + config[key];
+      return { key, label: meta.label, handle, text: `${meta.label} ${handle}`, icon: meta.icon };
+    });
   }
 
   function textFor(config, key) {
@@ -164,7 +211,7 @@
   }
 
   window.SGE_LAYOUT = {
-    SCENES, THEMES, CAMS, CAM_SIZE, SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
-    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn, camRect, palette,
+    SCENES, THEMES, CAMS, FRAMES, CAM_SIZE, PLAIN, SOCIALS, FRAME_SOCIALS, PRESET_COLORS, LIMITS, TEXTS, DEFAULTS,
+    normalize, toParams, fromSearch, socialsOf, textFor, contrastOn, camRect, frameRect, frameSocialsOf, palette,
   };
 })();
