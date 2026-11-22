@@ -56,6 +56,25 @@
 .check-field input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .check-field.is-off { opacity: .55; }
 .check-hint { margin: .25rem 0 0 1.6rem; }
+/* Eigene Logos: Zeile je Plattform mit Vorschau (weiße Maske auf dunklem Grund) */
+.icon-upload { margin-top: 1rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+.icon-upload .cam-hint { margin-top: 0; line-height: 1.5; }
+.icon-row { display: grid; grid-template-columns: minmax(0, 5.5rem) 2.6rem minmax(0, 1fr); align-items: center;
+  gap: .4rem .6rem; margin-top: .7rem; font-size: .88rem; }
+.icon-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.icon-preview { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 8px;
+  background: #131317; border: 1px solid var(--border); }
+.icon-mark { width: 1.6rem; height: 1.6rem; background: #fff;
+  -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.icon-none { font-size: .6rem; line-height: 1.1; text-align: center; color: var(--text-dim); }
+.icon-actions { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
+.icon-pick { position: relative; cursor: pointer; }
+.icon-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.icon-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-status { grid-column: 1 / -1; margin: 0; font-size: .82rem; color: var(--text-dim); }
+.icon-status[data-type="success"] { color: #3ddc97; }
+.icon-status[data-type="error"] { color: #ff6b81; }
+.icon-login { margin: .6rem 0; font-size: .88rem; color: var(--text-dim); }
 .social-field { grid-template-columns: auto 1fr !important; align-items: center; }
 .social-field span { font-family: ui-monospace, monospace; font-size: .8rem; }
 

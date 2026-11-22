@@ -96,9 +96,16 @@
 
   // ---------- Links ----------
   const overlayBase = () => new URL("overlay.html", location.href);
+  // uid des angemeldeten Nutzers, gesetzt von js/layout-icons.js. Sie kommt NUR in die
+  // Overlay-Links (Vorschau, OBS), damit das Overlay die eigenen Logos laden kann – nie in den
+  // Teilen-Link oder ins Profil (die laufen über toParams ohne uid).
+  const UID_RE = /^[A-Za-z0-9]{10,128}$/;
   function overlayUrl(config, sceneName) {
     const url = overlayBase();
-    url.search = L.toParams(config, sceneName).toString();
+    const params = L.toParams(config, sceneName);
+    const uid = window.SGE_LAYOUT_UID;
+    if (config.fs && config.fi && typeof uid === "string" && UID_RE.test(uid)) params.set("u", uid);
+    url.search = params.toString();
     return url.toString();
   }
   function shareUrl(config) {
@@ -386,5 +393,10 @@
   scalePreview();
   update();
 
-  window.SGE_LAYOUT_EXPORT = { sceneCollection, overlayUrl, shareUrl, read }; // für Tests
+  // Neu zeichnen (z. B. nach An-/Abmelden); reload lädt die Vorschau auch bei gleicher URL neu
+  function refresh(reload = false) {
+    update();
+    if (reload) setTimeout(() => { try { preview.contentWindow.location.reload(); } catch { /* noch leer */ } }, 200);
+  }
+  window.SGE_LAYOUT_EXPORT = { sceneCollection, overlayUrl, shareUrl, read, refresh }; // auch für Tests
 })();

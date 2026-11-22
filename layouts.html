@@ -116,7 +116,11 @@
           <label class="check-field"><input type="checkbox" id="fs"><span>Socials am Rahmen</span></label>
           <p class="cam-hint check-hint">Nur beim schlichten Rahmen.</p>
           <label class="check-field"><input type="checkbox" id="fi"><span>Logos anzeigen</span></label>
-          <p class="cam-hint check-hint">Logos erscheinen, sobald die offiziellen Dateien unter assets/social-icons/ liegen.</p>
+          <div class="icon-upload" id="icon-upload" hidden>
+            <p class="cam-sub">Eigene Logos (optional)</p>
+            <p class="cam-hint">Lade nur Bilder hoch, die du verwenden darfst, z. B. die offiziellen Logos von den Markenseiten der Plattformen. Du bist für hochgeladene Bilder selbst verantwortlich. Twitch, YouTube, Instagram, TikTok und X sind Marken ihrer jeweiligen Inhaber; diese Seite ist nicht mit ihnen verbunden.</p>
+            <div id="icon-rows"></div>
+          </div>
         </fieldset>
       </form>
 
@@ -228,5 +232,6 @@
   <script src="js/layout-core.js"></script>
   <script src="js/layouts.js"></script>
   <script type="module" src="js/layouts-share.js"></script>
+  <script type="module" src="js/layout-icons.js"></script>
 </body>
 </html>
