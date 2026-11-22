@@ -94,3 +94,29 @@ def test_guides_link_to_clip_hunter_beta(context, base_url, language):
     tile = page.locator("#clip-hunter")
     assert tile.locator('[data-waitlist="clipHunter"] [data-waitlist-join]').count() == 1
     assert errors == []
+
+
+GOOGLE_FONT_HOSTS = ("fonts.googleapis.com", "fonts.gstatic.com")
+
+
+@pytest.mark.parametrize("path", [*MAIN_PAGES, OVERLAY_PAGE])
+def test_no_requests_to_google_fonts(context, base_url, path):
+    """Schriften kommen selbst gehostet aus fonts/ (css/fonts.css bzw. css/overlay.css)."""
+    requests = []
+    context.on("request", lambda r: requests.append(r.url))
+    statuses = {}
+    context.on("response", lambda r: statuses.__setitem__(r.url, r.status))
+    page, errors = open_page(context, base_url, path, "de")
+    # Einmal durchscrollen, damit alle Inhalte (und damit alle Schriftschnitte) gebraucht werden
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.evaluate("document.fonts.ready.then(() => true)")
+    page.wait_for_timeout(300)
+
+    google = [u for u in requests if any(host in u for host in GOOGLE_FONT_HOSTS)]
+    assert google == []
+    # Keine Verweise mehr im HTML (auch kein preconnect)
+    html = page.content()
+    assert not any(host in html for host in GOOGLE_FONT_HOSTS)
+    own = {u: s for u, s in statuses.items() if "/fonts/" in u and u.endswith(".woff2")}
+    assert own and all(s == 200 for s in own.values()), own
+    assert errors == []
