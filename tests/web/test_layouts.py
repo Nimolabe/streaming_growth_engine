@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from urllib.parse import quote
@@ -344,7 +345,6 @@ def test_fonts_have_german_characters(context, base_url, family, weight):
 # Facecam-Rahmen "schlicht", Socials am Rahmen, Logos
 # ---------------------------------------------------------------------------
 
-ICON_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "social-icons"
 
 # Schlichter Rahmen: 6 px Saum, 42 px Leisten, Kamerabild 480 × 270 (js/layout-core.js)
 PLAIN_FRAMES = {
@@ -384,28 +384,32 @@ INNER_JS = """() => { const e = document.querySelector('.cam-frame'); const r = 
                     h: r.height - px('borderTopWidth') - px('borderBottomWidth') } }; }"""
 
 
-def route_icons(context, all_present=False):
-    """Anfragen an assets/social-icons/ mit den Testformen beantworten (fehlende → 404).
+ICON_UID = "AnnaUid000000000001"  # wie eine Firebase-uid: nur Buchstaben und Ziffern
+UPLOADS = Path(__file__).resolve().parent / "fixtures" / "uploads"
 
-    all_present: jede angefragte .svg mit der Kreis-Testform beantworten."""
+
+def icon_data_url(name="kreis-transparent.png"):
+    """Ein Testbild (geometrische Form) als PNG-Data-URL, wie sie der Upload speichert."""
+    return "data:image/png;base64," + base64.b64encode((UPLOADS / name).read_bytes()).decode()
+
+
+def route_db_icons(context, icons, status=200):
+    """GET <databaseURL>/socialIcons/<uid>.json mit festen Daten beantworten; gibt die Anfragen zurück."""
     requested = []
 
     def handle(route):
-        name = route.request.url.split("?")[0].rsplit("/", 1)[-1]
-        requested.append(name)
-        path = ICON_FIXTURES / name
-        if all_present and name.endswith(".svg"):
-            path = ICON_FIXTURES / "twitch.svg"
-        if path.is_file():
-            route.fulfill(
-                status=200,
-                path=str(path),
-                content_type="image/png" if path.suffix == ".png" else "image/svg+xml",
-            )
-        else:
-            route.fulfill(status=404, body="")
+        requested.append(route.request.url)
+        if status != 200:
+            route.fulfill(status=status, body="")
+            return
+        route.fulfill(
+            status=200,
+            body=json.dumps(icons),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
 
-    context.route("**/assets/social-icons/*", handle)
+    context.route("**/socialIcons/**", handle)
     return requested
 
 
@@ -538,7 +542,7 @@ def test_frame_socials_as_text_and_rotation(context, base_url):
 @pytest.mark.parametrize("fi", [False, True], ids=["text", "logos"])
 def test_handles_up_to_15_chars_are_never_shortened(context, base_url, theme, fi):
     if fi:
-        route_icons(context, all_present=True)
+        route_db_icons(context, {k: icon_data_url() for k in ("tw", "yt", "tt", "ig", "x")})
     handles = {
         "tw": "luna_plays_1234",
         "yt": "MaxMustermannTV",
@@ -552,7 +556,7 @@ def test_handles_up_to_15_chars_are_never_shortened(context, base_url, theme, fi
     errors = collect_errors(page)
     page.clock.install()
     page.goto(
-        f"{base_url}/overlay.html?s=live&t={theme}&frame=plain&fs=1{'&fi=1' if fi else ''}&{query}",
+        f"{base_url}/overlay.html?s=live&t={theme}&frame=plain&fs=1{f'&fi=1&u={ICON_UID}' if fi else ''}&{query}",
         wait_until="load",
     )
     page.evaluate("document.fonts.ready.then(() => true)")
@@ -619,58 +623,14 @@ def test_plain_frame_without_frame_socials_keeps_corner_hint(context, base_url):
     assert errors == []
 
 
-ITEMS_JS = """[...document.querySelectorAll('.fs-item')].map(e => {
-  const icon = e.querySelector('.fs-icon');
-  return { key: e.dataset.social, text: e.textContent.trim(),
-           mask: icon ? (icon.style.maskImage || icon.style.webkitMaskImage) : null }; })"""
-
-
-def test_logos_from_files_svg_then_png(context, base_url):
-    requested = route_icons(context)
-    page = context.new_page()
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    errors = collect_errors(page)
-    page.goto(
-        f"{base_url}/overlay.html?s=live&frame=plain&fs=1&fi=1&tw=luna&yt=luna&tt=luna",
-        wait_until="load",
-    )
-    page.wait_for_function("() => document.querySelectorAll('.fs-icon').length === 3")
-    entries = page.evaluate(ITEMS_JS)
-    # Mit Logos: 3 Einträge, nur Logo + Name, kein Plattformwort
-    assert [e["text"] for e in entries] == ["/luna", "/@luna", "@luna"]
-    assert "assets/social-icons/twitch.svg" in entries[0]["mask"]
-    assert "assets/social-icons/youtube.svg" in entries[1]["mask"]
-    assert "assets/social-icons/tiktok.png" in entries[2]["mask"]  # kein .svg → .png
-    assert page.locator(".cam-frame img, .cam-frame svg").count() == 0
-    assert "tiktok.svg" in requested and "tiktok.png" in requested
-    assert real_errors(errors) == []
-
-
-def test_missing_logo_falls_back_to_text(context, base_url):
-    route_icons(context)
-    page = context.new_page()
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    errors = collect_errors(page)
-    page.goto(
-        f"{base_url}/overlay.html?s=live&frame=plain&fs=1&fi=1&tw=luna&ig=luna",
-        wait_until="load",
-    )
-    page.wait_for_function("() => document.querySelectorAll('.fs-icon').length === 1")
-    page.wait_for_timeout(300)  # instagram.svg und .png sind beide nicht da
-    entries = page.evaluate(ITEMS_JS)
-    assert entries[0]["text"] == "/luna" and "twitch.svg" in entries[0]["mask"]
-    # instagram fehlt → Textformat, kein leerer Platz; gemischt gilt die Text-Regel (≤ 2)
-    assert entries[1] == {"key": "ig", "text": "Instagram @luna", "mask": None}
-    assert len(entries) == 2
-    assert real_errors(errors) == []
-
-
 def test_no_logos_when_option_is_off(context, base_url):
-    requested = route_icons(context)
-    page, errors = open_overlay(context, base_url, "s=live&frame=plain&fs=1&tw=luna&yt=luna")
+    requested = route_db_icons(context, {"tw": icon_data_url()})
+    page, errors = open_overlay(
+        context, base_url, f"s=live&frame=plain&fs=1&tw=luna&yt=luna&u={ICON_UID}"
+    )
     page.wait_for_timeout(300)
     assert page.locator(".fs-icon, .cam-frame img").count() == 0
-    assert requested == []  # Logo-Dateien werden gar nicht erst geladen
+    assert requested == []  # ohne „Logos anzeigen“ wird gar nicht erst abgefragt
     assert errors == []
 
 
@@ -717,7 +677,6 @@ def test_frame_options_translated(context, base_url):
     assert names == ["Colored", "Plain"]
     hints = [t.strip() for t in page.locator(".check-field span, .check-hint").all_text_contents()]
     assert "Socials on the frame" in hints and "Show logos" in hints
-    assert "Logos appear once the official files are placed in assets/social-icons/." in hints
 
 
 def test_editor_size_choice_preview_and_share(context, base_url):
