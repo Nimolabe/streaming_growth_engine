@@ -77,6 +77,7 @@ setups.html       Setup-/Hardware-Finder (js/setups.js, js/setups-data.js)
 community.html    Profilsuche / Community (js/community.js)
 profil.html       Profilseite (js/profil.js)
 css/style.css     globales Design (CSS-Variablen in :root), css/setups.css, css/social.css
+css/fonts.css     @font-face der Website (Inter, Space Grotesk), Dateien unter fonts/
 js/main.js        allgemeines Verhalten, js/motion.js Animationen (GSAP, ScrollTrigger, Lenis)
 js/i18n.js        Deutsch/Englisch-Umschaltung
 js/auth.js        Firebase Auth (Login-Modal, #login-btn mit data-open-auth)
@@ -152,8 +153,8 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #23 | Aufräum-Paket: `CLAUDE.md` nach #21/#22, Setups-Reiter bei 320 px, Guides-Link zur Clip-Hunter-Kachel |
 | #24 | Layouts v2: Facecam-Positionen und -Größen, schlichter Rahmen, Socials am Rahmen, eigener Logo-Upload, neue Overlay-Hintergründe und selbst gehostete Schriften |
 
-Gemergt am 17.11.2026. Danach: CI grün, 231 Python-Tests grün, alle Seiten DE/EN ohne
-JS-Fehler, Website neu veröffentlicht.
+#1–#20 gemergt bis 17.11.2026, #21–#25 bis 22.11.2026. Stand nach #24: CI grün (Website
+201 Browser-Tests, Agenten 407 Python-Tests), alle Seiten DE/EN ohne JS-Fehler.
 
 ## 5. Offene Pull Requests
 
@@ -369,6 +370,10 @@ Prüfliste für Website-Änderungen:
 11. Grids am Handy: `minmax(0, 1fr)` statt `1fr` verwenden, sonst wird die Spalte so breit wie
     ihr Inhalt und die Seite scrollt seitlich (PR #22, #23).
 12. Keine Marken-Logos ins Repo. Plattform-Logos nur als eigene Uploads der Nutzer (#24).
+13. Keine externen Schriften/CDNs mit Personenbezug (z. B. Google Fonts überträgt die IP-Adresse).
+    Schriften liegen selbst gehostet unter `fonts/` (je Familie ein Ordner mit `OFL.txt`),
+    eingebunden über `css/fonts.css` (Website) bzw. `css/overlay.css` (Overlay). Der Test
+    `test_no_requests_to_google_fonts` prüft das für jede Seite.
 
 ---
 
