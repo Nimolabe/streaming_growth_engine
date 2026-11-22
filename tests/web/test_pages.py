@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 import pytest
 from conftest import MAIN_PAGES, OVERLAY_PAGE, collect_errors, set_language, wait_for_auth
 
@@ -13,7 +15,7 @@ def open_page(context, base_url, path, language):
     page = context.new_page()
     errors = collect_errors(page)
     page.goto(f"{base_url}/{path}", wait_until="load")
-    if path != OVERLAY_PAGE:
+    if not path.startswith("overlay.html"):  # das Overlay hat keine Anmeldung
         wait_for_auth(page)
     page.wait_for_timeout(300)  # verzögerte Fehler (z. B. aus async-Code) abwarten
     return page, errors
@@ -119,4 +121,81 @@ def test_no_requests_to_google_fonts(context, base_url, path):
     assert not any(host in html for host in GOOGLE_FONT_HOSTS)
     own = {u: s for u, s in statuses.items() if "/fonts/" in u and u.endswith(".woff2")}
     assert own and all(s == 200 for s in own.values()), own
+    assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# Fremde Hosts: Die Website lädt nichts von Dritten außer Firebase
+# ---------------------------------------------------------------------------
+
+# Zentrale Liste der erlaubten fremden Adressen (Host, Pfad-Anfang). Alles andere – auch
+# Google Fonts oder Bild-CDNs – ist verboten, weil dabei die IP-Adresse an Dritte geht.
+ALLOWED_FOREIGN = [
+    ("www.gstatic.com", "/firebasejs/"),  # Firebase-SDK
+    ("*.firebaseio.com", "/"),  # Realtime Database (ältere Adressen)
+    ("*.firebasedatabase.app", "/"),  # Realtime Database (u. a. Logos fürs Overlay)
+    ("identitytoolkit.googleapis.com", "/"),  # Firebase Auth (Anmelden)
+    ("securetoken.googleapis.com", "/"),  # Firebase Auth (Token erneuern)
+]
+
+
+def foreign_allowed(url: str) -> bool:
+    parts = urlsplit(url)
+    for host, prefix in ALLOWED_FOREIGN:
+        ok_host = parts.hostname == host or (
+            host.startswith("*.") and (parts.hostname or "").endswith(host[1:])
+        )
+        if ok_host and parts.path.startswith(prefix):
+            return True
+    return False
+
+
+def test_allowlist_itself():
+    assert foreign_allowed("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js")
+    assert foreign_allowed("https://x-default-rtdb.europe-west1.firebasedatabase.app/a.json")
+    assert not foreign_allowed("https://fonts.googleapis.com/css2?family=Inter")
+    assert not foreign_allowed("https://fonts.gstatic.com/s/inter/v20/a.woff2")
+    assert not foreign_allowed("https://www.gstatic.com/other/thing.js")
+    assert not foreign_allowed("https://images.unsplash.com/photo-1?w=900")
+    assert not foreign_allowed("https://evil.firebasedatabase.app.example.com/")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        *MAIN_PAGES,
+        OVERLAY_PAGE,
+        "overlay.html?s=live&frame=plain&fs=1&fi=1&tw=a&u=AnnaUid000000000001",
+    ],
+)
+def test_no_requests_to_foreign_hosts(context, base_url, path):
+    requests = []
+    context.on("request", lambda r: requests.append(r.url))
+    page, errors = open_page(context, base_url, path, "de")
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_timeout(400)
+    page.evaluate("window.scrollTo(0, 0)")
+    foreign = [u for u in requests if not u.startswith(base_url) and not u.startswith("data:")]
+    assert [u for u in foreign if not foreign_allowed(u)] == []
+    assert errors == []
+
+
+def test_homepage_images_are_local(context, base_url):
+    page, errors = open_page(context, base_url, "index.html", "de")
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('main img')].every(i => i.complete && i.naturalWidth > 0)"
+    )
+    imgs = page.evaluate(
+        """[...document.querySelectorAll('main img')].map(i => ({
+             src: i.getAttribute('src'), srcset: i.getAttribute('srcset'), sizes: i.getAttribute('sizes'),
+             w: i.getAttribute('width'), h: i.getAttribute('height'), lazy: i.getAttribute('loading'),
+             alt: i.getAttribute('alt') }))"""
+    )
+    assert len(imgs) == 7
+    for i, img in enumerate(imgs):
+        assert img["src"].startswith("images/") and img["src"].endswith(".webp")
+        assert "-600.webp 600w" in img["srcset"] and img["sizes"]
+        assert img["w"] and img["h"] and img["alt"]
+        assert img["lazy"] == (None if i == 0 else "lazy")  # Hero-Bild nicht lazy
     assert errors == []
