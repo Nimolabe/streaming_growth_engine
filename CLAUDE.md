@@ -6,7 +6,7 @@
   aktualisiert.
 - Neue Erkenntnisse und Stolperfallen kommen in **Abschnitt 10** (Bekannte Fallstricke).
 
-Stand: 17.11.2026 (nach dem Merge von #4 und #14–#20) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
+Stand: 22.11.2026 (nach dem Merge von #23 und #24) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
 Website (GitHub Pages): https://nimolabe.github.io/streaming_growth_engine/
 
 > **Für Claude Code:** Lies dieses Dokument vollständig, bevor du etwas änderst. Kommuniziere
@@ -24,6 +24,7 @@ Das Produkt besteht aus zwei Teilen:
 
 1. **Website** (statisch, GitHub Pages): Startseite, Setups/Hardware-Finder, Guides,
    Layout-Baukasten, Community mit Profilen. Firebase dient für Login und Datenbank.
+   Beide Entwickler haben Zugang zur Firebase-Konsole.
 2. **KI-Agenten** (`agents/`, Python): Clip Hunter, Content Strategist (inkl. Kategorie-Check),
    Creator Intelligence u. a. Lokal per Kommandozeile und als FastAPI-Prototyp.
 
@@ -51,9 +52,11 @@ Diese Regeln kommen aus `CONTRIBUTING.md` und aus Absprachen mit dem Nutzer.
 - **Änderungen an gemeinsam genutzten Dateien** (`index.html`, globale CSS/JS, Auth,
   `database.rules.json`, Konfiguration) im PR klar benennen. Dort ist das Konfliktrisiko hoch.
 - **Firebase-Regeln:** Änderungen an `database.rules.json` werden erst wirksam, wenn sie in der
-  Firebase-Konsole veröffentlicht sind. Das kann nur der Kumpel (der Nutzer hat keinen
+  Firebase-Konsole veröffentlicht sind. Das können der Nutzer und der Kumpel (beide haben
   Konsolenzugang). Jede Funktion muss ohne veröffentlichte Regeln verständlich reagieren
   (freundliche Meldung statt Absturz).
+- **Jeder neue Datenbank-Bereich braucht eine erneute Veröffentlichung der Regeln.** Im PR
+  muss darauf deutlich hingewiesen werden (z. B. als Hinweis ganz oben im PR-Text).
 - **Neue Ideen nicht sofort bauen**, sondern auf eine Ideenliste setzen. Für jeden Schritt
   vorher festlegen, was „fertig genug“ heißt.
 - **Qualität vor Tempo:** testen (Python-Tests, Browser), Desktop **und** Handy prüfen,
@@ -146,6 +149,8 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #20 | Content Strategist: Kategorie-Check auf echten Twitch-Daten |
 | #21 | Doku: `CLAUDE.md` mit Projektstand und Arbeitsregeln |
 | #22 | Browser-Tests (`tests/web/`, eigene CI) und Handy-Fixes für Guides und Layout-Baukasten |
+| #23 | Aufräum-Paket: `CLAUDE.md` nach #21/#22, Setups-Reiter bei 320 px, Guides-Link zur Clip-Hunter-Kachel |
+| #24 | Layouts v2: Facecam-Positionen und -Größen, schlichter Rahmen, Socials am Rahmen, eigener Logo-Upload, neue Overlay-Hintergründe und selbst gehostete Schriften |
 
 Gemergt am 17.11.2026. Danach: CI grün, 231 Python-Tests grün, alle Seiten DE/EN ohne
 JS-Fehler, Website neu veröffentlicht.
@@ -227,13 +232,40 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 - CLI: `measure`, `suggest`, `watch` (mindestens alle 10 Min.), `report` (+ `--html`/`--json`).
   API: `POST /api/v1/content/category-check` (nur Auswertung, kein Twitch-Zugriff).
 
+**#23/#24 Layouts v2:** `js/layout-core.js` (Prüfen/Kodieren, Geometrie), `js/overlay.js`,
+`js/layouts.js`, `js/layout-icons.js` (Logo-Upload), `css/overlay.css`, `css/layouts.css`.
+- **URL-Parameter** (unbekannte Werte → Standard; Standardwerte stehen nicht in der URL, alte
+  Links bleiben unverändert):
+  - `cam`: Facecam-Ecke `tl`/`tr`/`bl`/`br` (Standard `bl`).
+  - `cs`: Facecam-Größe `s`/`m`/`l` = 480×270 / 640×360 / 800×450 (Standard `s`).
+  - `frame`: Rahmen `color` (farbig, Standard) oder `plain` (schlicht).
+  - `fs`: Socials am Rahmen (`1` = an, nur bei `plain`).
+  - `fi`: Logos anzeigen (`1` = an).
+  - `u`: uid des angemeldeten Nutzers für die eigenen Logos. Steht **nur in den Overlay-Links**
+    (Editor-Vorschau, Link-Liste, OBS-Export), **nie** im Teilen-Link und nie im Profil
+    („Design übernehmen“ bekommt keine fremden Logos). Nur Buchstaben/Ziffern, 10–128 Zeichen.
+- **Geometrie** an einer Stelle: `frameRect(config)`, `camRect(config)`, `plainBorders(config)`.
+  Seitlich 60 px, oben ab y=112, unten bis y=968. Klein + farbig + unten links bleibt
+  x=60, y=640, 480×270. `sceneCollection` setzt die Webcam-Quelle passend zu Position und Größe.
+- **Logos:** Das Projekt liefert **keine** Plattform-Logos mit (Markenrecht). Angemeldete Nutzer
+  laden eigene Bilder hoch (`js/layout-icons.js`, höchstens 300 KB, PNG/SVG/WebP). Im Browser
+  werden sie über ein Canvas zu einer weißen 128×128-PNG-Maske umgerechnet (SVG nur als Bild
+  geladen, nie ins DOM) und gespeichert unter `socialIcons/<uid>/<tw|yt|tt|ig|x>` (Data-URL,
+  ≤ 40.000 Zeichen). Das Overlay lädt sie per REST-GET (`<databaseURL>/socialIcons/<uid>.json`,
+  ohne Firebase-SDK) und zeigt sie per CSS `mask-image`, immer weiß. Fehlt ein Logo, steht Text.
+- **Socials am Rahmen:** mit Logos höchstens 3, als Text höchstens 2 gleichzeitig; Handles bis
+  15 Zeichen werden nie gekürzt; der Rest wechselt alle 8 s.
+- **Schriften** selbst gehostet unter `fonts/` (SIL OFL, je `OFL.txt`): Oxanium (Neon),
+  Sora (Minimal), Anton (Kräftig), Manrope (Fließtext). Kein Google Fonts im Overlay.
+
 ---
 
 ## 6. Roadmap und Status
 
 **Hauptspur**
-1. ✅ **Fundament:** PR #8 und #4 gemergt, PR #5 geparkt. Firebase-Regeln müssen noch
-   veröffentlicht werden (einmal, mit der aktuellen `database.rules.json` von `main`).
+1. ✅ **Fundament:** PR #8 und #4 gemergt, PR #5 geparkt. Die Firebase-Regeln sind
+   veröffentlicht, inklusive `layouts`, `waitlist` und `socialIcons` (zuletzt am 22.11.2026).
+   Warteliste und „Layout im Profil“ wurden live getestet.
 2. ✅ **Clip Hunter echt testen und kalibrieren** (PR #15). Zielkriterium war: mindestens die
    Hälfte der Top 10 clipwürdig. Erreicht mit 67 % „Clip enthält Highlight“, nur mit Chat.
    Offen: Audio an echten VODs mit Ton.
@@ -255,8 +287,10 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 
 ## 7. Offene Punkte, die nur Menschen erledigen können
 
-- **Firebase-Regeln veröffentlichen** (Kumpel): Realtime Database → Regeln → Inhalt von
-  `database.rules.json` einfügen → Veröffentlichen. Nötig für Warteliste und „Layout im Profil“.
+- **Firebase-Regeln neu veröffentlichen**, sobald ein PR einen neuen Datenbank-Bereich
+  hinzufügt (Nutzer oder Kumpel): Realtime Database → Regeln → Inhalt von
+  `database.rules.json` einfügen → Veröffentlichen. Zuletzt am 22.11.2026.
+- **Impressum und Datenschutzerklärung** ergänzen, bevor die Beta öffentlich wird.
 - **Twitch-Entwickler-App** anlegen (dev.twitch.tv/console, 2FA nötig) → Client-ID und
   Secret als Umgebungsvariablen. Dann einmal den Kategorie-Check und den Clip-Hunter-Abgleich
   echt testen.
@@ -274,7 +308,7 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
   funktioniert unabhängig davon.
 - KI-Stufe mit einem echten Modell und echtem Whisper (getestet nur mit nachgebautem Server).
 - Kategorie-Check gegen die echte Twitch-API (getestet nur mit nachgebauter API).
-- Firebase-Regeln gegen den echten Server (kein Emulator verfügbar).
+- Logo-Upload (`socialIcons`) mit echtem Konto gegen die echte Datenbank.
 - Audio-Spitzen des Clip Hunters an echten VODs.
 
 ---
@@ -330,6 +364,11 @@ Prüfliste für Website-Änderungen:
    egal ist, ist **nicht belegt**. Deshalb gibt es den Rückfall über Search Categories.
 9. Nichts mergen ohne ausdrücklichen Auftrag. Branches löschen oder Repos archivieren
    wird für die KI blockiert.
+10. Neue Datenbank-Bereiche → Regeln in der Firebase-Konsole neu veröffentlichen, sonst
+    antwortet die Datenbank mit `PERMISSION_DENIED`. Im PR deutlich darauf hinweisen.
+11. Grids am Handy: `minmax(0, 1fr)` statt `1fr` verwenden, sonst wird die Spalte so breit wie
+    ihr Inhalt und die Seite scrollt seitlich (PR #22, #23).
+12. Keine Marken-Logos ins Repo. Plattform-Logos nur als eigene Uploads der Nutzer (#24).
 
 ---
 
