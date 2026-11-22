@@ -71,6 +71,19 @@
       }
     },
 
+    "socialIcons": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        "tw": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/png;base64,') && newData.val().length <= 40000" },
+        "yt": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/png;base64,') && newData.val().length <= 40000" },
+        "tt": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/png;base64,') && newData.val().length <= 40000" },
+        "ig": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/png;base64,') && newData.val().length <= 40000" },
+        "x": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/png;base64,') && newData.val().length <= 40000" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "followers": {
       "$uid": {
         ".read": true,
