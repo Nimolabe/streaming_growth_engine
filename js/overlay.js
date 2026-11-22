@@ -81,30 +81,43 @@
   }
 
   // ---------- Socials am schlichten Rahmen ----------
-  // Logos nur aus assets/social-icons/<name>.svg oder .png (offizielle Dateien, vom Nutzer
-  // abgelegt; zuerst .svg, dann .png). Ob eine Datei da ist, zeigt ein Testladen; bis dahin –
-  // und wenn keine da ist – steht der Text.
-  const ICON_DIR = "assets/social-icons/";
-  const iconUrl = new Map(); // icon -> URL der gefundenen Datei | null (keine) | undefined (lädt)
-  function loadIcon(name, done) {
-    if (iconUrl.has(name)) return;
-    iconUrl.set(name, undefined);
-    const tryNext = (exts) => {
-      if (!exts.length) { iconUrl.set(name, null); done(); return; }
-      const url = `${ICON_DIR}${name}.${exts[0]}`;
-      const probe = new Image();
-      probe.onload = () => { iconUrl.set(name, url); done(); };
-      probe.onerror = () => tryNext(exts.slice(1));
-      probe.src = url;
-    };
-    tryNext(["svg", "png"]);
+  // Logos sind eigene Uploads des Streamers: socialIcons/<uid>/<plattform> in der Realtime
+  // Database, gelesen per einfachem GET (ohne Firebase-SDK). Nur geprüfte PNG-Data-URLs werden
+  // verwendet; fehlt etwas oder scheitert der Abruf, bleibt der Text stehen.
+  const ICON_PREFIX = "data:image/png;base64,";
+  const ICON_RE = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
+  const UID_RE = /^[A-Za-z0-9]{10,128}$/;
+  const iconUrl = new Map(); // Plattform-Schlüssel -> geprüfte Data-URL, die sich als Bild laden ließ
+
+  async function loadIcons(done) {
+    const uid = new URLSearchParams(location.search).get("u");
+    if (!config.fi || !uid || !UID_RE.test(uid)) return;
+    try {
+      const { firebaseConfig } = await import("./firebase-config.js");
+      const base = String(firebaseConfig.databaseURL || "").replace(/\/+$/, "");
+      if (!/^https:\/\/[a-z0-9.-]+$/.test(base)) return;
+      const res = await fetch(`${base}/socialIcons/${uid}.json`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || typeof data !== "object") return;
+      for (const [key] of L.SOCIALS) {
+        const value = data[key];
+        if (typeof value !== "string" || value.length > 40000 || !value.startsWith(ICON_PREFIX) || !ICON_RE.test(value)) continue;
+        // Nur übernehmen, was sich wirklich als Bild laden lässt
+        const probe = new Image();
+        probe.onload = () => { iconUrl.set(key, value); done(); };
+        probe.src = value;
+      }
+    } catch {
+      // Kein Netz, Regeln noch nicht veröffentlicht o. Ä.: Text bleibt stehen
+    }
   }
 
   function frameSocialItem(item) {
     const entry = el("span", "fs-item");
     entry.dataset.social = item.key;
     entry.dataset.len = String(item.name.length);
-    const url = config.fi ? iconUrl.get(item.icon) : null;
+    const url = config.fi ? iconUrl.get(item.key) : null;
     if (url) {
       // Mit Logo: nur Logo + Name, ohne Plattformwort
       entry.classList.add("has-icon");
@@ -129,7 +142,7 @@
     const row = el("div", "fs-row");
     bar.appendChild(row);
     // Höchstens 3 Einträge mit Logos, höchstens 2 als Text (ein fehlendes Logo → Text-Regel).
-    const maxPerPage = () => (config.fi && items.every((i) => iconUrl.get(i.icon)) ? 3 : 2);
+    const maxPerPage = () => (config.fi && items.every((i) => iconUrl.get(i.key)) ? 3 : 2);
     const fits = () => [...row.children].every((entry) => {
       const text = entry.querySelector(".fs-text");
       return Number(entry.dataset.len) > FULL_HANDLE || text.scrollWidth <= text.clientWidth;
@@ -148,7 +161,7 @@
     };
     render();
     if (document.fonts) document.fonts.ready.then(render); // Breiten erst mit der echten Schrift
-    if (config.fi) items.forEach((item) => loadIcon(item.icon, render));
+    loadIcons(render);
     setInterval(() => {
       if (items.length <= shown) return;
       row.classList.add("is-hidden"); // sanft ausblenden (opacity)
