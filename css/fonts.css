@@ -1,0 +1,17 @@
+/* ===== Schriften der Website, selbst gehostet (SIL Open Font License, siehe fonts/<name>/OFL.txt) =====
+   Keine Anfragen an Google Fonts oder andere fremde Server.
+   Nur die Schnitte, die die Seiten tatsächlich nutzen (latin). Die Familiennamen entsprechen
+   den bisherigen Google-Namen, damit css/style.css (--font-head, --font-body) unverändert bleibt.
+   Das Overlay (overlay.html) hat eigene Schriften in css/overlay.css. */
+
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
+
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("../fonts/space-grotesk/space-grotesk-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("../fonts/space-grotesk/space-grotesk-latin-700-normal.woff2") format("woff2"); }
