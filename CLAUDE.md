@@ -372,8 +372,11 @@ Prüfliste für Website-Änderungen:
 12. Keine Marken-Logos ins Repo. Plattform-Logos nur als eigene Uploads der Nutzer (#24).
 13. Keine externen Schriften/CDNs mit Personenbezug (z. B. Google Fonts überträgt die IP-Adresse).
     Schriften liegen selbst gehostet unter `fonts/` (je Familie ein Ordner mit `OFL.txt`),
-    eingebunden über `css/fonts.css` (Website) bzw. `css/overlay.css` (Overlay). Der Test
-    `test_no_requests_to_google_fonts` prüft das für jede Seite.
+    eingebunden über `css/fonts.css` (Website) bzw. `css/overlay.css` (Overlay). Bilder liegen
+    selbst gehostet unter `images/` (WebP mit `-600`-Variante per `srcset`, Herkunft und Lizenz
+    in `images/README.md`). Der Test `test_no_requests_to_foreign_hosts` erlaubt fremde Hosts
+    nur aus der Firebase-Liste `ALLOWED_FOREIGN` in `tests/web/test_pages.py`;
+    `test_no_requests_to_google_fonts` prüft zusätzlich Google Fonts für jede Seite.
 
 ---
 
