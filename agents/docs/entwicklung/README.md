@@ -10,7 +10,6 @@ bekannte Grenzen der einzelnen Agent-Versionen. Sie sind Hintergrundwissen.
 
 | Datei | Inhalt |
 | --- | --- |
-| `content-strategist-v3.md` | Format-Empfehlungen, Mini-Serien, Aufwandsverteilung |
 | `creator-intelligence-v1.md` | Growth Analyst: Wochenvergleich und Prioritäten |
 | `creator-intelligence-v2-strategy.md` | Growth Analyst: Experiment-Auswahl und Auswertung |
 | `creator-intelligence-acceptance-tests.md` | Abnahme-Szenarien des Growth Analyst |
@@ -18,3 +17,6 @@ bekannte Grenzen der einzelnen Agent-Versionen. Sie sind Hintergrundwissen.
 Die Notizen zu Clip Intelligence v1/v2 und zur Prüfliste v3 wurden mit diesen Modulen
 entfernt (November 2026). Sie stehen weiter in der Git-Historie. Die Clip-Suche ist im
 Clip Hunter v4 beschrieben: [`../clip-hunter.md`](../clip-hunter.md).
+
+Die Notiz zum Content Strategist v3 wurde mit dem Umbau zu Variante A entfernt. Die aktuelle
+Beschreibung steht in [`../content-strategist.md`](../content-strategist.md).

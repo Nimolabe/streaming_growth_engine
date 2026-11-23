@@ -9,6 +9,10 @@ Dieses Dokument **ändert keinen Code**. Alle Entscheidungen am Ende trifft der 
 > Empfehler v2 sind inzwischen gelöscht; `v2_catalog.py` heißt jetzt `catalog.py`,
 > `classify_game` steht in `v3_recommender.py`. Die Dateinamen unten beschreiben den Stand
 > vom 23.11.2026 und sind in der Git-Historie nachlesbar.
+>
+> **Nachtrag 2:** Variante A ist umgesetzt: `streaming_agents/content_strategist/` ersetzt
+> Content Strategist v3, `catalog.py` und den Wochenplaner (siehe
+> [content-strategist.md](content-strategist.md)).
 
 ## So wurde geprüft
 
