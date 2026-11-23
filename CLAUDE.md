@@ -280,7 +280,8 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
    des Kategorie-Checks aufbauen (Wachstum von Kategorien über Tage).
 
 **Nebenspur**
-- a) ✅ Einfacher Layout-Baukasten (PR #19)
+- a) ✅ Einfacher Layout-Baukasten (PR #19). Am 23.11.2026 vom Nutzer erfolgreich getestet:
+  Import der Szenensammlung in OBS und Logo-Upload mit echtem Konto.
 - b) ✅ Guides-Seite (PR #18)
 - c) ✅ Beta-Warteliste an der Clip-Hunter-Kachel (PR #17)
 
@@ -295,7 +296,6 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 - **Twitch-Entwickler-App** anlegen (dev.twitch.tv/console, 2FA nötig) → Client-ID und
   Secret als Umgebungsvariablen. Dann einmal den Kategorie-Check und den Clip-Hunter-Abgleich
   echt testen.
-- **OBS-Import testen:** Szenensammlung aus dem Layout-Baukasten importieren.
 - **KI-Stufe testen:** Ollama installieren, `ollama pull qwen2.5:7b`, dann
   `python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl --ai --transcribe --report bericht.html`.
 - **Entscheidungen:** Hosting für Schritt 4; Modell und Budget für einen gehosteten KI-Anbieter.
@@ -305,11 +305,8 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 
 ## 8. Nicht getestet (ehrlich)
 
-- Echter Import der Szenensammlung in OBS. Der Weg über einzelne Browser-Quellen-Links
-  funktioniert unabhängig davon.
 - KI-Stufe mit einem echten Modell und echtem Whisper (getestet nur mit nachgebautem Server).
 - Kategorie-Check gegen die echte Twitch-API (getestet nur mit nachgebauter API).
-- Logo-Upload (`socialIcons`) mit echtem Konto gegen die echte Datenbank.
 - Audio-Spitzen des Clip Hunters an echten VODs.
 
 ---
