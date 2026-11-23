@@ -3,8 +3,7 @@
 Fully offline. No network, models, tracking, or channel access.
 """
 
-from .v2_catalog import FORMATS, SOURCES, Format
-from .v2_recommender import classify_game
+from .catalog import FORMATS, SOURCES, Format
 from .v3_contracts import (
     ContentStrategyV3,
     CreatorProfileV3,
@@ -26,6 +25,23 @@ CHAT_DEPENDENT = frozenset({
 })
 COLLAB_DEPENDENT = frozenset({"guest-explainer"})
 GENRE_GAME_MAP = {"valorant": "tactical", "minecraft": "sandbox", "fortnite": "battle_royale"}
+
+# Spiel → Genre-Gruppe des Formatkatalogs (Teilwort, Groß-/Kleinschreibung egal).
+_GROUPS = {
+    "tactical": (
+        "valorant", "counter-strike", "cs2", "csgo", "rainbow six", "r6", "overwatch"
+    ),
+    "sandbox": ("minecraft", "terraria", "stardew", "sims", "factorio", "satisfactory"),
+    "battle_royale": ("fortnite", "apex", "warzone", "pubg", "battle royale"),
+}
+
+
+def classify_game(category: str) -> str:
+    value = category.casefold()
+    for group, terms in _GROUPS.items():
+        if any(term in value for term in terms):
+            return group
+    return "general"
 
 
 def _stage(profile: CreatorProfileV3) -> str:

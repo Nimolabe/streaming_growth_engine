@@ -15,7 +15,10 @@ AGENTS = [
     AgentInfo(
         name=AgentName.TREND_SCOUT,
         status=AgentStatus.PLANNED,
-        description="Detect growing streaming categories; to reuse the Trend Radar scouts.",
+        description=(
+            "Detect growing streaming categories; planned to build on the category check "
+            "measurements (category_check)."
+        ),
     ),
     AgentInfo(
         name=AgentName.CLIP_HUNTER,
@@ -34,8 +37,8 @@ AGENTS = [
         name=AgentName.SETUP_ADVISOR,
         status=AgentStatus.PLANNED,
         description=(
-            "Budget-based equipment recommendations; covered by the Setup Intelligence Agent "
-            "(backend/setup_agent) instead of a second implementation."
+            "Budget-based equipment recommendations; the website's setup finder (setups.html) "
+            "covers this today. A separate Setup Intelligence Agent is parked in pull request #5."
         ),
     ),
 ]

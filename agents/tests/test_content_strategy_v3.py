@@ -98,7 +98,7 @@ def test_many_reported_chatters_do_not_override_zero_viewers():
 
 
 def test_audience_affects_suitability_scores():
-    from streaming_agents.agents.v2_catalog import FORMATS
+    from streaming_agents.agents.catalog import FORMATS
     from streaming_agents.agents.v3_recommender import _score
 
     tutorial = next(item for item in FORMATS if item.id == "micro-skill")
@@ -108,7 +108,7 @@ def test_audience_affects_suitability_scores():
 
 
 def test_platform_affects_relevant_format_score():
-    from streaming_agents.agents.v2_catalog import FORMATS
+    from streaming_agents.agents.catalog import FORMATS
     from streaming_agents.agents.v3_recommender import _score
 
     tutorial = next(item for item in FORMATS if item.id == "micro-skill")
@@ -118,7 +118,7 @@ def test_platform_affects_relevant_format_score():
 
 
 def test_experience_changes_format_priorities():
-    from streaming_agents.agents.v2_catalog import FORMATS
+    from streaming_agents.agents.catalog import FORMATS
     from streaming_agents.agents.v3_recommender import _score
 
     analysis = next(item for item in FORMATS if item.id == "decision-review")
@@ -220,7 +220,7 @@ def test_exclusions_produce_new_choices():
 
 
 def test_no_viable_formats_returns_422():
-    from streaming_agents.agents.v2_catalog import FORMATS
+    from streaming_agents.agents.catalog import FORMATS
 
     all_ids = [item.id for item in FORMATS]
     response = client.post(
