@@ -118,11 +118,14 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
   `.[whisper]`).
 - CI: `.github/workflows/agents-tests.yml` (bei Änderungen unter `agents/`); manuell mit
   Eingabe `enable_video_tests` auch die ffmpeg-Video-Tests.
-- Module: `clip_hunter/` (Clip Hunter v4), `category_check/` , `agents/` (Content
-  Strategist v3 mit Wochenplaner, Creator Intelligence, ältere Clip-Intelligence-Versionen),
-  `llm/` (OpenAI-Provider, opt-in mit `--live`, Kostenbremse), `api.py`, `registry.py`.
-- Doku: `agents/README.md`, `agents/docs/clip-hunter.md`, `agents/docs/category-check.md`
-  , `agents/docs/architecture.md`.
+- Module: `clip_hunter/` (Clip Hunter v4), `category_check/`, `agents/` (Content
+  Strategist v3 mit Formatkatalog `catalog.py` und Wochenplaner; Growth Analyst =
+  Creator Intelligence + `creator_strategy*`, geparkt), `llm/` (OpenAI-Provider, opt-in mit
+  `--live`, Kostenbremse; soll später mit `clip_hunter/ai_stage.py` zusammengelegt werden),
+  `api.py`, `registry.py`. Die älteren Clip-Intelligence-Module (v1/v2, Prüfliste,
+  `clip_evaluation`, `clip_cli`) und der Content-Strategist-Empfehler v2 sind entfernt.
+- Doku: `agents/README.md`, `agents/docs/clip-hunter.md`, `agents/docs/category-check.md`,
+  `agents/docs/architecture.md`, `agents/docs/bestandsaufnahme-2026-11.md`.
 
 ---
 

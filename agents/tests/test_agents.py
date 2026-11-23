@@ -27,12 +27,19 @@ def test_api_exposes_one_route_per_agent_function():
         "/api/v1/growth/analysis",
         "/api/v1/growth/strategy",
         "/api/v1/growth/review",
+        "/api/v1/clips/chat-moments",
+        "/api/v1/content/category-check",
+    } <= paths
+    assert not any("/demo/" in path for path in paths)
+
+
+def test_removed_legacy_routes_are_gone():
+    paths = set(client.get("/api/v1/openapi.json").json()["paths"])
+    assert not paths & {
         "/api/v1/clips/scan",
         "/api/v1/clips/evaluate",
         "/api/v1/clips/review-queue",
-        "/api/v1/clips/chat-moments",
-    } <= paths
-    assert not any("/demo/" in path for path in paths)
+    }
 
 
 def test_invalid_language_rejected():

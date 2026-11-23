@@ -10,7 +10,7 @@ agents/
 │   ├── registry.py       → ehrlicher Status jedes Agenten (geplant / Prototyp / fertig)
 │   ├── clip_hunter/      → Clip Hunter v4: Chat-Mitschnitt, Chat- und Audio-Signale,
 │   │                       Zusammenführung, Export, Bericht, Twitch-API, Kommandozeile
-│   ├── clip_cli.py       → älterer reiner Audio-Scanner (Kommandozeile)
+│   ├── category_check/   → Kategorie-Check: Twitch-Messungen, Auswertung, Kommandozeile
 │   ├── agents/           → die Logik der einzelnen Agenten
 │   └── llm/              → austauschbare Sprachmodell-Schnittstelle (standardmäßig aus)
 ├── tests/                → pytest, läuft ohne Netzwerk
@@ -22,14 +22,16 @@ agents/
 
 | Agent | Module in `streaming_agents/agents/` | Endpunkte |
 | --- | --- | --- |
-| Content Strategist | `v3_recommender`, `v3_contracts`, `v3_game_knowledge`, `v2_catalog`, `v2_recommender`, `v2_contracts`, `weekly_planner` | `/content/strategy`, `/content/weekly-plan` |
+| Content Strategist | `v3_recommender`, `v3_contracts`, `v3_game_knowledge`, `catalog`, `weekly_planner`; Kategorie-Check in `category_check/` | `/content/strategy`, `/content/weekly-plan`, `/content/category-check` |
 | Growth Analyst | `creator_intelligence`, `creator_strategy`, `creator_strategy_review` (+ `_contracts`) | `/growth/analysis`, `/growth/strategy`, `/growth/review` |
-| Clip Hunter | `clip_hunter/` (v4, Chat + Audio); älter: `clip_intelligence`, `clip_intelligence_v2`, `clip_export`, `clip_evaluation`, `clip_review_queue_v3` | `/clips/chat-moments`, `/clips/scan`, `/clips/evaluate`, `/clips/review-queue` |
-| Trend Scout | – (geplant, soll die Scouts aus dem Trend Radar wiederverwenden) | – |
-| Setup Advisor | – (wird vom Setup Intelligence Agent in `backend/setup_agent` abgedeckt) | – |
+| Clip Hunter | `clip_hunter/` (v4, Chat + Audio, optionale KI-Stufe) | `/clips/chat-moments` (alles andere über die Kommandozeile) |
+| Trend Scout | – (geplant, soll auf den Messungen des Kategorie-Checks aufbauen) | – |
+| Setup Advisor | – (heute der Setup-Finder der Website; eigener Agent im PR #5 geparkt) | – |
 
-`v2_*` sind keine eigenen Endpunkte mehr, sondern die Grundlage (Format-Katalog,
-Spiel-Einordnung), auf der `v3_recommender` aufbaut.
+`catalog` enthält die 26 kuratierten Formate, `v3_recommender` die Spiel-Einordnung
+(`classify_game`) und die Auswahl. Die älteren Clip-Werkzeuge und der Empfehler v2 wurden
+im November 2026 entfernt (siehe [Bestandsaufnahme](bestandsaufnahme-2026-11.md));
+sie sind in der Git-Historie nachlesbar.
 
 ## Grundsätze
 

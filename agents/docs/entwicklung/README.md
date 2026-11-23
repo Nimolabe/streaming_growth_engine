@@ -14,6 +14,7 @@ bekannte Grenzen der einzelnen Agent-Versionen. Sie sind Hintergrundwissen.
 | `creator-intelligence-v1.md` | Growth Analyst: Wochenvergleich und Prioritäten |
 | `creator-intelligence-v2-strategy.md` | Growth Analyst: Experiment-Auswahl und Auswertung |
 | `creator-intelligence-acceptance-tests.md` | Abnahme-Szenarien des Growth Analyst |
-| `clip-intelligence-v1.md` | Clip Hunter: Audio-Spitzen, CLI und Clip-Export |
-| `clip-intelligence-v2.md` | Clip Hunter: Audio + Bildwechsel, Auswertung gegen Markierungen |
-| `clip-review-quality-v3.md` | Clip Hunter: verblindete Prüfliste und Konsens-Regeln |
+
+Die Notizen zu Clip Intelligence v1/v2 und zur Prüfliste v3 wurden mit diesen Modulen
+entfernt (November 2026). Sie stehen weiter in der Git-Historie. Die Clip-Suche ist im
+Clip Hunter v4 beschrieben: [`../clip-hunter.md`](../clip-hunter.md).
