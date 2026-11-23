@@ -21,7 +21,8 @@ keine KI-Modellaufrufe.
   (Stream/Vorbereitung/Schnitt/Rückblick). Diese Verteilung ist ein anpassbarer
   Planungsvorschlag, kein universelles Optimum.
 - Die früheren Demo-Schnittstellen (V1-Vorlagen, V2) wurden bei der
-  Bereinigung entfernt; V2 bleibt intern als Grundlage von V3 erhalten.
+  Bereinigung entfernt. Von V2 sind nur der Formatkatalog (`catalog.py`) und die
+  Spiel-Einordnung (`classify_game` in `v3_recommender.py`) geblieben.
 
 ## Lokal auf Windows testen
 

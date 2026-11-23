@@ -4,6 +4,12 @@ Ehrliche Bestandsaufnahme von allem unter `agents/`: Was tut jedes Modul wirklic
 was bringt es einem kleinen Streamer, was ist doppelt und was fehlt?
 Dieses Dokument **ändert keinen Code**. Alle Entscheidungen am Ende trifft der Nutzer.
 
+> **Nachtrag:** Der Nutzer hat entschieden, die Altlasten zu entfernen. Clip Intelligence
+> v1/v2 (mit `clip_cli` und `clip_export`), die Prüfliste v3, `clip_evaluation` und der
+> Empfehler v2 sind inzwischen gelöscht; `v2_catalog.py` heißt jetzt `catalog.py`,
+> `classify_game` steht in `v3_recommender.py`. Die Dateinamen unten beschreiben den Stand
+> vom 23.11.2026 und sind in der Git-Historie nachlesbar.
+
 ## So wurde geprüft
 
 - Den Code jedes Moduls gelesen und die Git-Historie jeder Datei angesehen.

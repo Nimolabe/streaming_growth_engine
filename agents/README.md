@@ -9,8 +9,8 @@ es gibt keine Verbindung zur Website und keine öffentliche Bereitstellung.
 | Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Neu: **Kategorie-Check auf echten Twitch-Daten** – in welcher Kategorie man mit seinen Zuschauern gesehen wird und zu welchen Zeiten. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
 | Growth Analyst | Prototyp | Vergleicht selbst eingegebene Wochenwerte, wählt ein passendes Experiment und wertet es aus, ohne Wachstum zu versprechen |
 | Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Optional prüft eine **KI-Stufe** (lokal per Ollama, Whisper-Transkript) die besten Kandidaten und schreibt Schnitt, Titel und Hook |
-| Trend Scout | geplant | soll die Scouts aus dem Trend Radar auf Streaming-Kategorien umstellen |
-| Setup Advisor | geplant | wird über den Setup Intelligence Agent (`backend/setup_agent`) abgedeckt |
+| Trend Scout | geplant | soll auf den Messungen des Kategorie-Checks aufbauen (welche Kategorien wachsen?) |
+| Setup Advisor | geplant | heute deckt der Setup-Finder der Website (`setups.html`) das ab; ein eigener Setup Intelligence Agent ist im PR #5 geparkt |
 
 Herkunft: zusammengeführt aus `langemojo-byte/streaming_ai_agents`
 (Stand `806476a`, alle Feature-Branches; siehe [Bereinigung](#bereinigung)).
@@ -47,9 +47,6 @@ Danach im Browser: <http://127.0.0.1:8000/api/v1/docs> (zum Ausprobieren aller E
 | POST | `/api/v1/growth/strategy` | Growth Analyst | [`creator_intelligence_v2_strategy.json`](examples/creator_intelligence_v2_strategy.json) |
 | POST | `/api/v1/growth/review` | Growth Analyst | [`creator_intelligence_v2_review.json`](examples/creator_intelligence_v2_review.json) |
 | POST | `/api/v1/clips/chat-moments` | Clip Hunter: Momente aus einem Chat-Mitschnitt | |
-| POST | `/api/v1/clips/scan` | Clip Hunter (Datei-Upload, max. 100 MB / 15 Min.) | |
-| POST | `/api/v1/clips/evaluate` | Clip Hunter: Treffer gegen menschliche Markierungen | |
-| POST | `/api/v1/clips/review-queue` | Clip Hunter: verblindete Prüfliste | |
 
 Wochenplan-Beispiel:
 
@@ -93,9 +90,6 @@ sind Stellen zum Ansehen, keine Vorhersage, ob ein Clip gut ankommt.
 Optional mit KI-Stufe (Standard: lokales Ollama-Modell, kostenlos; Transkript per Whisper):
 `... analyze ... --ai --transcribe`. Einrichtung: [docs/clip-hunter.md → KI-Stufe](docs/clip-hunter.md#ki-stufe-optional).
 
-Der ältere reine Audio-Scanner bleibt verfügbar:
-`python -m streaming_agents.clip_cli --input mein_stream.mp4 --json kandidaten.json`.
-
 ### Optional: Sprachmodell (aus, kostet Geld)
 
 `streaming_agents/llm/` enthält eine austauschbare Modell-Schnittstelle mit einem
@@ -117,7 +111,7 @@ Im alten Repository lagen 13 Feature-Branches, die alle aufeinander aufbauten, u
 
 - **Entfernt (überholt):** V1-Content-Plan mit drei festen Vorlagen, eigener V2-Endpunkt
   des Content Strategist, V1-Upload-Endpunkt des Clip Hunter.
-  Die V2-Logik bleibt intern, weil V3 darauf aufbaut. V1-Scan und CLI bleiben.
+  Die V2-Logik blieb zunächst intern, weil V3 darauf aufbaut.
 - **Entfernt (kein Produktnutzen):** Referenz-Benchmark mit Streamer-Liste, Quellen-Audit,
   Open-Media-Rechteprüfung, lokales Video-Pilot-Gate samt Daten und Tests.
   Bei Bedarf sind sie im alten Repository nachlesbar.
@@ -125,3 +119,11 @@ Im alten Repository lagen 13 Feature-Branches, die alle aufeinander aufbauten, u
   `/v1/demo`, `/v2/demo`, `/v3/demo`.
 - **Dokumentation:** [Architektur](docs/architecture.md) und
   [Entwicklungsnotizen](docs/entwicklung/README.md) der einzelnen Versionen.
+
+Zweiter Schritt (November 2026, nach der
+[Bestandsaufnahme](docs/bestandsaufnahme-2026-11.md)): Die älteren Clip-Werkzeuge
+(Audio-Scanner v1 mit eigener Kommandozeile, Upload-Scan v2, verblindete Prüfliste,
+Treffer-Auswertung gegen Markierungen) und der Content-Strategist-Empfehler v2 wurden
+entfernt. Der Clip Hunter v4 deckt die Clip-Suche ab und misst sich selbst an
+Zuschauer-Clips und am LIGHTOR-Datensatz. Der Formatkatalog heißt jetzt
+`streaming_agents/agents/catalog.py`. Der alte Code ist in der Git-Historie nachlesbar.
