@@ -7,9 +7,10 @@ AGENTS = [
         name=AgentName.CONTENT_STRATEGIST,
         status=AgentStatus.PROTOTYPE,
         description=(
-            "Curated format recommendations, mini-series and weekly plans, plus a category "
-            "check on real Twitch directory data (visibility, audience, best times); "
-            "optional LLM provider remains off by default."
+            "Rule-based weekly plan for small streamers: real days and times within the "
+            "streamer's windows, genre-specific formats (9 genres), Twitch-conform titles and "
+            "tags, preparation and a clip per stream; times follow category check measurements "
+            "on real Twitch directory data when provided. No language model, no costs."
         ),
     ),
     AgentInfo(
