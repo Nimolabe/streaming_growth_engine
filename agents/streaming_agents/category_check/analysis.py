@@ -131,6 +131,52 @@ def _reach(total: int, rank: int) -> float:
     return total / rank
 
 
+def _slot_key(moment: datetime) -> tuple[int, int]:
+    return moment.weekday(), moment.hour // 2 * 2
+
+
+def slot_stats(snapshots: Iterable[CategorySnapshot], own: int, language: str,
+               to_local: Callable[[float], datetime],
+               window: tuple[int, int] | None = None) -> list[SlotInfo]:
+    """Alle Zwei-Stunden-Blöcke mit Publikum, beste zuerst (Publikum pro Platz).
+
+    Blöcke mit weniger als ``LOW_DEMAND_VIEWERS`` Zuschauern insgesamt fallen weg. Wird auch
+    vom Content Strategist genutzt, um Stream-Zeiten zu wählen.
+    """
+    slots: dict[tuple[int, int], list[CategorySnapshot]] = defaultdict(list)
+    for item in snapshots:
+        key = _slot_key(to_local(item.taken_at))
+        if in_window(key[1], window):
+            slots[key].append(item)
+    result: list[SlotInfo] = []
+    for (weekday, hour), group in slots.items():
+        slot_rank, slot_floor = _median_pair([rank_for(item, own) for item in group])
+        slot_total = int(median([sum(item.viewers) for item in group]))
+        if slot_total < LOW_DEMAND_VIEWERS:
+            continue
+        result.append(SlotInfo(weekday=weekday, hour=hour,
+                               label=_slot_label(weekday, hour, language),
+                               measurements=len(group), median_rank=slot_rank,
+                               rank_is_lower_bound=slot_floor,
+                               median_total_viewers=slot_total))
+    result.sort(key=slot_order)
+    return result
+
+
+def slot_reach(slot: SlotInfo) -> float:
+    """Publikum pro Platz vor dir – die Größe, nach der „beste Zeiten“ sortiert werden."""
+    return _reach(slot.median_total_viewers, slot.median_rank)
+
+
+def slot_order(slot: SlotInfo) -> tuple:
+    return (slot.rank_is_lower_bound, -slot_reach(slot), slot.median_rank, slot.weekday, slot.hour)
+
+
+def rank_label(rank: int, lower_bound: bool, language: str) -> str:
+    """„Platz 23“ / „hinter Platz 300“ (bzw. englisch)."""
+    return _rank_label(rank, lower_bound, language)
+
+
 def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
                to_local: Callable[[float], datetime],
                window: tuple[int, int] | None = None) -> CategorySummary:
@@ -144,30 +190,11 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
     shares = [sum(item.viewers[:3]) / sum(item.viewers) for item in snapshots if sum(item.viewers)]
     verdict = _verdict(total, rank, rank_floor)
 
-    slots: dict[tuple[int, int], list[CategorySnapshot]] = defaultdict(list)
-    measured_slots: set[tuple[int, int]] = set()
-    for item in snapshots:
-        moment = to_local(item.taken_at)
-        key = (moment.weekday(), moment.hour // 2 * 2)
-        measured_slots.add(key)
-        if in_window(key[1], window):
-            slots[key].append(item)
+    measured_slots = {_slot_key(to_local(item.taken_at)) for item in snapshots}
     best: list[SlotInfo] = []
     # „Beste Zeit“ ergibt nur Sinn, wenn zu mindestens zwei Zeiten gemessen wurde.
     if len(measured_slots) >= 2:
-        for (weekday, hour), group in slots.items():
-            slot_rank, slot_floor = _median_pair([rank_for(item, own) for item in group])
-            slot_total = int(median([sum(item.viewers) for item in group]))
-            if slot_total < LOW_DEMAND_VIEWERS:
-                continue
-            best.append(SlotInfo(weekday=weekday, hour=hour,
-                                 label=_slot_label(weekday, hour, language),
-                                 measurements=len(group), median_rank=slot_rank,
-                                 rank_is_lower_bound=slot_floor,
-                                 median_total_viewers=slot_total))
-        best.sort(key=lambda slot: (slot.rank_is_lower_bound,
-                                    -_reach(slot.median_total_viewers, slot.median_rank),
-                                    slot.median_rank, slot.weekday, slot.hour))
+        best = slot_stats(snapshots, own, language, to_local, window)
     return CategorySummary(
         category=first.category, category_id=first.category_id, language=first.language,
         measurements=len(snapshots), median_channels=channels,
