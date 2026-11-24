@@ -42,6 +42,7 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
 | `experience` | `--experience` | `beginner`, `intermediate`, `advanced` |
 | `language` | `--lang` | `de` oder `en` – Plan, Titel und Tags |
 | `platform` | `--platform` | `twitch` (Standard), `youtube`, `kick`, `tiktok`, `other` |
+| `week_number` | `--week` | Wievielte Woche du planst (Standard 1); Zähler in Titeln laufen weiter |
 | `collab_partner` | `--collab` | Mitspieler oder Gast verfügbar (Koop- und Coach-Formate) |
 | `measurements` | `--measurements` | Optional: Messungen aus dem Kategorie-Check |
 | `utc_offset_minutes` | `--utc-offset` | Zeitzone der Messungen (Standard: Ortszeit des Rechners) |
@@ -55,6 +56,10 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
    - Es zählen ganze Wörter. Bei mehreren Treffern gewinnt der längste: „Call of Duty: Warzone“
      ist Battle Royale, „Call of Duty“ ist Shooter.
    - Ein unbekanntes Spiel wird als „kein Genre erkannt“ markiert und bekommt allgemeine Formate.
+     Bewusst ohne Genre:
+     - GTA V und GTA RP: Rollenspiel und Missionen passen nicht zu Bau- oder Überlebensformaten.
+     - World of Warcraft: ein MMO. Story/Singleplayer hätte den falschen Tag „Singleplayer“
+       ergeben.
 2. **Zeitbudget.**
    - Pro Stream: 20 min Vorbereitung (endet 10 min vor dem Start) und 30 min für einen Clip danach.
    - Pro Woche: 30 min Rückblick.
@@ -82,15 +87,43 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
    - Bei 0–2 Chattern kommen nur Formate mit `needs_chat: none` in den Plan.
    - Innerhalb eines Genres werden die Formate der Reihe nach vergeben. Sie wiederholen sich
      erst, wenn alle passenden einmal dran waren.
+   - Der Just-Chatting-„Wochenrückblick“ kommt nur auf den letzten Stream der Woche. Er wird
+     nur gewählt, wenn es mindestens zwei Streams gibt und das Ziel Community oder
+     Regelmäßigkeit ist.
 5. **Titel und Tags.**
-   - Vorlagen pro Format, auf Deutsch und Englisch, ohne Clickbait-Versprechen und ohne Marken
-     außer dem Spielnamen.
+   - Pro Format gibt es drei Titel (`content_strategist/titles.py`), auf Deutsch und Englisch
+     jeweils eigenständig formuliert. Sie verfolgen unterschiedliche Ansätze:
+     - Frage oder Neugier,
+     - Einsatz oder Herausforderung,
+     - Mitmachen (nur bei Formaten mit Chat).
+   - Der Plan zeigt pro Stream einen Haupttitel und zwei Alternativen.
+   - Läuft dasselbe Format zweimal in einer Woche, bekommt es nicht denselben Haupttitel.
+   - Zähler wie „Tag 2“ laufen mit; mit `--week 2` (API: `week_number`) beginnen sie dort,
+     wo die Vorwoche aufgehört hat.
    - Die Grenzen von Twitch werden streng eingehalten:
      - Titel höchstens 140 Zeichen;
      - höchstens 10 Tags mit je höchstens 25 Zeichen, ohne Leer- und Sonderzeichen. Erlaubt sind
        nur Buchstaben und Ziffern.
    - Quelle: [Twitch API Reference, Modify Channel Information](https://dev.twitch.tv/docs/api/reference/channels#modify-channel-information),
      Stand: November 2026.
+   - **Regeln für klickbare Titel** (Regeln 1, 3, 5 und 7 prüft ein Test für alle Formate in
+     beiden Sprachen):
+     1. Kein Spielname am Anfang – Twitch zeigt die Kategorie ohnehin an. Der Spielname steht
+        nur dann im Titel, wenn er Teil des Hooks ist.
+     2. Der Hook steht in den ersten ~40 Zeichen, weil Übersichten oft abschneiden: eine
+        konkrete Frage, ein Einsatz, eine Herausforderung oder eine Mitmach-Einladung.
+     3. Keine Meta-Wörter, die nur das Format beschreiben („Analyse am Ende“,
+        „Gesprächsrunde“, „Vergleich“, „Heute übe ich“).
+     4. Fortschritt nutzen: Serien und wiederkehrende Formate bekommen Zähler („Tag 3“,
+        „Teil 2“, „Woche 2“).
+     5. Ehrlich bleiben: nur versprechen, was das Format liefert.
+        - keine erfundenen Rekorde, kein „UNMÖGLICH“, kein „gleich passiert etwas“
+        - keine Großbuchstaben-Wörter außer Abkürzungen
+        - höchstens ein Ausrufezeichen, keine Emojis
+     6. Duzen, kurz, gesprochene Sprache.
+     7. Höchstens 140 Zeichen (Twitch, hart), Ziel höchstens ~70 Zeichen.
+   - Platzhalter wie `{regel}` oder `{ziel}` haben feste Standardwerte aus dem Format
+     (z. B. „nur einer Waffe“). Gleiche Eingabe ergibt also weiter denselben Titel.
 6. **Mini-Serie** nur, wenn das gewählte Format von Natur aus in Folgen funktioniert,
    z. B. erster Durchgang in Etappen oder Großprojekt in Etappen.
 
@@ -98,7 +131,7 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
 
 Pro Stream gibt es:
 
-- Wochentag und Uhrzeit, Spiel, Format, Titel, Tags;
+- Wochentag und Uhrzeit, Spiel, Format, Haupttitel mit zwei Alternativen, Tags;
 - Vorbereitung mit Uhrzeit und Schritten;
 - Ablauf und, bei langen Streams, Pausenhinweis;
 - Clip-Idee mit Tag, Hook, Messgröße;
