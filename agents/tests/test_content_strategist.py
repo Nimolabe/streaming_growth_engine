@@ -24,11 +24,12 @@ from streaming_agents.content_strategist.titles import (
     CLIP_TITLES,
     EMOJIS,
     FILLS,
-    MOOD_LEADS,
+    MOOD_TITLES,
     STREAM_TITLES,
     TITLE_TARGET_CHARS,
     build_titles,
-    emojis_for,
+    emoji_for,
+    stream_mood,
 )
 from streaming_agents.content_strategist.twitch_limits import (
     TAG_MAX_CHARS,
@@ -138,7 +139,7 @@ def test_english_texts_contain_no_german():
         english = [item.name[1], item.hook[1], item.clip[1], item.metric[1],
                    *(pair[1] for pair in (*item.steps, *item.prep, *item.tags, *item.series)),
                    *(pair[1] for pair in CLIP_TITLES[item.id]),
-                   *(STREAM_TITLES[item.id].goal[1], STREAM_TITLES[item.id].question[1])]
+                   *(STREAM_TITLES[item.id].goal[1], STREAM_TITLES[item.id].invite[1])]
         for text in english:
             assert not set(text) & set("äöüßÄÖÜ"), (item.id, text)
             assert not any(word in text.split() for word in ("und", "mit", "der", "die", "das"))
@@ -156,6 +157,12 @@ def test_team_communication_format_is_reachable():
     plan = build_plan(request(games=("Fortnite",), hours_per_week=14, streams_per_week=5,
                               collab_partner=True, goal="community", active_chatters=0))
     assert "br-squad-comms" in {item.format_id for item in plan.streams}
+
+
+def test_english_mood_titles_contain_no_german():
+    for moods in MOOD_TITLES.values():
+        for _, english, _ in moods.values():
+            assert not set(english) & set("äöüßÄÖÜ"), english
 
 
 def test_genres_do_not_borrow_ideas_from_each_other():
@@ -427,13 +434,13 @@ def strip_emoji(text: str) -> tuple[str, list[str]]:
     return text, found
 
 
-def check_title(option, genre, game, *, target=True):
+def check_title(option, genre, game, mood, *, target=True):
     title = option.text
     low = title.casefold()
     rest, found = strip_emoji(title)
     # Regel 3: genau ein Emoji aus der Liste des Genres, sonst keine Symbole/Emojis
     assert sum(title.count(emoji) for emoji in found) == 1, title
-    assert option.emoji in emojis_for(genre, game) and option.emoji in title, title
+    assert option.emoji == emoji_for(genre, game, mood) and title.endswith(f" {option.emoji}"), title
     assert all(ord(ch) < 0x2190 or ch in "–„“”’…" for ch in rest), title
     # Regel 2: Bausteine – Ziel/Stimmung UND Einladung/Frage
     assert option.lead_kind in ("goal", "mood") and option.tail_kind in ("question", "invite")
@@ -466,8 +473,11 @@ def test_stream_titles_follow_the_rules(format_id, mood, language):
                 assert len(options) == 3
                 assert {option.approach for option in options} == {"goal", "mood", "invite"}
                 assert len({option.text for option in options}) == 3
+                # Regel 8: die drei Titel unterscheiden sich schon im Anfang
+                assert len({option.opening for option in options}) == 3, options
+                current = stream_mood(format_id, genre, mood)
                 for option in options:
-                    check_title(option, genre, game)
+                    check_title(option, genre, game, current)
 
 
 def test_titles_with_very_long_names_stay_within_twitch_limit():
@@ -475,14 +485,38 @@ def test_titles_with_very_long_names_stay_within_twitch_limit():
         for language in ("de", "en"):
             for option in build_titles(format_id, GENRE_OF_FORMAT[format_id], "x" * 80, language,
                                        rank_goal="y" * 20, first_time=True):
-                check_title(option, GENRE_OF_FORMAT[format_id], "x" * 80, target=False)
+                check_title(option, GENRE_OF_FORMAT[format_id], "x" * 80,
+                            stream_mood(format_id, GENRE_OF_FORMAT[format_id], None), target=False)
 
 
 def test_title_data_is_complete():
     assert set(STREAM_TITLES) == set(FORMATS_BY_ID) == set(CLIP_TITLES)
     assert set(FILLS) <= set(STREAM_TITLES)
-    assert set(MOOD_LEADS) == {*GENRES, None}
-    assert all(len(group) == 2 for group in EMOJIS.values())
+    assert set(MOOD_TITLES) == {*GENRES, None}
+    assert all(set(group) == {"chill", "ambitious", "funny"} for group in EMOJIS.values())
+    assert EMOJIS["horror"]["chill"] != "😱"  # chillig + Horror ist kein Schrei
+
+
+GENERIC_ENDINGS = ("– komm rein!", "– sag hallo!", "– chill mit!", "– komm mit!", "– komm rein",
+                   "– chill mit", "– komm mit")
+
+
+def test_format_titles_are_whole_sentences_without_generic_endings():
+    for format_id, data in STREAM_TITLES.items():
+        sentences = [*data.goal, *data.invite, *(data.first or ())]
+        for sentence in sentences:
+            assert not sentence.casefold().endswith(GENERIC_ENDINGS), (format_id, sentence)
+            assert sentence[:1].isupper() or sentence.startswith("{"), sentence
+        # Ziel + Frage endet mit einer Frage; die Einladung beginnt nicht wie das Ziel
+        assert data.goal[0].endswith("?") and data.goal[1].endswith("?"), format_id
+        assert data.invite[0].split(" – ")[0] != data.goal[0].split(" – ")[0]
+
+
+def test_sag_hallo_is_written_the_same_everywhere():
+    texts = [entry[0] for moods in MOOD_TITLES.values() for entry in moods.values()]
+    for text in texts:
+        if "hallo" in text.casefold():
+            assert "sag Hallo" in text, text
 
 
 def test_rank_goal_only_where_given_and_ranked():
