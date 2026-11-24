@@ -97,12 +97,13 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
    - Titel beschreiben den **ganzen Stream**: was heute passiert, welche Stimmung herrscht und
      warum man jetzt reinkommen soll (`content_strategist/titles.py`). Beispiele:
      „Road to Platin, Tag 5 – kommen wir heute ein Stück näher? 🔥“,
-     „Chilliges Valorant & Quatschen – sag Hallo 🎯“, „Großprojekt Tag 3 – wie weit kommen wir
-     heute? 🏰“.
-   - Jeder Titel wird aus Bausteinen gebaut. Pro Stream gibt es drei Ansätze:
-     - **Ziel + Neugier-Frage**,
-     - **Stimmung + Einladung**,
-     - **Ziel + Einladung**.
+     „Chilliges Valorant & Quatschen – sag Hallo 🎯“, „Bau mit mir weiter – Großprojekt Tag 3 ⛏️“.
+   - Jeder Titel ist ein **von Hand formulierter, ganzer Satz**. Es gibt keine automatisch
+     angehängten Endungen wie „– komm rein!“.
+   - Pro Stream gibt es drei Titel, die sich schon im **Anfang** unterscheiden:
+     - **Ziel + Frage** – ein Satz pro Format,
+     - **Stimmung + Einladung oder Frage** – ein Satz pro Genre und Stimmung,
+     - **beginnt mit der Einladung** – ein Satz pro Format.
    - Der Plan zeigt pro Stream einen Haupttitel und zwei Alternativen. Die Ansätze wechseln
      sich über die Woche ab, und dasselbe Format bekommt in einer Woche nie zweimal denselben
      Haupttitel.
@@ -119,22 +120,26 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
        nur Buchstaben und Ziffern.
    - Quelle: [Twitch API Reference, Modify Channel Information](https://dev.twitch.tv/docs/api/reference/channels#modify-channel-information),
      Stand: November 2026.
-   - **Regeln für Titel** (Regeln 1, 2, 3, 5 und 6 prüft ein Test für alle Formate, alle
+   - **Regeln für Titel** (Regeln 1, 2, 3, 5, 6 und 8 prüft ein Test für alle Formate, alle
      Stimmungen und beide Sprachen):
      1. Bezug auf den ganzen Stream, nie auf eine einzelne Runde, Szene oder ein Match.
         „diese Runde“, „dieses Match“, „diese Ecke“, „dieser Abschnitt“ u. Ä. sind verboten.
-     2. Aufbau aus Bausteinen: [Ziel oder Stimmung] + [Einladung oder Neugier-Frage] + genau
-        ein Emoji.
+     2. Jeder Titel ist ein ganzer, von Hand formulierter Satz aus [Ziel oder Stimmung] und
+        [Einladung oder Neugier-Frage], die inhaltlich zusammenpassen, dazu genau ein Emoji.
+        Platzhalter gibt es nur für Zähler, Rang-Ziel, Spielname, Tageszeit und feste
+        Standardwerte des Formats.
         - Ziel: Rang-Ziel („Road to Platin“), Tagesziel, Projekt („Großprojekt Tag 3“),
           erstes Mal („Zum ersten Mal Elden Ring, blind“).
         - Stimmung: chillig, ehrgeizig („Ranked-Abend“), lustig („Horror-Nacht in …“).
-        - Einladung: „komm rein“, „sag Hallo“, „komm mit“, „chill mit“, „quatsch mit“, in der
-          du-Form.
+        - Einladung: „sag Hallo“ (immer so geschrieben), „komm mit“, „setz dich dazu“, „hör
+          mit“, „rate mit“ – in der du-Form und passend zum Satzanfang.
         - Fortschritt: „Tag 5“ und „Folge 3“ zählen über `week_number` weiter.
-     3. Genau ein Emoji, aus einer festen Liste pro Genre:
-        - Shooter 🔥🎯, Battle Royale 🏆🔥, MOBA ⚔️🏆, Story 🗡️📖, Horror 😱👻, Cozy ☕🌱,
-          Sandbox 🏰⛏️, Sport ⚽🏆, Rennspiele 🚗🏁, Just Chatting ☕👋, ohne Genre 🎮✨.
-        - Keine Emojis, die auf Twitch missverständlich sind.
+     3. Genau ein Emoji, passend zu Genre **und** Stimmung (chillig / ehrgeizig / lustig):
+        - Shooter 🎯 🔥 😂, Battle Royale 🪂 🏆 😂, MOBA ☕ ⚔️ 😂, Story 📖 🗡️ 😅
+        - Horror 🕯️ 👻 😱, Cozy ☕ 🌱 😄, Sandbox ⛏️ 🏰 😂
+        - Sport ⚽ 🏆 😂, Rennspiele 🚗 🏁 😂, Just Chatting ☕ 💬 😂, ohne Genre 🎮 ✨ 😂
+        - Chillig + Horror bekommt also 🕯️ statt 😱. Keine Emojis, die auf Twitch
+          missverständlich sind.
      4. Spielname nur, wenn er Teil des Hooks ist („Zum ersten Mal <Spiel>“, „Chilliges
         <Spiel> & Quatschen“). Twitch zeigt die Kategorie ohnehin an.
      5. Ehrlich bleiben:
@@ -145,6 +150,8 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
         - höchstens ein Ausrufezeichen
      6. Ziel höchstens 70 Zeichen (das Wichtigste steht vorn), hart höchstens 140 (Twitch).
      7. Deutsch und Englisch eigenständig und natürlich formuliert („come hang out“, „say hi“).
+     8. Die drei Titel eines Streams unterscheiden sich vor dem Gedankenstrich. Laut vorgelesen
+        klingt jeder wie ein echter Twitch-Titel.
    - Platzhalter wie `{regel}` oder `{ziel}` haben feste Standardwerte aus dem Format
      (z. B. „nur einer Waffe“). Gleiche Eingabe ergibt also weiter denselben Titel.
    - **Ohne Angaben** wählt der Plan die Stimmung passend zum Genre bzw. Format:
