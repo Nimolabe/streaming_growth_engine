@@ -103,6 +103,14 @@ class StrategyRequest(BaseModel):
     experience: Literal["beginner", "intermediate", "advanced"] = "beginner"
     language: Literal["de", "en"] = "de"
     platform: Literal["twitch", "youtube", "kick", "tiktok", "other"] = "twitch"
+    rank_goal: str | None = Field(
+        default=None, max_length=20,
+        description="Optional: Rang-Ziel für Titel, z. B. „Platin“ (nur Buchstaben, Ziffern, Leerzeichen, +)")
+    mood: Literal["chill", "ambitious", "funny"] | None = Field(
+        default=None, description="Stimmung für Titel: chill, ambitious (ehrgeizig), funny (lustig); "
+                                  "leer = passend zu Genre und Format")
+    first_time: bool = Field(default=False,
+                             description="Zum ersten Mal / blind (Story und Horror)")
     week_number: int = Field(default=1, ge=1, le=520,
                              description="Woche der Planung; Zähler in Titeln („Tag 3“) laufen weiter")
     collab_partner: bool = Field(default=False,
@@ -113,6 +121,28 @@ class StrategyRequest(BaseModel):
     utc_offset_minutes: int | None = Field(
         default=None, ge=-720, le=840,
         description="Zeitzone der Messungen; leer = Ortszeit des Rechners")
+
+    @field_validator("rank_goal")
+    @classmethod
+    def _rank_goal(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = " ".join(value.split())
+        if not text:
+            return None
+        if not re.fullmatch(r"[^\W_][\w +]*", text) or "_" in text:
+            raise ValueError("Rang-Ziel nur mit Buchstaben, Ziffern, Leerzeichen und + / "
+                             "rank goal: letters, digits, spaces and + only")
+        return text
+
+    @field_validator("mood", mode="before")
+    @classmethod
+    def _mood(cls, value):
+        aliases = {"chillig": "chill", "entspannt": "chill", "gemütlich": "chill",
+                   "ehrgeizig": "ambitious", "lustig": "funny"}
+        if isinstance(value, str):
+            return aliases.get(value.strip().casefold(), value.strip().casefold()) or None
+        return value
 
     @field_validator("games")
     @classmethod
@@ -155,6 +185,8 @@ class StreamPlan(BaseModel):
     needs_collab: bool
     title: str
     title_alternatives: list[str]
+    title_mood: Literal["chill", "ambitious", "funny"]
+    clip_title_ideas: list[str]
     tags: list[str]
     run_of_show: list[str]
     break_note: str | None

@@ -20,10 +20,15 @@ from streaming_agents.content_strategist.planner import (
 )
 from streaming_agents.content_strategist.report import render_html, render_text
 from streaming_agents.content_strategist.titles import (
+    ALL_EMOJIS,
+    CLIP_TITLES,
+    EMOJIS,
     FILLS,
+    MOOD_LEADS,
+    STREAM_TITLES,
     TITLE_TARGET_CHARS,
-    TITLES,
-    render_titles,
+    build_titles,
+    emojis_for,
 )
 from streaming_agents.content_strategist.twitch_limits import (
     TAG_MAX_CHARS,
@@ -132,7 +137,8 @@ def test_english_texts_contain_no_german():
     for item in FORMATS:
         english = [item.name[1], item.hook[1], item.clip[1], item.metric[1],
                    *(pair[1] for pair in (*item.steps, *item.prep, *item.tags, *item.series)),
-                   *(variant[2] for variant in TITLES[item.id])]
+                   *(pair[1] for pair in CLIP_TITLES[item.id]),
+                   *(STREAM_TITLES[item.id].goal[1], STREAM_TITLES[item.id].question[1])]
         for text in english:
             assert not set(text) & set("äöüßÄÖÜ"), (item.id, text)
             assert not any(word in text.split() for word in ("und", "mit", "der", "die", "das"))
@@ -153,7 +159,7 @@ def test_team_communication_format_is_reachable():
 
 
 def test_genres_do_not_borrow_ideas_from_each_other():
-    texts = {genre: " ".join(" ".join((f.name[0], *(v[1] for v in TITLES[f.id]),
+    texts = {genre: " ".join(" ".join((f.name[0], *STREAM_TITLES[f.id].goal,
                                        *(s[0] for s in f.steps)))
                              for f in formats_for(genre)).casefold() for genre in GENRES}
     for genre in ("cozy", "horror", "story", "just_chatting", "moba", "sports"):
@@ -397,74 +403,126 @@ def test_cli_reads_measurements(tmp_path, capsys):
     assert code == 0 and "Platz 16" in capsys.readouterr().out
 
 
-# ------------------------------------------------------------------ Titel (Nachtrag)
-FORBIDDEN = (
-    # Meta-Wörter, die nur das Format beschreiben (Regel 3)
-    "analyse am ende", "gesprächsrunde", "vergleich", "heute übe ich", "heute spiele ich",
-    "review at the end", "comparison", "compared", "chat stream", "talk stream",
-    "today i practise", "today i practice", "today i play",
-    # unehrliche Versprechen (Regel 5)
-    "unmöglich", "impossible", "gleich passiert", "you won't believe", "krass", "insane",
-    "garantiert", "guaranteed", "weltrekord", "world record",
+# ------------------------------------------------------------------ Titel (Nachtrag 2)
+SINGLE_MOMENT = (  # Regel 1: Titel beziehen sich auf den ganzen Stream
+    "diese runde", "dieser runde", "dieses match", "diesem match", "diese ecke", "dieser ecke",
+    "dieser abschnitt", "diesen abschnitt", "diesem abschnitt", "diese szene", "dieser szene",
+    "diesen moment", "diesem moment", "dieses spiel verloren",
+    "this round", "that round", "this match", "that match", "this corner", "this section",
+    "this scene", "this moment", "that game",
+)
+DISHONEST = (  # Regel 5
+    "unmöglich", "impossible", "gleich passiert", "you won't believe", "garantiert",
+    "guaranteed", "weltrekord", "world record", "rekord", "record",
 )
 ABBREVIATIONS = {"PB", "CS", "RP", "FPS", "KO"}
 TITLE_GAMES = ["Valorant", "League of Legends", "Stardew Valley", "Tetris Effect"]
+GENRE_OF_FORMAT = {item.id: item.genre for item in FORMATS}
 
 
-def test_every_format_has_three_different_title_variants():
-    assert set(TITLES) == set(FORMATS_BY_ID)
-    for format_id, variants in TITLES.items():
-        item = FORMATS_BY_ID[format_id]
-        kinds = [kind for kind, _, _ in variants]
-        assert len(variants) >= 3 and len(set(kinds)) >= 2, format_id
-        assert len({de for _, de, _ in variants}) == len(variants), format_id
-        if item.needs_chat == "none":
-            assert "join" not in kinds, format_id  # Mitmachen nur mit Chat
-        else:
-            assert "join" in kinds, format_id
-    assert set(FILLS) <= set(TITLES)
+def strip_emoji(text: str) -> tuple[str, list[str]]:
+    found = [emoji for emoji in sorted(ALL_EMOJIS, key=len, reverse=True) if emoji in text]
+    for emoji in found:
+        text = text.replace(emoji, "")
+    return text, found
+
+
+def check_title(option, genre, game, *, target=True):
+    title = option.text
+    low = title.casefold()
+    rest, found = strip_emoji(title)
+    # Regel 3: genau ein Emoji aus der Liste des Genres, sonst keine Symbole/Emojis
+    assert sum(title.count(emoji) for emoji in found) == 1, title
+    assert option.emoji in emojis_for(genre, game) and option.emoji in title, title
+    assert all(ord(ch) < 0x2190 or ch in "–„“”’…" for ch in rest), title
+    # Regel 2: Bausteine – Ziel/Stimmung UND Einladung/Frage
+    assert option.lead_kind in ("goal", "mood") and option.tail_kind in ("question", "invite")
+    # Regel 1 und 5
+    assert not any(word in low for word in SINGLE_MOMENT), title
+    assert not any(word in low for word in DISHONEST), title
+    for word in rest.replace("–", " ").replace("/", " ").split():
+        letters = "".join(ch for ch in word if ch.isalpha())
+        if len(letters) >= 2 and letters.isupper():
+            assert letters in ABBREVIATIONS, title
+    assert title.count("!") <= 1, title
+    assert "{" not in title and "}" not in title, title
+    # Regel 6
+    if target:
+        assert len(title) <= TITLE_TARGET_CHARS, (len(title), title)
+    assert is_valid_title(fit_title(title))
 
 
 @pytest.mark.parametrize("language", ["de", "en"])
-@pytest.mark.parametrize("format_id", sorted(TITLES))
-def test_titles_follow_the_rules(format_id, language):
+@pytest.mark.parametrize("mood", [None, "chill", "ambitious", "funny"])
+@pytest.mark.parametrize("format_id", sorted(STREAM_TITLES))
+def test_stream_titles_follow_the_rules(format_id, mood, language):
+    genre = GENRE_OF_FORMAT[format_id]
     for game in TITLE_GAMES:
-        for counter in (1, 2, 3, 12):
-            for title in render_titles(format_id, game, counter, language):
-                low = title.casefold()
-                assert "{" not in title and "}" not in title, title
-                # Regel 1: kein Spielname am Anfang
-                assert not low.startswith(game.casefold()), title
-                assert not any(low.startswith(other.casefold()) for other in EXAMPLE_GAMES.values())
-                # Regel 3 und 5: Verbotsliste
-                assert not any(word in low for word in FORBIDDEN), title
-                # Regel 5: keine Großbuchstaben-Wörter außer Abkürzungen, ≤ 1 „!“, keine Emojis
-                for word in title.replace("–", " ").split():
-                    letters = "".join(ch for ch in word if ch.isalpha())
-                    if len(letters) >= 2 and letters.isupper():
-                        assert letters in ABBREVIATIONS, title
-                assert title.count("!") <= 1
-                assert all(ord(ch) < 0x2190 or ch in "–„“”’…" for ch in title), title
-                # Regel 7: Ziel ≤ 70 Zeichen, Twitch-Grenze 140 hart
-                assert len(title) <= TITLE_TARGET_CHARS, title
-                assert len(fit_title(title)) <= TITLE_MAX_CHARS
+        for start in (10 * 60, 15 * 60, 19 * 60, 23 * 60):
+            for kwargs in ({}, {"rank_goal": "Platin", "rank_counter": 12},
+                           {"first_time": True}, {"counter": 9}):
+                options = build_titles(format_id, genre, game, language, mood=mood,
+                                       start_minute=start, **kwargs)
+                assert len(options) == 3
+                assert {option.approach for option in options} == {"goal", "mood", "invite"}
+                assert len({option.text for option in options}) == 3
+                for option in options:
+                    check_title(option, genre, game)
 
 
-def test_titles_with_very_long_game_names_stay_within_twitch_limit():
-    long_game = "x" * 80
-    for format_id in TITLES:
+def test_titles_with_very_long_names_stay_within_twitch_limit():
+    for format_id in STREAM_TITLES:
         for language in ("de", "en"):
-            for title in render_titles(format_id, long_game, 1, language):
-                assert is_valid_title(fit_title(title))
+            for option in build_titles(format_id, GENRE_OF_FORMAT[format_id], "x" * 80, language,
+                                       rank_goal="y" * 20, first_time=True):
+                check_title(option, GENRE_OF_FORMAT[format_id], "x" * 80, target=False)
 
 
-def test_plan_shows_main_title_and_two_alternatives():
+def test_title_data_is_complete():
+    assert set(STREAM_TITLES) == set(FORMATS_BY_ID) == set(CLIP_TITLES)
+    assert set(FILLS) <= set(STREAM_TITLES)
+    assert set(MOOD_LEADS) == {*GENRES, None}
+    assert all(len(group) == 2 for group in EMOJIS.values())
+
+
+def test_rank_goal_only_where_given_and_ranked():
+    plain = build_titles("shooter-decision-review", "shooter", "Valorant", "de")
+    assert not any("Road to" in option.text for option in plain)
+    assert any("Ranked-Abend" in option.text for option in plain)
+    goal = build_titles("shooter-decision-review", "shooter", "Valorant", "de",
+                        rank_goal="Platin", rank_counter=5)
+    assert goal[0].text.startswith("Road to Platin, Tag 5")
+    cozy = build_titles("cozy-three-goals", "cozy", "Stardew Valley", "de", rank_goal="Platin")
+    assert not any("Platin" in option.text for option in cozy)
+
+
+def test_first_time_and_daypart():
+    first = build_titles("story-first-playthrough", "story", "Elden Ring", "de", first_time=True)
+    assert first[0].text.startswith("Zum ersten Mal Elden Ring, blind")
+    afternoon = build_titles("horror-honest-reactions", "horror", "Phasmophobia", "de",
+                             start_minute=14 * 60, rotation=1)
+    assert afternoon[0].text.startswith("Horror-Nachmittag")
+    night = build_titles("horror-honest-reactions", "horror", "Phasmophobia", "de",
+                         start_minute=23 * 60, rotation=1)
+    assert night[0].text.startswith("Horror-Nacht")
+
+
+def test_plan_titles_cover_whole_stream_with_alternatives_and_clip_ideas():
     plan = build_plan(request(games=("Stardew Valley",), streams_per_week=3))
     for item in plan.streams:
-        assert len(item.title_alternatives) == 2
-        assert item.title not in item.title_alternatives
+        assert len(item.title_alternatives) == 2 and item.title not in item.title_alternatives
         assert all(is_valid_title(text) for text in [item.title, *item.title_alternatives])
-    assert "Andere Titel" in render_text(plan) and "Andere Titel" in render_html(plan)
+        assert item.clip_title_ideas
+        assert item.title_mood == ("funny" if item.format_id == "cozy-one-rule" else "chill")
+    text, html = render_text(plan), render_html(plan)
+    assert "Andere Titel" in text and "Titel fürs Kurzvideo" in html
+
+
+def test_mood_input_accepts_german_words():
+    plan = build_plan(request(games=("Minecraft",), streams_per_week=1, mood="lustig"))
+    assert plan.streams[0].title_mood == "funny"
+    with pytest.raises(ValueError):
+        request(rank_goal="<script>")
 
 
 def test_same_format_in_one_week_never_repeats_the_main_title():
@@ -480,12 +538,12 @@ def test_same_format_in_one_week_never_repeats_the_main_title():
     assert repeated  # 5 Streams, 4 passende Formate → eines kommt zweimal
 
 
-def test_week_number_advances_counters():
-    first = build_plan(request(games=("Minecraft",), streams_per_week=2, goal="consistency"))
-    second = build_plan(request(games=("Minecraft",), streams_per_week=2, goal="consistency",
-                                week_number=2))
-    assert "1" in first.streams[0].title and "2" in second.streams[0].title
-    assert first.streams[0].title != second.streams[0].title
+def test_week_number_and_rank_counter_advance():
+    first = build_plan(request(games=("Valorant",), streams_per_week=2, rank_goal="Gold"))
+    second = build_plan(request(games=("Valorant",), streams_per_week=2, rank_goal="Gold",
+                                week_number=3))
+    assert "Tag 1" in first.streams[0].title
+    assert "Tag 5" in second.streams[0].title
 
 
 @pytest.mark.parametrize(("name", "genre"), [

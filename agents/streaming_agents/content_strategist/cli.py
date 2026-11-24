@@ -71,6 +71,12 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--lang", choices=["de", "en"], default="de", help="Sprache von Plan und Titeln")
     plan.add_argument("--platform", choices=["twitch", "youtube", "kick", "tiktok", "other"],
                       default="twitch")
+    plan.add_argument("--rank-goal", help="Rang-Ziel für die Titel, z. B. \"Platin\"")
+    plan.add_argument("--mood", choices=["chill", "ambitious", "funny", "chillig", "ehrgeizig",
+                                         "lustig"],
+                      help="Stimmung der Titel (Standard: passend zu Genre und Format)")
+    plan.add_argument("--first-time", action="store_true",
+                      help="Zum ersten Mal / blind (Story und Horror)")
     plan.add_argument("--week", type=int, default=1,
                       help="Wievielte Woche du planst (Standard 1) – Zähler in Titeln laufen weiter")
     plan.add_argument("--collab", action="store_true",
@@ -98,7 +104,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
         streams_per_week=args.streams, average_viewers=args.viewers,
         active_chatters=args.chatters, goal=args.goal, experience=args.experience,
         language=args.lang, platform=args.platform, collab_partner=args.collab,
-        week_number=args.week,
+        week_number=args.week, rank_goal=args.rank_goal, mood=args.mood,
+        first_time=args.first_time,
         measurements=measurements, utc_offset_minutes=args.utc_offset,
     )
     plan = build_plan(request)

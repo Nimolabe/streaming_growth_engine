@@ -9,7 +9,7 @@ from .models import ContentPlan, StreamPlan
 
 TEXT = {
     "de": {"title": "Content-Plan der Woche", "games": "Spiele", "genre": "Genre",
-           "stream": "Stream", "prep": "Vorbereitung", "format": "Format", "stream_title": "Titel", "alt": "Andere Titel",
+           "stream": "Stream", "prep": "Vorbereitung", "format": "Format", "stream_title": "Titel", "alt": "Andere Titel", "clip_titles": "Titel fürs Kurzvideo",
            "tags": "Tags", "run": "Ablauf", "clip": "Clip danach", "hook": "Hook fürs Kurzvideo",
            "measure": "Messgröße", "why": "Warum dieses Format", "when": "Warum diese Uhrzeit",
            "review": "Wochenrückblick", "series": "Mini-Serie", "budget": "Zeitbudget",
@@ -19,7 +19,7 @@ TEXT = {
            "of": "von", "chat": {"none": "ohne Chat", "low": "kleiner Chat", "active": "aktiver Chat"},
            "check": "Kategorie-Check", "break": "Pausen"},
     "en": {"title": "Weekly content plan", "games": "Games", "genre": "Genre",
-           "stream": "Stream", "prep": "Preparation", "format": "Format", "stream_title": "Title", "alt": "Other titles",
+           "stream": "Stream", "prep": "Preparation", "format": "Format", "stream_title": "Title", "alt": "Other titles", "clip_titles": "Titles for the short",
            "tags": "Tags", "run": "Run of show", "clip": "Clip afterwards", "hook": "Hook for a short",
            "measure": "Measurement", "why": "Why this format", "when": "Why this time",
            "review": "Weekly review", "series": "Mini-series", "budget": "Time budget",
@@ -60,6 +60,7 @@ def render_text(plan: ContentPlan) -> str:
         lines += [
             f"   {t['clip']} ({item.clip_day}): {item.clip_idea}",
             f"   {t['hook']}: {item.hook}",
+            f"   {t['clip_titles']}: " + " | ".join(item.clip_title_ideas),
             f"   {t['measure']}: {item.measurement}",
             f"   {t['when']}: {item.timing_reason}",
         ]
@@ -109,6 +110,7 @@ def _card(item: StreamPlan, t: dict) -> str:
     rows += [
         (t["clip"], f"{escape(item.clip_day)}: {escape(item.clip_idea)}"),
         (t["hook"], escape(item.hook)),
+        (t["clip_titles"], "<br>".join(escape(text) for text in item.clip_title_ideas)),
         (t["measure"], escape(item.measurement)),
         (t["why"], escape(item.why)),
         (t["when"], escape(item.timing_reason)),

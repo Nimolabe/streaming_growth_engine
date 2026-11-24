@@ -34,7 +34,7 @@ from .models import (
     StreamPlan,
     WeeklyReview,
 )
-from .titles import render_titles
+from .titles import STREAM_TITLES, build_titles, clip_titles, stream_mood
 from .twitch_limits import (
     SOURCE_DATE,
     SOURCE_URL,
@@ -205,6 +205,21 @@ def _ranked(genre: str | None, request: StrategyRequest, level: str) -> list[For
     return sorted(pool, key=lambda item: (-_score(item, request, level), order[item.id]))
 
 
+def item_mood(format_id: str, genre: str | None, request: StrategyRequest) -> str:
+    return stream_mood(format_id, genre, request.mood)
+
+
+def week_minute(session: Session) -> int:
+    hours, minutes = session.start.split(":")
+    return session.day * 1440 + int(hours) * 60 + int(minutes)
+
+
+def _rank_stream(entry: StreamPlan, genres: dict[str, str | None], request: StrategyRequest) -> bool:
+    """Zählt für „Road to <Rang>, Tag k“: Rang-Ziel angegeben und Ranked-Format."""
+    return bool(request.rank_goal) and STREAM_TITLES[entry.format_id].ranked and \
+        genres[entry.game] in {"shooter", "battle_royale", "moba", "sports"}
+
+
 def _week_closer(genre: str | None, request: StrategyRequest, level: str) -> Format | None:
     """Format für den letzten Stream der Woche (z. B. Wochenrückblick), falls es eines gibt.
 
@@ -347,7 +362,8 @@ def build_plan(request: StrategyRequest,
             number=number, stream=stream, game=game, genre_label=genre_label(genre, lang),
             format_id=item.id, format_name=_t(item.name, lang), needs_chat=item.needs_chat,
             needs_collab=item.needs_collab,
-            title="", title_alternatives=[],
+            title="", title_alternatives=[], title_mood=item_mood(item.id, genre, request),
+            clip_title_ideas=clip_titles(item.id, lang),
             tags=_tags(game, genre, item, lang),
             run_of_show=[_t(step, lang) for step in item.steps],
             break_note=_break_note(minutes, lang),
@@ -365,11 +381,27 @@ def build_plan(request: StrategyRequest,
     totals: dict[str, int] = defaultdict(int)
     for entry in streams:
         totals[entry.format_id] += 1
+    ranked_total = sum(1 for entry in streams if _rank_stream(entry, genres, request))
     seen: dict[str, int] = defaultdict(int)
-    for entry in streams:
+    used_main: dict[str, set[str]] = defaultdict(set)
+    ranked_seen = 0
+    for index, entry in enumerate(streams):
         seen[entry.format_id] += 1
         counter = (request.week_number - 1) * totals[entry.format_id] + seen[entry.format_id]
-        titles = [fit_title(text) for text in render_titles(entry.format_id, entry.game, counter, lang)]
+        if _rank_stream(entry, genres, request):
+            ranked_seen += 1
+        # Ansätze wechseln sich über die Woche ab; dasselbe Format nie mit gleichem Haupttitel.
+        for shift in range(3):
+            options = build_titles(
+                entry.format_id, genres[entry.game], entry.game, lang, counter=counter,
+                start_minute=week_minute(entry.stream), mood=request.mood,
+                rank_goal=request.rank_goal,
+                rank_counter=(request.week_number - 1) * ranked_total + max(ranked_seen, 1),
+                first_time=request.first_time, rotation=index + shift)
+            if options[0].text not in used_main[entry.format_id]:
+                break
+        used_main[entry.format_id].add(options[0].text)
+        titles = [fit_title(option.text) for option in options]
         entry.title, entry.title_alternatives = titles[0], titles[1:3]
 
     last_day = streams[-1].stream.day
