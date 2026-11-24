@@ -6,7 +6,7 @@ Jedes Format ist eine redaktionelle Idee, kein bewiesenes Erfolgsrezept. Regeln 
 - ``needs_chat`` ist ein explizites Merkmal: ``none`` funktioniert ohne Chat und hat eine
   Messgröße ohne Chat-Reaktionen; ``low`` braucht ein paar aktive Chatter; ``active`` einen
   lebhaften Chat. ``needs_collab`` braucht Mitspieler oder einen Gast.
-- ``title`` ist eine Vorlage mit ``{game}``; sie bleibt deutlich unter Twitchs 140 Zeichen.
+- Stream-Titel stehen getrennt in ``titles.py`` (mit den Regeln für klickbare Titel).
 - ``series`` nur, wenn das Format von Natur aus in Folgen funktioniert.
 """
 from dataclasses import dataclass, field
@@ -29,11 +29,11 @@ class Format:
     hook: Text
     clip: Text
     metric: Text
-    title: Text
     tags: tuple[Text, ...]
     needs_collab: bool = False
     expert: bool = False  # setzt Erfahrung voraus (für Einsteiger weiter hinten)
     series: tuple[Text, ...] = field(default=())
+    week_end: bool = False  # nur als letzter Stream der Woche (z. B. Wochenrückblick)
 
 
 
@@ -74,8 +74,6 @@ FORMATS: tuple[Format, ...] = (
          "Scene up to the outcome, freeze frame with two options, then the reveal"),
         ("Zuschauerverlauf im Clip bis zur Auflösung (Clip-Statistik)",
          "Viewer retention in the clip up to the reveal (clip statistics)"),
-        ("{game}: Welche Entscheidung kostet mich die Runde? Analyse am Ende",
-         "{game}: which decision costs me the round? Review at the end"),
         (("Analyse", "Analysis"), ("Taktik", "Tactics")),
     ),
     Format(
@@ -98,8 +96,6 @@ FORMATS: tuple[Format, ...] = (
          "Two scenes side by side, before and after, with one line on what changed"),
         ("Ob derselbe Fehler in zwei vergleichbaren Szenen wieder vorkommt (eigene Notiz)",
          "Whether the same mistake shows up again in two comparable scenes (your own notes)"),
-        ("{game}: Heute übe ich nur eine Sache – Fadenkreuz-Position",
-         "{game}: practising just one thing today – crosshair placement"),
         (("Lernen", "Learning"), ("Training", "Practice")),
         series=(("Folge 1: Ausgangslage aufnehmen", "Episode 1: record your baseline"),
                 ("Folge 2: gezielt üben", "Episode 2: focused practice"),
@@ -123,8 +119,6 @@ FORMATS: tuple[Format, ...] = (
          "The moment the new role works or fails, with one line of explanation"),
         ("Durchschnittliche Zuschauer im Vergleich zu deinem üblichen Stream",
          "Average viewers compared with your usual stream"),
-        ("{game}: Ich spiele die Rolle, die ich sonst meide",
-         "{game}: playing the role I usually avoid"),
         (("Rollenwechsel", "RoleSwap"),),
         expert=True,
     ),
@@ -142,8 +136,6 @@ FORMATS: tuple[Format, ...] = (
         ("Bester Moment mit der Regel, Regel als Einblendung",
          "Best moment with the rule, rule shown on screen"),
         VOTES,
-        ("{game}: Der Chat bestimmt die Regel für jedes Match",
-         "{game}: chat picks the rule for every match"),
         (("Challenge", "Challenge"), ("Community", "Community")),
     ),
     Format(
@@ -164,7 +156,6 @@ FORMATS: tuple[Format, ...] = (
          "The coach's tip and the scene where it works"),
         ("Ob der Tipp in der nächsten Runde sichtbar umgesetzt wurde",
          "Whether the tip is visibly applied in the next round"),
-        ("{game}: Ein Coach schaut mir über die Schulter", "{game}: a coach looks over my shoulder"),
         (("Coaching", "Coaching"),),
         needs_collab=True,
     ),
@@ -190,8 +181,6 @@ FORMATS: tuple[Format, ...] = (
          "Both spots side by side with the result on screen"),
         ("Clip-Aufrufe nach 7 Tagen im Vergleich zu deinen anderen Clips",
          "Clip views after 7 days compared with your other clips"),
-        ("{game}: Zwei Landeplätze im Vergleich – welcher passt zu mir?",
-         "{game}: two drop spots compared – which one suits me?"),
         (("Strategie", "Strategy"), ("Vergleich", "Comparison")),
     ),
     Format(
@@ -212,8 +201,6 @@ FORMATS: tuple[Format, ...] = (
         ("Sicht bis zur Entscheidung, Standbild, dann die Auflösung",
          "View up to the decision, freeze frame, then the reveal"),
         ("Zuschauerverlauf im Clip bis zur Auflösung", "Viewer retention in the clip up to the reveal"),
-        ("{game}: Rotation oder Risiko? Ich erkläre jede Entscheidung",
-         "{game}: rotate or risk it? I explain every decision"),
         (("Analyse", "Analysis"), ("Strategie", "Strategy")),
     ),
     Format(
@@ -236,8 +223,6 @@ FORMATS: tuple[Format, ...] = (
          "Best fight with each loadout, result at the end"),
         ("Ob deine Notizen für beide Ausrüstungen vollständig sind (fairer Vergleich)",
          "Whether your notes for both loadouts are complete (a fair comparison)"),
-        ("{game}: Ausrüstungs-Labor – zwei Varianten fair getestet",
-         "{game}: loadout lab – two setups tested fairly"),
         (("Experiment", "Experiment"),),
         series=(("Folge 1: Variante A", "Episode 1: setup A"),
                 ("Folge 2: Variante B", "Episode 2: setup B"),
@@ -260,7 +245,6 @@ FORMATS: tuple[Format, ...] = (
          "Messy callout before versus clear callout after"),
         ("Wie viele Ansagen beim ersten Mal verstanden wurden (eigene Strichliste)",
          "How many callouts were understood the first time (your own tally)"),
-        ("{game}: Teamkommunikation vorher und nachher", "{game}: team comms before and after"),
         (("Squad", "Squad"), ("Teamplay", "Teamplay")),
         needs_collab=True,
     ),
@@ -277,7 +261,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat schickt mich an diesen Landeplatz", "My chat sends me to this drop spot"),
         ("Landung und bester Moment am gewählten Ort", "The drop and the best moment at the chosen spot"),
         VOTES,
-        ("{game}: Der Chat wählt meinen Landeplatz", "{game}: chat picks my drop spot"),
         (("Community", "Community"), ("Challenge", "Challenge")),
     ),
     # ------------------------------------------------------------------ MOBA
@@ -299,8 +282,6 @@ FORMATS: tuple[Format, ...] = (
         ("Szene bis zum Fehler, Standbild, Erklärung in einem Satz",
          "Scene up to the mistake, freeze frame, one-sentence explanation"),
         ("Zuschauerverlauf im Clip bis zur Erklärung", "Viewer retention in the clip up to the explanation"),
-        ("{game}: Wo habe ich das Match verloren? Analyse nach jeder Runde",
-         "{game}: where did I lose the match? Review after every game"),
         (("Analyse", "Analysis"),),
     ),
     Format(
@@ -320,7 +301,6 @@ FORMATS: tuple[Format, ...] = (
         ("Der erste richtige Erfolg mit dem neuen Charakter", "The first real success with the new character"),
         ("Ob du die drei Lernziele über die Folgen abhaken kannst (eigene Notiz)",
          "Whether you can tick off the three goals over the episodes (your own notes)"),
-        ("{game}: Ich lerne einen neuen Charakter von null", "{game}: learning a new character from zero"),
         (("Lernen", "Learning"),),
         series=(("Tag 1: erste Matches", "Day 1: first matches"),
                 ("Tag 2: gezielte Lernziele", "Day 2: focused goals"),
@@ -341,8 +321,6 @@ FORMATS: tuple[Format, ...] = (
         ("Schaffe ich heute meinen eigenen Bestwert?", "Can I beat my own best today?"),
         ("Kurzer Zusammenschnitt: der Wert nach jedem Match", "Quick cut: the number after every match"),
         ("Der gewählte Wert über alle Matches (eigene Tabelle)", "The chosen number over all matches (your own table)"),
-        ("{game}: Heute zählt nur ein Wert – Farm nach 10 Minuten",
-         "{game}: only one number counts today – farm at 10 minutes"),
         (("Training", "Practice"),),
     ),
     Format(
@@ -360,7 +338,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat wählt meinen Charakter", "My chat picks my character"),
         ("Bester Moment mit dem gewählten Charakter", "Best moment with the chosen character"),
         VOTES,
-        ("{game}: Der Chat wählt meinen Charakter", "{game}: chat picks my character"),
         (("Community", "Community"),),
     ),
     Format(
@@ -376,7 +353,6 @@ FORMATS: tuple[Format, ...] = (
         ("Tipp und Szene, in der er klappt", "The tip and the scene where it works"),
         ("Ob der Tipp im nächsten Match sichtbar umgesetzt wurde",
          "Whether the tip is visibly applied next match"),
-        ("{game}: Duo mit Coach – ein Tipp pro Match", "{game}: duo with a coach – one tip per match"),
         (("Duo", "Duo"), ("Coaching", "Coaching")),
         needs_collab=True,
     ),
@@ -400,8 +376,6 @@ FORMATS: tuple[Format, ...] = (
          "An honest first reaction to a twist – without spoiling the ending"),
         ("Wiederkehrende Zuschauer von Folge zu Folge (Analytics)",
          "Returning viewers from episode to episode (analytics)"),
-        ("{game}: Mein erster Durchgang – bitte keine Spoiler",
-         "{game}: my first playthrough – no spoilers please"),
         (("ErsterDurchgang", "FirstPlaythrough"), ("Story", "Story")),
         series=(("Etappe 1: Anfang und erste Eindrücke", "Stage 1: opening and first impressions"),
                 ("Etappe 2: Mitte und Vermutungen", "Stage 2: midgame and theories"),
@@ -423,8 +397,6 @@ FORMATS: tuple[Format, ...] = (
         ("Versuch 1 gegen den Versuch, der geklappt hat", "Attempt 1 versus the attempt that worked"),
         ("Erster Versuch neben dem erfolgreichen Versuch", "First attempt next to the successful one"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Wie viele Versuche brauche ich für diesen Abschnitt?",
-         "{game}: how many attempts will this section take me?"),
         (("Challenge", "Challenge"),),
     ),
     Format(
@@ -444,8 +416,6 @@ FORMATS: tuple[Format, ...] = (
         ("Die Zusammenfassung als 60-Sekunden-Kurzvideo", "The recap as a 60-second short"),
         ("Ob neue Zuschauer nach der Zusammenfassung bleiben (Zuschauerverlauf erste 15 Minuten)",
          "Whether new viewers stay after the recap (viewer graph, first 15 minutes)"),
-        ("{game}: Die Geschichte bisher in 5 Minuten – dann geht es weiter",
-         "{game}: the story so far in 5 minutes – then we continue"),
         (("Story", "Story"), ("Lore", "Lore")),
         expert=True,
     ),
@@ -464,8 +434,6 @@ FORMATS: tuple[Format, ...] = (
         ("Drei Details, die die meisten übersehen", "Three details most people miss"),
         ("Drei Entdeckungen in 30 Sekunden", "Three finds in 30 seconds"),
         ("Durchschnittliche Wiedergabedauer im VOD", "Average watch time in the VOD"),
-        ("{game}: Langsam spielen – Details, die man leicht übersieht",
-         "{game}: slow play – details that are easy to miss"),
         (("Erkunden", "Exploration"), ("Entspannt", "Chill")),
     ),
     Format(
@@ -482,7 +450,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat entscheidet über die Geschichte", "My chat decides the story"),
         ("Entscheidung und ihre Folge in einem Clip", "A choice and its consequence in one clip"),
         VOTES,
-        ("{game}: Der Chat entscheidet über die Geschichte", "{game}: chat decides the story"),
         (("Community", "Community"), ("Entscheidungen", "Choices")),
     ),
     # ------------------------------------------------------------------ Horror
@@ -504,8 +471,6 @@ FORMATS: tuple[Format, ...] = (
         ("Kurz vor dem Schreckmoment beginnen, Facecam groß, höchstens 30 Sekunden",
          "Start just before the scare, facecam large, 30 seconds max"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Erster Durchgang mit Facecam – ehrliche Reaktionen",
-         "{game}: first playthrough on facecam – honest reactions"),
         (("Horror", "Horror"), ("Facecam", "Facecam")),
     ),
     Format(
@@ -523,7 +488,6 @@ FORMATS: tuple[Format, ...] = (
         ("Reaktion auf der höchsten Stufe", "Your reaction on the highest level"),
         ("Wie viele Zuschauer bis zur letzten Stufe bleiben (Zuschauerverlauf)",
          "How many viewers stay until the last level (viewer graph)"),
-        ("{game}: Mutprobe in drei Stufen", "{game}: a courage test in three levels"),
         (("Horror", "Horror"), ("Challenge", "Challenge")),
     ),
     Format(
@@ -542,8 +506,6 @@ FORMATS: tuple[Format, ...] = (
         ("Was ist hier wirklich passiert?", "What really happened here?"),
         ("Kurze Erklärung mit Bildern der Hinweise", "A short explanation with shots of the clues"),
         ("Wiedergabedauer im VOD für den Erklärteil", "VOD watch time for the explanation part"),
-        ("{game}: Was ist hier passiert? Ich ordne die Hinweise",
-         "{game}: what happened here? Sorting the clues"),
         (("Horror", "Horror"), ("Lore", "Lore")),
         series=(("Teil 1: erste Hinweise", "Part 1: first clues"),
                 ("Teil 2: neue Spuren", "Part 2: new leads"),
@@ -565,8 +527,6 @@ FORMATS: tuple[Format, ...] = (
         ("Gruppenreaktion auf einen Schreckmoment", "The group's reaction to a scare"),
         ("Durchschnittliche Zuschauer im Vergleich zu deinen Solo-Streams",
          "Average viewers compared with your solo streams"),
-        ("{game}: Koop-Nacht – wer bleibt am längsten ruhig?",
-         "{game}: co-op night – who stays calm the longest?"),
         (("Koop", "Coop"), ("Horror", "Horror")),
         needs_collab=True,
     ),
@@ -583,7 +543,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat wusste es vor mir", "My chat saw it coming before I did"),
         ("Tipp im Chat und der Schreckmoment direkt danach", "The guess in chat and the scare right after"),
         VOTES,
-        ("{game}: Der Chat tippt den nächsten Schreckmoment", "{game}: chat guesses the next scare"),
         (("Community", "Community"), ("Horror", "Horror")),
     ),
     # ------------------------------------------------------------------ Cozy/Simulation
@@ -602,7 +561,6 @@ FORMATS: tuple[Format, ...] = (
         ("Drei Ziele, ein gemütlicher Stream", "Three goals, one cosy stream"),
         ("Zeitraffer des Fortschritts mit abgehakter Liste", "Time-lapse of your progress with the ticked list"),
         ("Wiederkehrende Zuschauer (Analytics)", "Returning viewers (analytics)"),
-        ("{game}: Gemütlich spielen mit drei kleinen Zielen", "{game}: cosy play with three small goals"),
         (("Gemütlich", "Cozy"), ("Entspannt", "Chill")),
         series=(("Woche 1: Start", "Week 1: getting started"),
                 ("Woche 2: Ausbau", "Week 2: expanding"),
@@ -623,8 +581,6 @@ FORMATS: tuple[Format, ...] = (
         ("Aus diesem leeren Ort wird heute etwas Schönes", "This empty spot becomes something lovely today"),
         ("Vorher/Nachher-Übergang in 15 Sekunden", "Before/after transition in 15 seconds"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Vorher/Nachher – ich gestalte einen Ort komplett neu",
-         "{game}: before/after – redesigning one place from scratch"),
         (("Gestalten", "Design"), ("Gemütlich", "Cozy")),
     ),
     Format(
@@ -643,8 +599,6 @@ FORMATS: tuple[Format, ...] = (
         ("Drei Dinge, die ich am Anfang gern gewusst hätte", "Three things I wish I'd known at the start"),
         ("Ein Tipp in 20 Sekunden", "One tip in 20 seconds"),
         ("Clip-Aufrufe und Wiedergabedauer des Tipp-Clips", "Views and watch time of the tip clip"),
-        ("{game}: Drei Dinge, die ich am Anfang gern gewusst hätte",
-         "{game}: three things I wish I'd known at the start"),
         (("Tipps", "Tips"), ("Gemütlich", "Cozy")),
         expert=True,
     ),
@@ -663,7 +617,6 @@ FORMATS: tuple[Format, ...] = (
         ("Nur eine Farbe – geht das?", "Only one colour – can it work?"),
         ("Rundgang durch das Ergebnis der Regel", "A walkthrough of the result"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Gemütlich, aber mit einer Regel", "{game}: cosy, but with one rule"),
         (("Challenge", "Challenge"), ("Gemütlich", "Cozy")),
     ),
     Format(
@@ -680,7 +633,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat hat diesen Ort mitgestaltet", "My chat helped design this place"),
         ("Rundgang mit den Namen aus dem Chat", "A walkthrough with chat's names"),
         ("Wie viele Vorschläge pro Stream kommen", "How many suggestions come in per stream"),
-        ("{game}: Ihr gebt die Namen, ich baue", "{game}: you pick the names, I build"),
         (("Community", "Community"), ("Gemütlich", "Cozy")),
     ),
     # ------------------------------------------------------------------ Sandbox/Survival
@@ -702,7 +654,6 @@ FORMATS: tuple[Format, ...] = (
         ("Alle drei Lösungen schnell hintereinander, die beste ausführlicher",
          "All three solutions back to back, the best one in more detail"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Drei Lösungen für dieselbe Aufgabe", "{game}: three solutions to the same task"),
         (("Bauen", "Building"), ("Technik", "Engineering")),
         expert=True,
     ),
@@ -720,8 +671,6 @@ FORMATS: tuple[Format, ...] = (
         ("Fehler zuerst, dann die kleinste funktionierende Korrektur",
          "The bug first, then the smallest fix that works"),
         ("Wiedergabedauer des Clips", "Watch time of the clip"),
-        ("{game}: Warum funktioniert mein Bau nicht? Fehlersuche live",
-         "{game}: why doesn't my build work? Live troubleshooting"),
         (("Bauen", "Building"),),
     ),
     Format(
@@ -739,7 +688,6 @@ FORMATS: tuple[Format, ...] = (
         ("Aus diesem leeren Gelände wird ein Dorf", "This empty land becomes a village"),
         ("Zeitraffer einer Etappe", "Time-lapse of one stage"),
         ("Wiederkehrende Zuschauer von Etappe zu Etappe", "Returning viewers from stage to stage"),
-        ("{game}: Großprojekt Etappe für Etappe", "{game}: big project, stage by stage"),
         (("Bauen", "Building"), ("Projekt", "Project")),
         series=(("Etappe 1: Fundament", "Stage 1: foundation"),
                 ("Etappe 2: Ausbau", "Stage 2: expansion"),
@@ -759,7 +707,6 @@ FORMATS: tuple[Format, ...] = (
         ("Schaffe ich das erste Ziel?", "Can I make the first goal?"),
         ("Der knappste Moment des Tages", "The closest call of the day"),
         ("Durchschnittliche Zuschauer pro Folge", "Average viewers per episode"),
-        ("{game}: Neue Welt – schaffe ich das erste Ziel?", "{game}: new world – can I make the first goal?"),
         (("Survival", "Survival"),),
         series=(("Tag 1: Ankommen", "Day 1: arrival"),
                 ("Tag 2: Ausbau", "Day 2: building up"),
@@ -778,7 +725,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat hat entschieden, was ich baue", "My chat decided what I build"),
         ("Zeitraffer vom Vorschlag bis zum fertigen Bau", "Time-lapse from idea to finished build"),
         ("Anzahl der Vorschläge und Abstimmenden", "Number of suggestions and voters"),
-        ("{game}: Ihr schlagt vor, ich baue", "{game}: you suggest, I build"),
         (("Community", "Community"), ("Bauen", "Building")),
     ),
     # ------------------------------------------------------------------ Sport/Rennspiele
@@ -796,7 +742,6 @@ FORMATS: tuple[Format, ...] = (
         ("Diese eine Technik übe ich, bis sie sitzt", "I practise this one technique until it clicks"),
         ("Erster Versuch gegen besten Versuch", "First attempt versus best attempt"),
         ("Eigene Erfolgsquote der Technik (Strichliste)", "Your own success rate for the technique (tally)"),
-        ("{game}: Eine Technik, bis sie sitzt", "{game}: one technique until it clicks"),
         (("Training", "Practice"),),
         series=(("Tag 1: erste Versuche", "Day 1: first attempts"),
                 ("Tag 2: im Spiel einsetzen", "Day 2: using it in games"),
@@ -817,7 +762,6 @@ FORMATS: tuple[Format, ...] = (
         ("Schaffe ich heute meine Bestmarke?", "Can I beat my best today?"),
         ("Der Versuch mit der neuen Bestmarke", "The attempt that set the new best"),
         ("Deine Bestmarke im Vergleich zum letzten Stream", "Your best compared with the last stream"),
-        ("{game}: Jagd auf meine eigene Bestmarke", "{game}: chasing my personal best"),
         (("Rekord", "PersonalBest"),),
     ),
     Format(
@@ -835,8 +779,6 @@ FORMATS: tuple[Format, ...] = (
         ("Hier habe ich das Spiel verloren", "This is where I lost the game"),
         ("Szene, Standbild, eine Zeile Erklärung", "Scene, freeze frame, one line of explanation"),
         ("Zuschauerverlauf im Clip bis zur Erklärung", "Viewer retention in the clip up to the explanation"),
-        ("{game}: Wo habe ich verloren? Analyse nach jedem Spiel",
-         "{game}: where did I lose it? Review after every game"),
         (("Analyse", "Analysis"),),
         expert=True,
     ),
@@ -856,7 +798,6 @@ FORMATS: tuple[Format, ...] = (
         ("Das entscheidende Tor, Überholmanöver oder der wichtigste Spielzug des Tages",
          "The deciding goal, overtake or key play of the day"),
         ("Wiederkehrende Zuschauer pro Folge", "Returning viewers per episode"),
-        ("{game}: Meine Saison als Serie – es geht weiter", "{game}: my season as a series – continuing"),
         (("Saison", "Season"),),
         series=(("Folge 1: Saisonstart", "Episode 1: season start"),
                 ("Folge 2: Saisonmitte", "Episode 2: mid-season"),
@@ -875,7 +816,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat bestimmt, wie ich spiele", "My chat decides how I play"),
         ("Bester Moment mit der Wahl des Chats", "Best moment with chat's choice"),
         VOTES,
-        ("{game}: Der Chat wählt meine Spielweise", "{game}: chat picks my playstyle"),
         (("Community", "Community"),),
     ),
     # ------------------------------------------------------------------ Just Chatting
@@ -897,8 +837,6 @@ FORMATS: tuple[Format, ...] = (
         ("Der stärkste der drei Punkte in 30–45 Sekunden", "The strongest point in 30–45 seconds"),
         ("Ob neue Zuschauer die ersten 10 Minuten bleiben (Zuschauerverlauf)",
          "Whether new viewers stay for the first 10 minutes (viewer graph)"),
-        ("Drei Dinge, die mir mein Hobby beigebracht hat – Gesprächsrunde",
-         "Three things my hobby taught me – a chat stream"),
         (("Gespräch", "Talk"), ("Hobby", "Hobby")),
     ),
     Format(
@@ -916,8 +854,6 @@ FORMATS: tuple[Format, ...] = (
         ("Von leer zu fertig in einem Stream", "From blank to done in one stream"),
         ("Zeitraffer vom Anfang bis zum Ergebnis", "Time-lapse from start to finish"),
         ("Durchschnittliche Wiedergabedauer im VOD", "Average watch time in the VOD"),
-        ("Live-Projekt von null bis fertig – nebenbei quatschen",
-         "Live project from zero to done – chatting along"),
         (("Projekt", "Project"), ("Kreativ", "Creative")),
         series=(("Teil 1: Start", "Part 1: start"),
                 ("Teil 2: Hauptarbeit", "Part 2: main work"),
@@ -938,8 +874,8 @@ FORMATS: tuple[Format, ...] = (
         ("Das war meine Woche in 60 Sekunden", "My week in 60 seconds"),
         ("Wochenrückblick in 60 Sekunden", "Weekly recap in 60 seconds"),
         ("Wiederkehrende Zuschauer (Analytics)", "Returning viewers (analytics)"),
-        ("Wochenrückblick und Plan für die nächste Woche", "Weekly recap and next week's plan"),
         (("Wochenrückblick", "WeeklyRecap"), ("Gespräch", "Talk")),
+        week_end=True,
     ),
     Format(
         "jc-learn-live", "just_chatting", "none", ("discovery",),
@@ -955,7 +891,6 @@ FORMATS: tuple[Format, ...] = (
         ("Ich lerne das heute von null", "I'm learning this from zero today"),
         ("Erster gegen letzten Versuch", "First versus last attempt"),
         ("Ob das Lernziel erreicht wurde (eigene Notiz)", "Whether you reached the goal (your own notes)"),
-        ("Ich lerne heute live etwas Neues – von null an", "Learning something new live today – from zero"),
         (("Lernen", "Learning"), ("Gespräch", "Talk")),
         series=(("Tag 1: Anfang", "Day 1: beginning"),
                 ("Tag 2: Übung", "Day 2: practice"),
@@ -974,7 +909,6 @@ FORMATS: tuple[Format, ...] = (
         ("Ihr fragt, ich antworte ehrlich", "You ask, I answer honestly"),
         ("Die beste Antwort als Kurzvideo", "The best answer as a short"),
         ("Anzahl der gestellten Fragen", "Number of questions asked"),
-        ("Fragerunde – ihr fragt, ich antworte ehrlich", "Q&A – you ask, I answer honestly"),
         (("Fragerunde", "QandA"), ("Gespräch", "Talk")),
     ),
     Format(
@@ -990,7 +924,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat hat das Thema gewählt", "My chat picked the topic"),
         ("Die beste Diskussionsstelle in 45 Sekunden", "The best part of the discussion in 45 seconds"),
         ("Abstimmende und Chat-Beiträge pro Thema", "Voters and chat messages per topic"),
-        ("Ihr wählt das Thema – Gesprächsrunde", "You pick the topic – chat stream"),
         (("Community", "Community"), ("Gespräch", "Talk")),
     ),
     # ------------------------------------------------------------------ Allgemein (kein Genre erkannt)
@@ -1008,7 +941,6 @@ FORMATS: tuple[Format, ...] = (
         ("Meine erste Stunde in diesem Spiel", "My first hour in this game"),
         ("Bester Moment der ersten Stunde", "Best moment of the first hour"),
         ("Zuschauerverlauf der ersten 15 Minuten", "Viewer graph of the first 15 minutes"),
-        ("{game}: Erste Eindrücke – lohnt es sich für mich?", "{game}: first impressions – is it for me?"),
         (("ErsteEindrücke", "FirstImpressions"),),
     ),
     Format(
@@ -1024,7 +956,6 @@ FORMATS: tuple[Format, ...] = (
         ("Schaffe ich das bis zum Ende des Streams?", "Can I do this by the end of the stream?"),
         ("Erster gegen letzten Versuch", "First versus last attempt"),
         ("Ob das Ziel erreicht wurde (eigene Notiz)", "Whether you reached the goal (your own notes)"),
-        ("{game}: Lern-Tagebuch – heute ein Ziel", "{game}: learning diary – one goal today"),
         (("Lernen", "Learning"),),
         series=(("Folge 1: Ausgangslage", "Episode 1: baseline"),
                 ("Folge 2: gezielt üben", "Episode 2: focused practice"),
@@ -1044,7 +975,6 @@ FORMATS: tuple[Format, ...] = (
         ("Zwei Wege, ein Ziel – welcher passt besser?", "Two ways, one goal – which fits better?"),
         ("Beide Wege im Schnelldurchlauf, dann das Ergebnis", "Both ways in fast-forward, then the result"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Zwei Wege zum selben Ziel", "{game}: two ways to the same goal"),
         (("Vergleich", "Comparison"),),
     ),
     Format(
@@ -1060,7 +990,6 @@ FORMATS: tuple[Format, ...] = (
         ("Dieser Moment hat meine Woche geprägt", "This moment defined my week"),
         ("Der Moment mit einer Einblendung zum Kontext", "The moment with an on-screen line of context"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
-        ("{game}: Mein Moment der Woche – mit Vorgeschichte", "{game}: my moment of the week – with backstory"),
         (("Highlights", "Highlights"),),
     ),
     Format(
@@ -1075,7 +1004,6 @@ FORMATS: tuple[Format, ...] = (
         ("Mein Chat entscheidet, wie es weitergeht", "My chat decides what happens next"),
         ("Die Wahl und ihr Ergebnis in einem Clip", "The choice and its result in one clip"),
         VOTES,
-        ("{game}: Ihr entscheidet, wie es weitergeht", "{game}: you decide what happens next"),
         (("Community", "Community"),),
     ),
 )

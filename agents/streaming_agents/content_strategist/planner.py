@@ -34,6 +34,7 @@ from .models import (
     StreamPlan,
     WeeklyReview,
 )
+from .titles import render_titles
 from .twitch_limits import (
     SOURCE_DATE,
     SOURCE_URL,
@@ -198,9 +199,22 @@ def _eligible(item: Format, request: StrategyRequest, level: str) -> bool:
 
 
 def _ranked(genre: str | None, request: StrategyRequest, level: str) -> list[Format]:
-    pool = [item for item in formats_for(genre) if _eligible(item, request, level)]
+    pool = [item for item in formats_for(genre)
+            if _eligible(item, request, level) and not item.week_end]
     order = {item.id: index for index, item in enumerate(FORMATS)}
     return sorted(pool, key=lambda item: (-_score(item, request, level), order[item.id]))
+
+
+def _week_closer(genre: str | None, request: StrategyRequest, level: str) -> Format | None:
+    """Format für den letzten Stream der Woche (z. B. Wochenrückblick), falls es eines gibt.
+
+    Nur bei mindestens zwei Streams – ein Rückblick auf eine Woche mit einem Stream lohnt nicht –
+    und nur, wenn das Format zum Ziel passt.
+    """
+    for item in formats_for(genre):
+        if item.week_end and _eligible(item, request, level) and request.goal in item.goals:
+            return item
+    return None
 
 
 def _why(item: Format, genre: str | None, request: StrategyRequest, level: str) -> str:
@@ -312,8 +326,12 @@ def build_plan(request: StrategyRequest,
     for number, (game, (start, minutes), _, slot) in enumerate(assignment, start=1):
         genre = genres[game]
         queue = queues.setdefault(genre, _ranked(genre, request, level))
-        item = queue[position[genre] % len(queue)]
-        position[genre] += 1
+        closer = _week_closer(genre, request, level) if number == count > 1 else None
+        if closer is not None:
+            item = closer
+        else:
+            item = queue[position[genre] % len(queue)]
+            position[genre] += 1
 
         prep_start = start - PREP_GAP - PREP_MINUTES
         while any(a < prep_start + PREP_MINUTES + PREP_GAP and prep_start < b
@@ -329,7 +347,7 @@ def build_plan(request: StrategyRequest,
             number=number, stream=stream, game=game, genre_label=genre_label(genre, lang),
             format_id=item.id, format_name=_t(item.name, lang), needs_chat=item.needs_chat,
             needs_collab=item.needs_collab,
-            title=fit_title(_t(item.title, lang).format(game=game)),
+            title="", title_alternatives=[],
             tags=_tags(game, genre, item, lang),
             run_of_show=[_t(step, lang) for step in item.steps],
             break_note=_break_note(minutes, lang),
@@ -341,6 +359,18 @@ def build_plan(request: StrategyRequest,
             why=_why(item, genre, request, level),
             timing_reason=_timing_reason(game, slot, stream, request, game_snaps[game]),
         ))
+
+    # Titel: Zähler laufen über die Wochen weiter (Woche 2 beginnt dort, wo Woche 1 aufhörte),
+    # und dasselbe Format bekommt in einer Woche nie zweimal denselben Haupttitel.
+    totals: dict[str, int] = defaultdict(int)
+    for entry in streams:
+        totals[entry.format_id] += 1
+    seen: dict[str, int] = defaultdict(int)
+    for entry in streams:
+        seen[entry.format_id] += 1
+        counter = (request.week_number - 1) * totals[entry.format_id] + seen[entry.format_id]
+        titles = [fit_title(text) for text in render_titles(entry.format_id, entry.game, counter, lang)]
+        entry.title, entry.title_alternatives = titles[0], titles[1:3]
 
     last_day = streams[-1].stream.day
     review = WeeklyReview(
@@ -466,10 +496,10 @@ def _notes(request: StrategyRequest, level: str, genres: dict[str, str | None],
     for game, genre in genres.items():
         if genre is None:
             notes.append(
-                f"„{game}“: kein Genre erkannt – der Plan nutzt allgemeine Formate. Schreibweise "
-                "prüfen oder die Twitch-Kategorie genau angeben." if de else
-                f"“{game}”: no genre recognised – the plan uses general formats. Check the "
-                "spelling or use the exact Twitch category.")
+                f"„{game}“: kein Genre erkannt – der Plan nutzt allgemeine Formate. Falls die "
+                "Schreibweise nicht stimmt: die Twitch-Kategorie genau angeben." if de else
+                f"“{game}”: no genre recognised – the plan uses general formats. If the spelling "
+                "is off, use the exact Twitch category.")
     if not any(game_slots.values()):
         notes.append(
             "Uhrzeiten kommen nur aus deinen Zeitfenstern. Für Uhrzeiten nach Publikum eine Woche "

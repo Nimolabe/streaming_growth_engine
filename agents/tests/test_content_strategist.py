@@ -19,6 +19,12 @@ from streaming_agents.content_strategist.planner import (
     build_plan,
 )
 from streaming_agents.content_strategist.report import render_html, render_text
+from streaming_agents.content_strategist.titles import (
+    FILLS,
+    TITLE_TARGET_CHARS,
+    TITLES,
+    render_titles,
+)
 from streaming_agents.content_strategist.twitch_limits import (
     TAG_MAX_CHARS,
     TAGS_MAX_COUNT,
@@ -115,19 +121,18 @@ def test_catalog_has_at_least_four_formats_per_genre_and_general():
 def test_catalog_entries_are_complete_and_unique():
     assert len({item.id for item in FORMATS}) == len(FORMATS)
     for item in FORMATS:
-        for pair in (item.name, item.hook, item.clip, item.metric, item.title,
+        for pair in (item.name, item.hook, item.clip, item.metric,
                      *item.steps, *item.prep, *item.tags, *item.series):
             assert pair[0].strip() and pair[1].strip(), item.id
         assert len(item.steps) == 3 and len(item.prep) == 2
         assert item.series == () or len(item.series) == 3
-        for language in (0, 1):
-            assert len(item.title[language].format(game="x" * 80)) <= TITLE_MAX_CHARS, item.id
 
 
 def test_english_texts_contain_no_german():
     for item in FORMATS:
-        english = [item.name[1], item.hook[1], item.clip[1], item.metric[1], item.title[1],
-                   *(pair[1] for pair in (*item.steps, *item.prep, *item.tags, *item.series))]
+        english = [item.name[1], item.hook[1], item.clip[1], item.metric[1],
+                   *(pair[1] for pair in (*item.steps, *item.prep, *item.tags, *item.series)),
+                   *(variant[2] for variant in TITLES[item.id])]
         for text in english:
             assert not set(text) & set("äöüßÄÖÜ"), (item.id, text)
             assert not any(word in text.split() for word in ("und", "mit", "der", "die", "das"))
@@ -148,7 +153,8 @@ def test_team_communication_format_is_reachable():
 
 
 def test_genres_do_not_borrow_ideas_from_each_other():
-    texts = {genre: " ".join(" ".join((f.name[0], f.title[0], *(s[0] for s in f.steps)))
+    texts = {genre: " ".join(" ".join((f.name[0], *(v[1] for v in TITLES[f.id]),
+                                       *(s[0] for s in f.steps)))
                              for f in formats_for(genre)).casefold() for genre in GENRES}
     for genre in ("cozy", "horror", "story", "just_chatting", "moba", "sports"):
         assert "baufehler" not in texts[genre] and "fadenkreuz" not in texts[genre]
@@ -389,3 +395,116 @@ def test_cli_reads_measurements(tmp_path, capsys):
                      "--window", "Di 18-23", "--hours", "4", "--streams", "1", "--viewers", "3",
                      "--measurements", str(path), "--utc-offset", "0"])
     assert code == 0 and "Platz 16" in capsys.readouterr().out
+
+
+# ------------------------------------------------------------------ Titel (Nachtrag)
+FORBIDDEN = (
+    # Meta-Wörter, die nur das Format beschreiben (Regel 3)
+    "analyse am ende", "gesprächsrunde", "vergleich", "heute übe ich", "heute spiele ich",
+    "review at the end", "comparison", "compared", "chat stream", "talk stream",
+    "today i practise", "today i practice", "today i play",
+    # unehrliche Versprechen (Regel 5)
+    "unmöglich", "impossible", "gleich passiert", "you won't believe", "krass", "insane",
+    "garantiert", "guaranteed", "weltrekord", "world record",
+)
+ABBREVIATIONS = {"PB", "CS", "RP", "FPS", "KO"}
+TITLE_GAMES = ["Valorant", "League of Legends", "Stardew Valley", "Tetris Effect"]
+
+
+def test_every_format_has_three_different_title_variants():
+    assert set(TITLES) == set(FORMATS_BY_ID)
+    for format_id, variants in TITLES.items():
+        item = FORMATS_BY_ID[format_id]
+        kinds = [kind for kind, _, _ in variants]
+        assert len(variants) >= 3 and len(set(kinds)) >= 2, format_id
+        assert len({de for _, de, _ in variants}) == len(variants), format_id
+        if item.needs_chat == "none":
+            assert "join" not in kinds, format_id  # Mitmachen nur mit Chat
+        else:
+            assert "join" in kinds, format_id
+    assert set(FILLS) <= set(TITLES)
+
+
+@pytest.mark.parametrize("language", ["de", "en"])
+@pytest.mark.parametrize("format_id", sorted(TITLES))
+def test_titles_follow_the_rules(format_id, language):
+    for game in TITLE_GAMES:
+        for counter in (1, 2, 3, 12):
+            for title in render_titles(format_id, game, counter, language):
+                low = title.casefold()
+                assert "{" not in title and "}" not in title, title
+                # Regel 1: kein Spielname am Anfang
+                assert not low.startswith(game.casefold()), title
+                assert not any(low.startswith(other.casefold()) for other in EXAMPLE_GAMES.values())
+                # Regel 3 und 5: Verbotsliste
+                assert not any(word in low for word in FORBIDDEN), title
+                # Regel 5: keine Großbuchstaben-Wörter außer Abkürzungen, ≤ 1 „!“, keine Emojis
+                for word in title.replace("–", " ").split():
+                    letters = "".join(ch for ch in word if ch.isalpha())
+                    if len(letters) >= 2 and letters.isupper():
+                        assert letters in ABBREVIATIONS, title
+                assert title.count("!") <= 1
+                assert all(ord(ch) < 0x2190 or ch in "–„“”’…" for ch in title), title
+                # Regel 7: Ziel ≤ 70 Zeichen, Twitch-Grenze 140 hart
+                assert len(title) <= TITLE_TARGET_CHARS, title
+                assert len(fit_title(title)) <= TITLE_MAX_CHARS
+
+
+def test_titles_with_very_long_game_names_stay_within_twitch_limit():
+    long_game = "x" * 80
+    for format_id in TITLES:
+        for language in ("de", "en"):
+            for title in render_titles(format_id, long_game, 1, language):
+                assert is_valid_title(fit_title(title))
+
+
+def test_plan_shows_main_title_and_two_alternatives():
+    plan = build_plan(request(games=("Stardew Valley",), streams_per_week=3))
+    for item in plan.streams:
+        assert len(item.title_alternatives) == 2
+        assert item.title not in item.title_alternatives
+        assert all(is_valid_title(text) for text in [item.title, *item.title_alternatives])
+    assert "Andere Titel" in render_text(plan) and "Andere Titel" in render_html(plan)
+
+
+def test_same_format_in_one_week_never_repeats_the_main_title():
+    plan = build_plan(request(games=("Minecraft",), streams_per_week=5, hours_per_week=20,
+                              windows=["Mo 18-22", "Di 18-22", "Mi 18-22", "Fr 18-22", "Sa 12-20"]))
+    seen: dict[str, set[str]] = {}
+    repeated = False
+    for item in plan.streams:
+        titles = seen.setdefault(item.format_id, set())
+        repeated |= bool(titles)
+        assert item.title not in titles
+        titles.add(item.title)
+    assert repeated  # 5 Streams, 4 passende Formate → eines kommt zweimal
+
+
+def test_week_number_advances_counters():
+    first = build_plan(request(games=("Minecraft",), streams_per_week=2, goal="consistency"))
+    second = build_plan(request(games=("Minecraft",), streams_per_week=2, goal="consistency",
+                                week_number=2))
+    assert "1" in first.streams[0].title and "2" in second.streams[0].title
+    assert first.streams[0].title != second.streams[0].title
+
+
+@pytest.mark.parametrize(("name", "genre"), [
+    ("GTA V", None), ("Grand Theft Auto V", None), ("GTA RP", None),
+    ("World of Warcraft", None), ("ARC Raiders", "shooter"), ("Arc Raiders", "shooter"),
+    ("R.E.P.O.", "horror"), ("Repo Man", None),
+])
+def test_genre_additions_and_removed_repo_alias(name, genre):
+    assert detect_genre(name) == genre
+
+
+def test_week_recap_only_on_the_last_stream():
+    plan = build_plan(request(games=("Just Chatting",), streams_per_week=3, goal="community"))
+    ids = [item.format_id for item in plan.streams]
+    assert ids[-1] == "jc-week-recap" and "jc-week-recap" not in ids[:-1]
+    single = build_plan(request(games=("Just Chatting",), streams_per_week=1, goal="community"))
+    assert single.streams[0].format_id != "jc-week-recap"
+    for profile in PROFILES.values():
+        for language in ("de", "en"):
+            ids = [item.format_id for item in build_plan(request(
+                games=("Just Chatting",), language=language, **profile)).streams]
+            assert "jc-week-recap" not in ids[:-1]

@@ -71,6 +71,8 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--lang", choices=["de", "en"], default="de", help="Sprache von Plan und Titeln")
     plan.add_argument("--platform", choices=["twitch", "youtube", "kick", "tiktok", "other"],
                       default="twitch")
+    plan.add_argument("--week", type=int, default=1,
+                      help="Wievielte Woche du planst (Standard 1) – Zähler in Titeln laufen weiter")
     plan.add_argument("--collab", action="store_true",
                       help="Mitspieler oder Gast verfügbar (Koop- und Coach-Formate)")
     plan.add_argument("--measurements", nargs="+",
@@ -96,6 +98,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
         streams_per_week=args.streams, average_viewers=args.viewers,
         active_chatters=args.chatters, goal=args.goal, experience=args.experience,
         language=args.lang, platform=args.platform, collab_partner=args.collab,
+        week_number=args.week,
         measurements=measurements, utc_offset_minutes=args.utc_offset,
     )
     plan = build_plan(request)

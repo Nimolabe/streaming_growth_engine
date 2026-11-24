@@ -28,12 +28,18 @@ GENRE_LABELS: dict[str, tuple[str, str]] = {
 UNKNOWN_LABEL = ("kein Genre erkannt", "no genre recognised")
 
 # Aliasse in normalisierter Form: Kleinbuchstaben, Satzzeichen → Leerzeichen.
+# Bewusst OHNE Genre (→ „kein Genre erkannt“, allgemeine Formate):
+# - GTA V / GTA RP: Rollenspiel-Server und Missionen passen weder zu den Bau-/Überlebens-Formaten
+#   (Sandbox) noch zu einem anderen Genre.
+# - World of Warcraft: ein MMO. Story/Singleplayer wäre falsch (Tag „Singleplayer“), ein
+#   eigenes MMO-Genre gibt es noch nicht. Nur „R.E.P.O.“ (→ „r e p o“), nicht „repo“,
+# damit z. B. „Repo Man“ nicht als Horror gilt.
 GAME_ALIASES: dict[str, tuple[str, ...]] = {
     "shooter": (
         "valorant", "cs2", "cs 2", "csgo", "cs go", "counter strike", "counterstrike",
         "call of duty", "cod", "overwatch", "overwatch 2", "rainbow six", "rainbow six siege",
         "r6", "r6s", "battlefield", "the finals", "destiny 2", "escape from tarkov", "tarkov",
-        "halo", "team fortress 2", "tf2", "marvel rivals", "deadlock",
+        "halo", "team fortress 2", "tf2", "marvel rivals", "deadlock", "arc raiders",
     ),
     "battle_royale": (
         "fortnite", "apex", "apex legends", "warzone", "call of duty warzone", "cod warzone",
@@ -55,7 +61,7 @@ GAME_ALIASES: dict[str, tuple[str, ...]] = {
     "horror": (
         "phasmophobia", "resident evil", "lethal company", "outlast", "dead by daylight",
         "silent hill", "five nights at freddy s", "fnaf", "content warning", "amnesia",
-        "the outlast trials", "alien isolation", "dead space", "r e p o", "repo", "horror",
+        "the outlast trials", "alien isolation", "dead space", "r e p o", "horror",
     ),
     "cozy": (
         "stardew valley", "stardew", "die sims", "the sims", "sims", "sims 4", "die sims 4",

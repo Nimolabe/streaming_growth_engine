@@ -9,7 +9,7 @@ from .models import ContentPlan, StreamPlan
 
 TEXT = {
     "de": {"title": "Content-Plan der Woche", "games": "Spiele", "genre": "Genre",
-           "stream": "Stream", "prep": "Vorbereitung", "format": "Format", "stream_title": "Titel",
+           "stream": "Stream", "prep": "Vorbereitung", "format": "Format", "stream_title": "Titel", "alt": "Andere Titel",
            "tags": "Tags", "run": "Ablauf", "clip": "Clip danach", "hook": "Hook fürs Kurzvideo",
            "measure": "Messgröße", "why": "Warum dieses Format", "when": "Warum diese Uhrzeit",
            "review": "Wochenrückblick", "series": "Mini-Serie", "budget": "Zeitbudget",
@@ -19,7 +19,7 @@ TEXT = {
            "of": "von", "chat": {"none": "ohne Chat", "low": "kleiner Chat", "active": "aktiver Chat"},
            "check": "Kategorie-Check", "break": "Pausen"},
     "en": {"title": "Weekly content plan", "games": "Games", "genre": "Genre",
-           "stream": "Stream", "prep": "Preparation", "format": "Format", "stream_title": "Title",
+           "stream": "Stream", "prep": "Preparation", "format": "Format", "stream_title": "Title", "alt": "Other titles",
            "tags": "Tags", "run": "Run of show", "clip": "Clip afterwards", "hook": "Hook for a short",
            "measure": "Measurement", "why": "Why this format", "when": "Why this time",
            "review": "Weekly review", "series": "Mini-series", "budget": "Time budget",
@@ -49,6 +49,7 @@ def render_text(plan: ContentPlan) -> str:
             (f"{item.number}. {_when(item)} ({item.stream.minutes} {t['min']}) · {item.game} · "
              f"{item.format_name} [{t['chat'][item.needs_chat]}]"),
             f"   {t['stream_title']}: {item.title}",
+            f"   {t['alt']}: " + " | ".join(item.title_alternatives),
             f"   {t['tags']}: {', '.join(item.tags)}",
             f"   {t['prep']}: {item.preparation.label} {item.preparation.start}–"
             f"{item.preparation.end} – " + "; ".join(item.prep_steps),
@@ -97,6 +98,7 @@ def _card(item: StreamPlan, t: dict) -> str:
     prep = "".join(f"<li>{escape(step)}</li>" for step in item.prep_steps)
     rows = [
         (t["stream_title"], escape(item.title)),
+        (t["alt"], "<br>".join(escape(text) for text in item.title_alternatives)),
         (t["tags"], tags),
         (t["prep"], (f"{escape(item.preparation.label)} {item.preparation.start}–"
                      f"{item.preparation.end}<ul>{prep}</ul>")),

@@ -103,6 +103,8 @@ class StrategyRequest(BaseModel):
     experience: Literal["beginner", "intermediate", "advanced"] = "beginner"
     language: Literal["de", "en"] = "de"
     platform: Literal["twitch", "youtube", "kick", "tiktok", "other"] = "twitch"
+    week_number: int = Field(default=1, ge=1, le=520,
+                             description="Woche der Planung; Zähler in Titeln („Tag 3“) laufen weiter")
     collab_partner: bool = Field(default=False,
                                  description="Mitspieler oder Gast verfügbar (Koop-/Coach-Formate)")
     measurements: list[CategorySnapshot] = Field(
@@ -152,6 +154,7 @@ class StreamPlan(BaseModel):
     needs_chat: Literal["none", "low", "active"]
     needs_collab: bool
     title: str
+    title_alternatives: list[str]
     tags: list[str]
     run_of_show: list[str]
     break_note: str | None
