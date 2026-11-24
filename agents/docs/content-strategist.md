@@ -42,6 +42,9 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
 | `experience` | `--experience` | `beginner`, `intermediate`, `advanced` |
 | `language` | `--lang` | `de` oder `en` – Plan, Titel und Tags |
 | `platform` | `--platform` | `twitch` (Standard), `youtube`, `kick`, `tiktok`, `other` |
+| `rank_goal` | `--rank-goal` | Optional: Rang-Ziel für die Titel, z. B. „Platin“ („Road to Platin, Tag 3“) |
+| `mood` | `--mood` | Optional: Stimmung der Titel – `chill`, `ambitious` (ehrgeizig), `funny` (lustig); auch „chillig“, „ehrgeizig“, „lustig“ |
+| `first_time` | `--first-time` | Optional: zum ersten Mal / blind (Story und Horror) |
 | `week_number` | `--week` | Wievielte Woche du planst (Standard 1); Zähler in Titeln laufen weiter |
 | `collab_partner` | `--collab` | Mitspieler oder Gast verfügbar (Koop- und Coach-Formate) |
 | `measurements` | `--measurements` | Optional: Messungen aus dem Kategorie-Check |
@@ -91,39 +94,65 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
      nur gewählt, wenn es mindestens zwei Streams gibt und das Ziel Community oder
      Regelmäßigkeit ist.
 5. **Titel und Tags.**
-   - Pro Format gibt es drei Titel (`content_strategist/titles.py`), auf Deutsch und Englisch
-     jeweils eigenständig formuliert. Sie verfolgen unterschiedliche Ansätze:
-     - Frage oder Neugier,
-     - Einsatz oder Herausforderung,
-     - Mitmachen (nur bei Formaten mit Chat).
-   - Der Plan zeigt pro Stream einen Haupttitel und zwei Alternativen.
-   - Läuft dasselbe Format zweimal in einer Woche, bekommt es nicht denselben Haupttitel.
-   - Zähler wie „Tag 2“ laufen mit; mit `--week 2` (API: `week_number`) beginnen sie dort,
-     wo die Vorwoche aufgehört hat.
+   - Titel beschreiben den **ganzen Stream**: was heute passiert, welche Stimmung herrscht und
+     warum man jetzt reinkommen soll (`content_strategist/titles.py`). Beispiele:
+     „Road to Platin, Tag 5 – kommen wir heute ein Stück näher? 🔥“,
+     „Chilliges Valorant & Quatschen – sag Hallo 🎯“, „Großprojekt Tag 3 – wie weit kommen wir
+     heute? 🏰“.
+   - Jeder Titel wird aus Bausteinen gebaut. Pro Stream gibt es drei Ansätze:
+     - **Ziel + Neugier-Frage**,
+     - **Stimmung + Einladung**,
+     - **Ziel + Einladung**.
+   - Der Plan zeigt pro Stream einen Haupttitel und zwei Alternativen. Die Ansätze wechseln
+     sich über die Woche ab, und dasselbe Format bekommt in einer Woche nie zweimal denselben
+     Haupttitel.
+   - Zähler wie „Tag 2“, „Folge 3“ und „Road to Platin, Tag 5“ laufen mit; mit `--week 2`
+     (API: `week_number`) beginnen sie dort, wo die Vorwoche aufgehört hat.
+   - Die Tageszeit des Streams fließt ein: „Ranked-Abend“ um 19 Uhr, „Ranked-Nachmittag“
+     um 14 Uhr, „Horror-Nacht“ ab 22 Uhr.
+   - Die früheren Titel, die sich auf einen einzelnen Moment bezogen („Hätte ich diese Runde
+     retten können?“), stehen jetzt als **Titel fürs Kurzvideo** im Plan, denn ein Clip zeigt
+     genau einen Moment.
    - Die Grenzen von Twitch werden streng eingehalten:
      - Titel höchstens 140 Zeichen;
      - höchstens 10 Tags mit je höchstens 25 Zeichen, ohne Leer- und Sonderzeichen. Erlaubt sind
        nur Buchstaben und Ziffern.
    - Quelle: [Twitch API Reference, Modify Channel Information](https://dev.twitch.tv/docs/api/reference/channels#modify-channel-information),
      Stand: November 2026.
-   - **Regeln für klickbare Titel** (Regeln 1, 3, 5 und 7 prüft ein Test für alle Formate in
-     beiden Sprachen):
-     1. Kein Spielname am Anfang – Twitch zeigt die Kategorie ohnehin an. Der Spielname steht
-        nur dann im Titel, wenn er Teil des Hooks ist.
-     2. Der Hook steht in den ersten ~40 Zeichen, weil Übersichten oft abschneiden: eine
-        konkrete Frage, ein Einsatz, eine Herausforderung oder eine Mitmach-Einladung.
-     3. Keine Meta-Wörter, die nur das Format beschreiben („Analyse am Ende“,
-        „Gesprächsrunde“, „Vergleich“, „Heute übe ich“).
-     4. Fortschritt nutzen: Serien und wiederkehrende Formate bekommen Zähler („Tag 3“,
-        „Teil 2“, „Woche 2“).
-     5. Ehrlich bleiben: nur versprechen, was das Format liefert.
-        - keine erfundenen Rekorde, kein „UNMÖGLICH“, kein „gleich passiert etwas“
+   - **Regeln für Titel** (Regeln 1, 2, 3, 5 und 6 prüft ein Test für alle Formate, alle
+     Stimmungen und beide Sprachen):
+     1. Bezug auf den ganzen Stream, nie auf eine einzelne Runde, Szene oder ein Match.
+        „diese Runde“, „dieses Match“, „diese Ecke“, „dieser Abschnitt“ u. Ä. sind verboten.
+     2. Aufbau aus Bausteinen: [Ziel oder Stimmung] + [Einladung oder Neugier-Frage] + genau
+        ein Emoji.
+        - Ziel: Rang-Ziel („Road to Platin“), Tagesziel, Projekt („Großprojekt Tag 3“),
+          erstes Mal („Zum ersten Mal Elden Ring, blind“).
+        - Stimmung: chillig, ehrgeizig („Ranked-Abend“), lustig („Horror-Nacht in …“).
+        - Einladung: „komm rein“, „sag Hallo“, „komm mit“, „chill mit“, „quatsch mit“, in der
+          du-Form.
+        - Fortschritt: „Tag 5“ und „Folge 3“ zählen über `week_number` weiter.
+     3. Genau ein Emoji, aus einer festen Liste pro Genre:
+        - Shooter 🔥🎯, Battle Royale 🏆🔥, MOBA ⚔️🏆, Story 🗡️📖, Horror 😱👻, Cozy ☕🌱,
+          Sandbox 🏰⛏️, Sport ⚽🏆, Rennspiele 🚗🏁, Just Chatting ☕👋, ohne Genre 🎮✨.
+        - Keine Emojis, die auf Twitch missverständlich sind.
+     4. Spielname nur, wenn er Teil des Hooks ist („Zum ersten Mal <Spiel>“, „Chilliges
+        <Spiel> & Quatschen“). Twitch zeigt die Kategorie ohnehin an.
+     5. Ehrlich bleiben:
+        - Ein Rang-Ziel kommt nur in den Titel, wenn du eins angibst, sonst allgemein
+          „Ranked-Abend“.
+        - keine Rekord- oder „Unmöglich“-Versprechen
         - keine Großbuchstaben-Wörter außer Abkürzungen
-        - höchstens ein Ausrufezeichen, keine Emojis
-     6. Duzen, kurz, gesprochene Sprache.
-     7. Höchstens 140 Zeichen (Twitch, hart), Ziel höchstens ~70 Zeichen.
+        - höchstens ein Ausrufezeichen
+     6. Ziel höchstens 70 Zeichen (das Wichtigste steht vorn), hart höchstens 140 (Twitch).
+     7. Deutsch und Englisch eigenständig und natürlich formuliert („come hang out“, „say hi“).
    - Platzhalter wie `{regel}` oder `{ziel}` haben feste Standardwerte aus dem Format
      (z. B. „nur einer Waffe“). Gleiche Eingabe ergibt also weiter denselben Titel.
+   - **Ohne Angaben** wählt der Plan die Stimmung passend zum Genre bzw. Format:
+     - Cozy, Story, Sandbox, Just Chatting: chillig
+     - Shooter, Battle Royale, MOBA, Sport: ehrgeizig
+     - Horror und die meisten Mitmach-Formate: lustig
+     - Ausnahmen pro Format: z. B. die Horror-Hinweissuche chillig, „Versuche zählen“ (Story)
+       ehrgeizig
 6. **Mini-Serie** nur, wenn das gewählte Format von Natur aus in Folgen funktioniert,
    z. B. erster Durchgang in Etappen oder Großprojekt in Etappen.
 
@@ -132,6 +161,7 @@ API: `POST /api/v1/content/strategy`, Beispiel: [`examples/content_strategy_requ
 Pro Stream gibt es:
 
 - Wochentag und Uhrzeit, Spiel, Format, Haupttitel mit zwei Alternativen, Tags;
+- Titel-Ideen fürs Kurzvideo;
 - Vorbereitung mit Uhrzeit und Schritten;
 - Ablauf und, bei langen Streams, Pausenhinweis;
 - Clip-Idee mit Tag, Hook, Messgröße;
