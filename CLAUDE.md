@@ -401,3 +401,11 @@ Prüfliste für Website-Änderungen:
 - Trend Scout auf Basis der Kategorie-Messungen (welche Kategorien wachsen?).
 - Import von Twitch-Analytics-Exporten für den Growth Analyst. Braucht eine echte
   Beispieldatei, weil das Format nicht verifiziert ist.
+- **TikTok-Untertitel für Clip-Exporte** (vom Nutzer beschlossen; umsetzen erst nach dem
+  echten Test des Clip Hunters):
+  - Wort-für-Wort-Untertitel per Whisper, lokal und mit Zeitstempel pro Wort.
+  - Beim Hochformat-Export mit FFmpeg eingebrannt: große fette Schrift (z. B. Anton aus
+    `fonts/`), 2–4 Wörter gleichzeitig, das aktive Wort farbig hervorgehoben.
+  - Zusätzlich als Textdatei (z. B. `.srt`/`.ass`), um sie zu korrigieren und mit einem
+    Befehl neu zu rendern.
+  - Eigene Wortliste (Kanalname, Spielbegriffe) für bessere Erkennung.
