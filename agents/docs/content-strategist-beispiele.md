@@ -676,7 +676,7 @@ Mini-Serie: Meine Saison als Serie – Folge 1: Saisonstart · Folge 2: Saisonmi
    - Vorbereitung (Fr 18:30): Optionen vorab auswählen
    - Clip (Sa): Bester Moment mit der Wahl des Chats
 4. **Sa 14:00–16:30** (150 min) · Wo habe ich verloren? · _ohne Chat_
-   - Titel: „Weniger Fehler, mehr Siege – wie viele werden es heute? 🏁“
+   - Titel: „Jedes Spiel ein bisschen besser – wie viele Siege werden es heute? 🏁“
    - Alternativen: „Ranked-Nachmittag: Wir klettern – kletterst du mit? 🏁“ · „Komm mit – nach jedem Spiel zeige ich, wo's hakt 🏁“
    - Titel fürs Kurzvideo: „Hier habe ich das Spiel verloren“ · „Der eine Fehler, der mich Spiele kostet“
    - Tags: RocketLeague, Deutsch, Sport, Analyse

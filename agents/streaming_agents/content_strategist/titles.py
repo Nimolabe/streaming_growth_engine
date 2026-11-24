@@ -349,8 +349,8 @@ STREAM_TITLES: dict[str, StreamTitle] = {
         ("Drück mir die Daumen: neue Bestmarke gesucht",
          "Cross your fingers – going for a new best")),
     "sports-match-review": StreamTitle(
-        ("Weniger Fehler, mehr Siege – wie viele werden es heute?",
-         "Fewer mistakes, more wins – how many today?"),
+        ("Jedes Spiel ein bisschen besser – wie viele Siege werden es heute?",
+         "A little better every game – how many wins today?"),
         ("Komm mit – nach jedem Spiel zeige ich, wo's hakt",
          "Come along – after every game I show what went wrong"), ranked=True),
     "sports-career": StreamTitle(
