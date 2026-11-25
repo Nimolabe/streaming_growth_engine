@@ -32,7 +32,11 @@ UNKNOWN_LABEL = ("kein Genre erkannt", "no genre recognised")
 # - GTA V / GTA RP: Rollenspiel-Server und Missionen passen weder zu den Bau-/Überlebens-Formaten
 #   (Sandbox) noch zu einem anderen Genre.
 # - World of Warcraft: ein MMO. Story/Singleplayer wäre falsch (Tag „Singleplayer“), ein
-#   eigenes MMO-Genre gibt es noch nicht. Nur „R.E.P.O.“ (→ „r e p o“), nicht „repo“,
+#   eigenes MMO-Genre gibt es noch nicht.
+# - Teamfight Tactics: Auto-Battler, passt zu keinem Genre.
+# Diese Spiele bekommen die allgemeinen Formate für VERTRAUTE Spiele (Abend mit Ziel,
+# entspanntes Spielen, Zuschauerrunde, Fortschritt); „Erste Eindrücke“ nur mit first_time.
+# Nur „R.E.P.O.“ (→ „r e p o“), nicht „repo“,
 # damit z. B. „Repo Man“ nicht als Horror gilt.
 GAME_ALIASES: dict[str, tuple[str, ...]] = {
     "shooter": (
@@ -57,6 +61,10 @@ GAME_ALIASES: dict[str, tuple[str, ...]] = {
         "dead cells", "dark souls", "sekiro", "bloodborne", "final fantasy", "persona",
         "it takes two", "split fiction", "ori", "spider man", "horizon", "indie", "indie games",
         "metroidvania", "kingdom come deliverance", "clair obscur",
+        "hogwarts legacy",
+        # Pokémon-Hauptspiele (Legenden, Karmesin/Purpur, Schwert/Schild …) sind Story-Abenteuer;
+        # „Pokémon Unite“ bleibt MOBA, weil der längere Alias gewinnt.
+        "pokemon", "pokémon",
     ),
     "horror": (
         "phasmophobia", "resident evil", "lethal company", "outlast", "dead by daylight",
@@ -66,7 +74,8 @@ GAME_ALIASES: dict[str, tuple[str, ...]] = {
     "cozy": (
         "stardew valley", "stardew", "die sims", "the sims", "sims", "sims 4", "die sims 4",
         "animal crossing", "planet zoo", "planet coaster", "cities skylines", "two point",
-        "euro truck simulator", "american truck simulator", "landwirtschafts simulator",
+        "euro truck simulator", "american truck simulator", "ets2", "ets 2",
+        "landwirtschafts simulator",
         "farming simulator", "powerwash simulator", "house flipper", "unpacking",
         "coral island", "disney dreamlight valley", "slime rancher", "spiritfarer", "cozy",
     ),

@@ -15,7 +15,9 @@ Regeln (auch in agents/docs/content-strategist.md; Tests prüfen 1, 2, 4, 5 und 
 Eigene Chat-Befehle (``commands``, z. B. ``!discord``) werden mit " | " ans Ende gehängt. Würde
 der Titel dadurch länger als 140 Zeichen, fallen die Befehle weg, nie der Titel selbst.
 
-Platzhalter: {n} {k} {rank} {from} {game} {zeit} {zeit_m} {time} {regel} {ziel} {thema} {skill}.
+Platzhalter: {n} {k} {rank} {from} {game} {game_zeit} {zeit} {zeit_m} {time} {regel} {ziel}
+{thema} {skill}. ``{game_zeit}`` ist das zusammengesetzte Wort aus Spiel und Tageszeit
+(„Palia-Abend“, „World-of-Warcraft-Abend“, siehe ``compound_with_daypart``).
 Pro Stream gibt es drei Titel, die sich im ersten Baustein unterscheiden:
 ``goal`` (Ziel/Fortschritt), ``mood`` (Stimmung des Genres) und ``invite`` (Einladung).
 
@@ -436,6 +438,30 @@ STREAM_TITLES: dict[str, StreamTitle] = {
         ("😂 Chat am Steuer | Was soll da schon passieren?",
          "😂 Chat's in control | What could possibly happen?"),
         mood="funny"),
+    # Vertraute Spiele ohne erkanntes Genre (Titel vom Nutzer vorgegeben, 25.11.2026).
+    "general-evening-goal": StreamTitle(
+        ("🎯 Heute mit Ziel in {game} | Schaffen wir das?",
+         "🎯 {game} with a goal today | Can we do it?"),
+        ("🎮 {game} mit Plan | Komm rein und schau, ob's klappt!",
+         "🎮 {game} with a plan | Come see if it works!"),
+        mood="ambitious"),
+    "general-chill": StreamTitle(
+        ("☕ Entspanntes {game} & Quatschen | Komm rein und sag Hallo!",
+         "☕ Chill {game} & chatting | Come say hi!"),
+        ("🎮 {game_zeit} | Chill mit!",
+         "🎮 {game} {time} | Chill with me!")),
+    "general-viewer-games": StreamTitle(
+        ("🤝 Zuschauerrunde in {game} | Spiel mit!",
+         "🤝 Viewer games in {game} | Play with me!"),
+        ("😂 Ihr spielt mit mir | Das kann ja heiter werden",
+         "😂 You play with me | This is going to be fun"),
+        mood="funny"),
+    "general-progress": StreamTitle(
+        ("📈 {game} | Tag {n} | Wie weit kommen wir heute?",
+         "📈 {game} | Day {n} | How far do we get today?"),
+        ("🔥 Weiter geht's in {game} | Tag {n} | Komm rein!",
+         "🔥 Back in {game} | Day {n} | Come in!"),
+        mood="ambitious"),
 }
 
 # Ideen für den Titel des Kurzvideos: ein Moment, darum dürfen sie „diese Runde“ sagen.
@@ -544,6 +570,15 @@ CLIP_TITLES: dict[str, tuple[Text, Text]] = {
                                ("Wie kam es zu diesem Moment?", "How did this moment even happen?")),
     "general-audience-choice": (("Mein Chat hat entschieden", "My chat decided"),
                                 ("So ging es weiter", "Here's what happened next")),
+    "general-evening-goal": (("Ziel geschafft – oder knapp daneben?", "Goal reached – or just missed?"),
+                             ("So lange hat mein Ziel gedauert", "How long my goal took")),
+    "general-chill": (("Nebenbei erzählt: meine ehrliche Meinung", "Said in passing: my honest take"),
+                      ("Ein ruhiger Moment mit einer guten Geschichte",
+                       "A quiet moment with a good story")),
+    "general-viewer-games": (("Meine Zuschauer spielen mit mir", "My viewers play with me"),
+                             ("Das passiert, wenn der Chat mitspielt", "What happens when chat joins in")),
+    "general-progress": (("Tag 1 gegen heute", "Day 1 vs today"),
+                         ("Wie weit bin ich nach ein paar Tagen?", "How far did I get after a few days?")),
 }
 
 
@@ -586,6 +621,19 @@ def daypart(minute_of_day: int) -> tuple[str, str, str]:
     return DAYPARTS[-1][1:]  # pragma: no cover
 
 
+def compound_with_daypart(game: str, noun: str) -> str:
+    """Spiel + Tageszeit als ein Wort, durchgekoppelt wie im Duden: „World-of-Warcraft-Abend“.
+
+    Enthält der Name andere Zeichen als Buchstaben, Ziffern, Leerzeichen und Bindestriche
+    (z. B. „Warhammer 40,000: Darktide“), wird kein Wort zusammengesetzt, sondern
+    „Abend in {game}“ geschrieben – das bleibt lesbar.
+    """
+    name = " ".join(game.split())
+    if re.fullmatch(r"[^\W_]+(?:[ -][^\W_]+)*", name):
+        return f"{name.replace(' ', '-')}-{noun}"
+    return f"{noun} in {name}"
+
+
 def stream_mood(format_id: str, genre: str | None, requested: Mood | None) -> Mood:
     if requested:
         return requested
@@ -619,7 +667,8 @@ def build_titles(format_id: str, genre: str | None, game: str, language: str, *,
     current = stream_mood(format_id, genre, mood)
     zeit, zeit_m, time = daypart(start_minute % 1440)
     fills = {key: value[index] for key, value in FILLS.get(format_id, {}).items()}
-    values = {"game": game, "zeit": zeit, "zeit_m": zeit_m, "time": time, "n": counter,
+    values = {"game": game, "game_zeit": compound_with_daypart(game, zeit), "zeit": zeit,
+              "zeit_m": zeit_m, "time": time, "n": counter,
               "k": rank_counter, "rank": rank_goal or "", "from": current_rank or "", **fills}
 
     ranked = data.ranked and genre in RANKED_GENRES

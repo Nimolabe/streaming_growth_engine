@@ -17,7 +17,8 @@ TEXT = {
            "created": "Erstellt", "min": "min", "stream_min": "Streams", "prep_min": "Vorbereitung",
            "clip_min": "Clips", "review_min": "Rückblick", "free_min": "nicht verplant",
            "of": "von", "chat": {"none": "ohne Chat", "low": "kleiner Chat", "active": "aktiver Chat"},
-           "check": "Kategorie-Check", "break": "Pausen"},
+           "check": "Kategorie-Check", "break": "Pausen",
+           "optional": "optional, nur wenn Zeit übrig ist"},
     "en": {"title": "Weekly content plan", "games": "Games", "genre": "Genre",
            "stream": "Stream", "prep": "Preparation", "format": "Format", "stream_title": "Title", "alt": "Other titles", "clip_titles": "Titles for the short",
            "tags": "Tags", "run": "Run of show", "clip": "Clip afterwards", "hook": "Hook for a short",
@@ -27,7 +28,8 @@ TEXT = {
            "created": "Created", "min": "min", "stream_min": "Streams", "prep_min": "Preparation",
            "clip_min": "Clips", "review_min": "Review", "free_min": "unplanned",
            "of": "of", "chat": {"none": "no chat", "low": "small chat", "active": "active chat"},
-           "check": "Category check", "break": "Breaks"},
+           "check": "Category check", "break": "Breaks",
+           "optional": "optional, only if you have time left"},
 }
 
 
@@ -64,7 +66,7 @@ def render_text(plan: ContentPlan) -> str:
             f"   {t['measure']}: {item.measurement}",
             f"   {t['when']}: {item.timing_reason}",
         ]
-    lines += ["", f"{t['review']} ({plan.review.day}, {plan.review.minutes} {t['min']}):"]
+    lines += ["", f"{t['review']} ({plan.review.day}, {_review_time(plan, t)}):"]
     lines += [f"   – {question}" for question in plan.review.questions]
     if plan.series:
         lines += ["", f"{t['series']}: {plan.series.format_name} · {plan.series.game}"]
@@ -153,9 +155,14 @@ def render_html(plan: ContentPlan, created: datetime | None = None) -> str:
         f"<h1>{escape(t['title'])}</h1><div class=\"meta\">{escape(t['created'])}: {escape(stamp)}"
         f" · {escape(plan.version)}</div>"
         f"<h2>{escape(t['games'])}</h2><ul>{games}</ul>{cards}"
-        f"<h2>{escape(t['review'])} ({escape(plan.review.day)}, {plan.review.minutes} "
-        f"{escape(t['min'])})</h2><ul>{review}</ul>{series}"
+        f"<h2>{escape(t['review'])} ({escape(plan.review.day)}, "
+        f"{escape(_review_time(plan, t))})</h2><ul>{review}</ul>{series}"
         f"<h2>{escape(t['budget'])}</h2><p>{escape(budget)}</p>"
         f"<h2>{escape(t['notes'])}</h2><ul>{notes}<li>{escape(plan.twitch_limits)}</li></ul>"
         f"<h2>{escape(t['limitations'])}</h2><ul>{limitations}</ul></main></body></html>"
     )
+
+
+def _review_time(plan: ContentPlan, t: dict) -> str:
+    """„30 min“ oder – wenn der Rückblick wegen knapper Zeit weggefallen ist – „optional …“."""
+    return f"{plan.review.minutes} {t['min']}" if plan.review.minutes else t["optional"]

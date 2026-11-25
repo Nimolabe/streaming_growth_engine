@@ -34,6 +34,8 @@ class Format:
     expert: bool = False  # setzt Erfahrung voraus (für Einsteiger weiter hinten)
     series: tuple[Text, ...] = field(default=())
     week_end: bool = False  # nur als letzter Stream der Woche (z. B. Wochenrückblick)
+    first_time_only: bool = False  # nur, wenn das Spiel zum ersten Mal gespielt wird
+    needs_history: bool = False  # braucht Vorgeschichte: nie erster Stream des Spiels in Woche 1
 
 
 
@@ -418,6 +420,7 @@ FORMATS: tuple[Format, ...] = (
          "Whether new viewers stay after the recap (viewer graph, first 15 minutes)"),
         (("Story", "Story"), ("Lore", "Lore")),
         expert=True,
+        needs_history=True,
     ),
     Format(
         "story-explore", "story", "none", ("community",),
@@ -942,6 +945,96 @@ FORMATS: tuple[Format, ...] = (
         ("Bester Moment der ersten Stunde", "Best moment of the first hour"),
         ("Zuschauerverlauf der ersten 15 Minuten", "Viewer graph of the first 15 minutes"),
         (("ErsteEindrücke", "FirstImpressions"),),
+        first_time_only=True,
+    ),
+    # Allgemeine Formate für VERTRAUTE Spiele ohne erkanntes Genre (z. B. WoW, GTA V, TFT):
+    # kein „erste Stunde“, sondern ein Abend mit Ziel, entspanntes Spielen, Zuschauerrunden
+    # und sichtbarer Fortschritt.
+    Format(
+        "general-evening-goal", None, "none", ("discovery", "consistency"),
+        ("Abend mit Ziel", "An evening with a goal"),
+        (
+            ("Zu Beginn ein Ziel für heute ansagen, das in die Streamzeit passt",
+             "Announce one goal for today that fits the stream length"),
+            ("Darauf hinspielen und Zwischenstände laut kommentieren",
+             "Play towards it and comment on your progress out loud"),
+            ("Am Ende ehrlich sagen, ob es geklappt hat und woran es lag",
+             "At the end, say honestly whether it worked and why"),
+        ),
+        (("Ein Ziel wählen, das in einem Stream schaffbar ist",
+          "Pick a goal that can be done in one stream"),
+         ("Das Ziel als Einblendung oder Notiz vorbereiten",
+          "Prepare the goal as an on-screen line or a note")),
+        ("Heute habe ich genau ein Ziel", "Today I have exactly one goal"),
+        ("Der Moment, in dem das Ziel klappt oder scheitert",
+         "The moment the goal is reached or missed"),
+        ("Ob das Ziel erreicht wurde und wie lange es gedauert hat (eigene Notiz)",
+         "Whether you reached the goal and how long it took (your own notes)"),
+        (("Ziel", "Goal"),),
+    ),
+    Format(
+        "general-chill", None, "none", ("community",),
+        ("Entspanntes Spielen & Quatschen", "Laid-back gaming & chatting"),
+        (
+            ("Ruhig starten und erzählen, was du heute im Spiel vorhast",
+             "Start calmly and say what you plan to do in the game today"),
+            ("Entspannt spielen und nebenbei über das Spiel und deinen Tag erzählen",
+             "Play at an easy pace and talk about the game and your day"),
+            ("Zum Schluss kurz sagen, wann der nächste Stream ist",
+             "End by saying when the next stream is"),
+        ),
+        (("Zwei, drei Gesprächsthemen notieren, falls es still wird",
+          "Note two or three talking points in case it gets quiet"),
+         ("Ruhige Aufgaben im Spiel heraussuchen, bei denen du reden kannst",
+          "Pick calm tasks in the game that let you talk")),
+        ("Ganz entspannt, komm einfach dazu", "Totally relaxed, just come hang out"),
+        ("Ein lustiger oder ehrlicher Gesprächsmoment, 30–45 Sekunden",
+         "A funny or honest talking moment, 30–45 seconds"),
+        ("Durchschnittliche Wiedergabezeit pro Zuschauer (Analytics)",
+         "Average watch time per viewer (analytics)"),
+        (("Entspannt", "Chill"), ("Gespräch", "Talk")),
+    ),
+    Format(
+        "general-viewer-games", None, "low", ("community",),
+        ("Mit Zuschauern spielen", "Playing with viewers"),
+        (
+            ("Erklären, wie man mitspielen kann (Server, Lobby oder Gruppe)",
+             "Explain how to join (server, lobby or group)"),
+            ("Runden mit Zuschauern spielen und Mitspieler beim Namen begrüßen",
+             "Play rounds with viewers and greet your teammates by name"),
+            ("Zum Schluss den Mitspielern danken und die nächste Runde ankündigen",
+             "Thank everyone who joined and announce the next viewer games"),
+        ),
+        (("Prüfen, ob und wie Zuschauer im Spiel beitreten können",
+          "Check whether and how viewers can join in the game"),
+         ("Regeln für Mitspieler festlegen (z. B. wer zuerst schreibt, ist dabei)",
+          "Set rules for joining (e.g. first to type gets in)")),
+        ("Heute spielt ihr mit mir", "Today you play with me"),
+        ("Der lustigste Moment mit den Mitspielern aus dem Chat",
+         "The funniest moment with teammates from chat"),
+        ("Wie viele Zuschauer mitspielen wollten", "How many viewers wanted to join"),
+        (("Zuschauerrunde", "ViewerGames"), ("Community", "Community")),
+    ),
+    Format(
+        "general-progress", None, "none", ("consistency",),
+        ("Fortschritt mit Tageszähler", "Progress with a day counter"),
+        (
+            ("Zu Beginn den Stand vom letzten Mal zeigen (Tag, Level, Fortschritt)",
+             "Open by showing where you left off (day, level, progress)"),
+            ("Am nächsten Etappenziel weiterspielen", "Keep playing towards the next milestone"),
+            ("Am Ende den neuen Stand festhalten und das Ziel für den nächsten Tag nennen",
+             "End by noting the new state and naming the next day's goal"),
+        ),
+        (("Stand vom letzten Stream notieren", "Note where the last stream ended"),
+         ("Zähler-Einblendung für den Tag vorbereiten", "Prepare an on-screen day counter")),
+        ("Tag für Tag weiter – wie weit kommen wir?", "Day by day – how far do we get?"),
+        ("Vorher und nachher: Stand zu Beginn und am Ende des Tages",
+         "Before and after: progress at the start and end of the day"),
+        ("Wiederkehrende Zuschauer (Analytics)", "Returning viewers (analytics)"),
+        (("Fortschritt", "Progress"),),
+        series=(("Tag 1: Ausgangslage und Ziel", "Day 1: starting point and goal"),
+                ("Tag 2: das erste Etappenziel", "Day 2: the first milestone"),
+                ("Tag 3: Rückblick auf die Tage 1 bis 3", "Day 3: look back on days 1 to 3")),
     ),
     Format(
         "general-skill-diary", None, "none", ("consistency",),
@@ -991,6 +1084,7 @@ FORMATS: tuple[Format, ...] = (
         ("Der Moment mit einer Einblendung zum Kontext", "The moment with an on-screen line of context"),
         ("Clip-Aufrufe nach 7 Tagen", "Clip views after 7 days"),
         (("Highlights", "Highlights"),),
+        week_end=True,
     ),
     Format(
         "general-audience-choice", None, "low", ("community",),

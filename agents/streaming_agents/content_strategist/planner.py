@@ -2,14 +2,20 @@
 
 Alles lokal und regelbasiert, ohne Sprachmodell. Gleiche Eingabe → gleicher Plan.
 
-Zeitbudget (``hours_per_week`` ist die GESAMTE Zeit pro Woche):
+Zeitbudget (``hours_per_week`` ist die GESAMTE Zeit pro Woche, inkl. Vorbereitung und Clips):
 - je Stream 20 min Vorbereitung (endet 10 min vor dem Start) und 30 min für einen Clip danach,
 - einmal 30 min Wochenrückblick,
 - der Rest wird gleichmäßig auf die Streams verteilt, in 15-Minuten-Schritten abgerundet,
   höchstens 4 Stunden pro Stream, mindestens 60 Minuten, und nie länger als das Zeitfenster.
+- Reicht die Zeit dafür nicht, werden die Zusatzaufgaben schrittweise gekürzt, bis Streams mit
+  60 Minuten passen: erst der Wochenrückblick (30 → 15 → 0 min), dann die Clip-Zeit
+  (30 → 15 → 0 min), zuletzt die Vorbereitung (20 → 15 min). Der Plan nennt das als Hinweis.
+  Ein Fehler kommt nur, wenn nicht einmal Streams mit 60 Minuten plus 15 Minuten Vorbereitung
+  in die Woche passen.
 """
 from collections import defaultdict
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 
 from ..category_check.analysis import (
@@ -48,6 +54,7 @@ from .twitch_limits import (
 
 WEEK = 7 * 1440
 PREP_MINUTES = 20
+MIN_PREP_MINUTES = 15
 PREP_GAP = 10
 CLIP_MINUTES = 30
 REVIEW_MINUTES = 30
@@ -120,22 +127,83 @@ def _merged_windows(request: StrategyRequest) -> list[tuple[int, int]]:
     return [(start, end) for start, end in merged]
 
 
-def _stream_length(request: StrategyRequest) -> int:
+@dataclass(frozen=True)
+class Extras:
+    """Zeit für Zusatzaufgaben: Vorbereitung und Clip je Stream, ein Wochenrückblick."""
+
+    prep: int = PREP_MINUTES
+    clip: int = CLIP_MINUTES
+    review: int = REVIEW_MINUTES
+
+    @property
+    def trimmed(self) -> bool:
+        return self != Extras()
+
+
+# Reihenfolge beim Kürzen: Wochenrückblick → Clip-Zeit → Vorbereitung auf 15 min.
+_TRIM_STEPS: tuple[Extras, ...] = (
+    Extras(),
+    Extras(review=15), Extras(review=0),
+    Extras(clip=15, review=0), Extras(clip=0, review=0),
+    Extras(prep=MIN_PREP_MINUTES, clip=0, review=0),
+)
+
+
+def _length_for(request: StrategyRequest, extras: Extras) -> int:
     count = request.streams_per_week
-    available = request.hours_per_week * 60 - REVIEW_MINUTES - count * (PREP_MINUTES + CLIP_MINUTES)
-    length = min(MAX_STREAM, max(0, available) // count // STEP * STEP)
-    if length < MIN_STREAM:
-        needed = -(-(count * (MIN_STREAM + PREP_MINUTES + CLIP_MINUTES) + REVIEW_MINUTES) // 60)
-        if request.language == "de":
-            raise PlanError(
-                f"Zu wenig Zeit: {count} Streams mit je mindestens {MIN_STREAM} Minuten plus "
-                f"Vorbereitung, Clip und Wochenrückblick brauchen mindestens {needed} Stunden pro "
-                f"Woche. Weniger Streams planen oder mehr Stunden angeben.")
+    available = (request.hours_per_week * 60 - extras.review
+                 - count * (extras.prep + extras.clip))
+    return min(MAX_STREAM, max(0, available) // count // STEP * STEP)
+
+
+def _stream_length(request: StrategyRequest) -> tuple[int, Extras]:
+    """Streamlänge und Zeit für Zusatzaufgaben; kürzt die Zusatzaufgaben, wenn es knapp ist."""
+    for extras in _TRIM_STEPS:
+        length = _length_for(request, extras)
+        if length >= MIN_STREAM:
+            return length, extras
+    count = request.streams_per_week
+    needed = -(-(count * (MIN_STREAM + MIN_PREP_MINUTES)) // 60)
+    if request.language == "de":
         raise PlanError(
-            f"Not enough time: {count} streams of at least {MIN_STREAM} minutes plus preparation, "
-            f"clips and a weekly review need at least {needed} hours per week. Plan fewer streams "
-            f"or more hours.")
-    return length
+            f"Zu wenig Zeit: {count} Streams mit je mindestens {MIN_STREAM} Minuten plus "
+            f"{MIN_PREP_MINUTES} Minuten Vorbereitung brauchen mindestens {needed} Stunden pro "
+            f"Woche (Clips und Wochenrückblick sind dabei schon weggelassen). Die Stunden pro "
+            f"Woche sind die gesamte Zeit inklusive Vorbereitung. Weniger Streams planen oder "
+            f"mehr Stunden angeben.")
+    raise PlanError(
+        f"Not enough time: {count} streams of at least {MIN_STREAM} minutes plus "
+        f"{MIN_PREP_MINUTES} minutes of preparation need at least {needed} hours per week "
+        f"(already without clips and weekly review). Hours per week are the total time "
+        f"including preparation. Plan fewer streams or more hours.")
+
+
+def _trim_note(extras: Extras, language: str) -> str | None:
+    """Ehrlicher Hinweis, welche Zusatzaufgaben wegen knapper Zeit gekürzt wurden."""
+    if not extras.trimmed:
+        return None
+    de = language == "de"
+    parts: list[str] = []
+    if extras.review != REVIEW_MINUTES:
+        parts.append((f"Wochenrückblick auf {extras.review} min gekürzt" if extras.review else
+                      "Wochenrückblick weggelassen") if de else
+                     (f"weekly review cut to {extras.review} min" if extras.review else
+                      "weekly review left out"))
+    if extras.clip != CLIP_MINUTES:
+        parts.append((f"Clip-Zeit auf {extras.clip} min pro Stream gekürzt" if extras.clip else
+                      "keine feste Clip-Zeit") if de else
+                     (f"clip time cut to {extras.clip} min per stream" if extras.clip else
+                      "no fixed clip time"))
+    if extras.prep != PREP_MINUTES:
+        parts.append(f"Vorbereitung auf {extras.prep} min gekürzt" if de else
+                     f"preparation cut to {extras.prep} min")
+    if de:
+        return ("Die Zeit ist knapp: Damit jeder Stream mindestens 60 Minuten hat, wurden "
+                "Zusatzaufgaben gekürzt (" + ", ".join(parts) + "). Die Stunden pro Woche "
+                "zählen Vorbereitung, Clips und Rückblick mit – mit etwas mehr Zeit passt alles.")
+    return ("Time is tight: so that every stream gets at least 60 minutes, extra tasks were "
+            "trimmed (" + ", ".join(parts) + "). Hours per week include preparation, clips and "
+            "the review – with a bit more time everything fits.")
 
 
 # ------------------------------------------------------------------ Kategorie-Check
@@ -200,7 +268,8 @@ def _eligible(item: Format, request: StrategyRequest, level: str) -> bool:
 
 def _ranked(genre: str | None, request: StrategyRequest, level: str) -> list[Format]:
     pool = [item for item in formats_for(genre)
-            if _eligible(item, request, level) and not item.week_end]
+            if _eligible(item, request, level) and not item.week_end
+            and (request.first_time or not item.first_time_only)]
     order = {item.id: index for index, item in enumerate(FORMATS)}
     return sorted(pool, key=lambda item: (-_score(item, request, level), order[item.id]))
 
@@ -271,7 +340,7 @@ def build_plan(request: StrategyRequest,
     de = request.language == "de"
     lang = request.language
     level = chat_level(request.active_chatters)
-    length = _stream_length(request)
+    length, extras = _stream_length(request)
     count = request.streams_per_week
 
     windows = [w for w in _merged_windows(request) if w[1] - w[0] >= MIN_STREAM]
@@ -338,6 +407,8 @@ def build_plan(request: StrategyRequest,
     position: dict[str | None, int] = defaultdict(int)
     streams: list[StreamPlan] = []
     stream_spans = [(start, start + minutes) for _, (start, minutes), _, _ in assignment]
+    played: set[str] = set()
+    prep_minutes = extras.prep
     for number, (game, (start, minutes), _, slot) in enumerate(assignment, start=1):
         genre = genres[game]
         queue = queues.setdefault(genre, _ranked(genre, request, level))
@@ -345,16 +416,18 @@ def build_plan(request: StrategyRequest,
         if closer is not None:
             item = closer
         else:
-            item = queue[position[genre] % len(queue)]
+            item = _next_format(queue, position[genre],
+                                first_of_game=request.week_number == 1 and game not in played)
             position[genre] += 1
+        played.add(game)
 
-        prep_start = start - PREP_GAP - PREP_MINUTES
-        while any(a < prep_start + PREP_MINUTES + PREP_GAP and prep_start < b
+        prep_start = start - PREP_GAP - prep_minutes
+        while any(a < prep_start + prep_minutes + PREP_GAP and prep_start < b
                   for a, b in stream_spans if a != start):
             prep_start = min(a for a, b in stream_spans
-                             if a < prep_start + PREP_MINUTES + PREP_GAP and prep_start < b
-                             and a != start) - PREP_GAP - PREP_MINUTES
-        prep = _session(prep_start % WEEK, PREP_MINUTES, lang)
+                             if a < prep_start + prep_minutes + PREP_GAP and prep_start < b
+                             and a != start) - PREP_GAP - prep_minutes
+        prep = _session(prep_start % WEEK, prep_minutes, lang)
         stream = _session(start % WEEK, minutes, lang)
         clip_day = DAY_LABELS[lang][(_day(start) + 1) % 7]
 
@@ -369,8 +442,7 @@ def build_plan(request: StrategyRequest,
             break_note=_break_note(minutes, lang),
             preparation=prep, prep_steps=[_t(step, lang) for step in item.prep],
             hook=_t(item.hook, lang), clip_idea=_t(item.clip, lang),
-            clip_day=(f"{clip_day} (Tag nach dem Stream), {CLIP_MINUTES} min" if de
-                      else f"{clip_day} (day after the stream), {CLIP_MINUTES} min"),
+            clip_day=_clip_day(clip_day, extras.clip, lang),
             measurement=_t(item.metric, lang),
             why=_why(item, genre, request, level),
             timing_reason=_timing_reason(game, slot, stream, request, game_snaps[game]),
@@ -407,7 +479,7 @@ def build_plan(request: StrategyRequest,
 
     last_day = streams[-1].stream.day
     review = WeeklyReview(
-        day=DAY_LABELS[lang][(last_day + 1) % 7], minutes=REVIEW_MINUTES,
+        day=DAY_LABELS[lang][(last_day + 1) % 7], minutes=extras.review,
         questions=[
             "Welcher Stream hatte die meisten durchschnittlichen Zuschauer – lag es eher am "
             "Format, an der Uhrzeit oder am Spiel?" if de else
@@ -421,10 +493,10 @@ def build_plan(request: StrategyRequest,
     stream_total = sum(item.stream.minutes for item in streams)
     budget = Budget(
         weekly_minutes=request.hours_per_week * 60, stream_minutes=stream_total,
-        preparation_minutes=count * PREP_MINUTES, clip_minutes=count * CLIP_MINUTES,
-        review_minutes=REVIEW_MINUTES,
+        preparation_minutes=count * extras.prep, clip_minutes=count * extras.clip,
+        review_minutes=extras.review,
         unplanned_minutes=request.hours_per_week * 60 - stream_total
-        - count * (PREP_MINUTES + CLIP_MINUTES) - REVIEW_MINUTES,
+        - count * (extras.prep + extras.clip) - extras.review,
     )
     series = None
     for entry in streams:
@@ -445,7 +517,7 @@ def build_plan(request: StrategyRequest,
             f"Title at most {TITLE_MAX_CHARS} characters, at most {TAGS_MAX_COUNT} tags of at most "
             f"{TAG_MAX_CHARS} characters without spaces or special characters. Source: "
             f"{SOURCE_URL} (as of {SOURCE_DATE})"),
-        notes=_notes(request, level, genres, game_slots, streams),
+        notes=_notes(request, level, genres, game_slots, streams, extras),
         limitations=[
             "Redaktionelle Regeln, kein Sprachmodell und keine Wachstumsvorhersage." if de else
             "Editorial rules, no language model and no growth prediction.",
@@ -456,6 +528,33 @@ def build_plan(request: StrategyRequest,
             "Game content changes with updates; check ideas in your game version before streaming.",
         ],
     )
+
+
+def _next_format(queue: list[Format], position: int, *, first_of_game: bool) -> Format:
+    """Nächstes Format aus der Rangliste.
+
+    Formate, die eine Vorgeschichte brauchen (z. B. „Die Geschichte bisher“), kommen in Woche 1
+    nie als erster Stream eines Spiels: Sie tauschen den Platz mit dem nächsten passenden Format
+    und sind dann beim nächsten Stream dieses Genres dran.
+    """
+    size = len(queue)
+    index = position % size
+    if first_of_game:
+        for offset in range(size):
+            candidate = (index + offset) % size
+            if not queue[candidate].needs_history:
+                queue[index], queue[candidate] = queue[candidate], queue[index]
+                break
+    return queue[index]
+
+
+def _clip_day(day: str, minutes: int, language: str) -> str:
+    if minutes:
+        return (f"{day} (Tag nach dem Stream), {minutes} min" if language == "de"
+                else f"{day} (day after the stream), {minutes} min")
+    return (f"{day} (Tag nach dem Stream), nur wenn Zeit übrig ist – keine feste Clip-Zeit"
+            if language == "de" else
+            f"{day} (day after the stream), only if you have time left – no fixed clip time")
 
 
 def _spread(windows: list[tuple[int, int]], count: int) -> list[tuple[int, int]]:
@@ -517,9 +616,13 @@ def _timing_reason(game: str, slot: SlotInfo | None, stream: Session, request: S
 
 
 def _notes(request: StrategyRequest, level: str, genres: dict[str, str | None],
-           game_slots: dict[str, list[SlotInfo]], streams: list[StreamPlan]) -> list[str]:
+           game_slots: dict[str, list[SlotInfo]], streams: list[StreamPlan],
+           extras: Extras) -> list[str]:
     de = request.language == "de"
     notes: list[str] = []
+    trim = _trim_note(extras, request.language)
+    if trim:
+        notes.append(trim)
     if level == "none":
         notes.append(
             "Weil höchstens 2 Leute aktiv chatten, enthält der Plan nur Formate, die ohne Chat "
