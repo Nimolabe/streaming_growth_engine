@@ -1,57 +1,42 @@
-"""Stream-Titel: beschreiben den GANZEN Stream und laden zum Reinkommen ein.
+"""Stream-Titel nach echten Twitch-Vorbildern (Recherche: DE-Streamer in Valorant, Fortnite, LoL,
+Minecraft, Just Chatting, Stardew, Elden Ring, Phasmophobia; vom Nutzer bestätigt).
 
-Regeln (auch in agents/docs/content-strategist.md; Tests prüfen 1, 2, 3, 5, 6 und 8):
-1. Bezug auf den ganzen Stream, nie auf eine einzelne Runde, Szene oder ein Match
-   („diese Runde“, „dieses Match“, „diese Ecke“, „dieser Abschnitt“ … sind verboten).
-2. Jeder Titel ist ein von Hand formulierter, vollständiger Satz: [Ziel oder Stimmung] und
-   [Einladung oder Neugier-Frage], die inhaltlich zusammenpassen. Keine automatisch
-   angehängten Endungen. Platzhalter nur für Zähler ({n}, {k}), Rang-Ziel ({rank}), Spielname
-   ({game}), Tageszeit ({zeit}/{time}) und feste Standardwerte des Formats ({regel} …).
-3. Genau ein Emoji, passend zu Genre UND Stimmung (``EMOJIS``), z. B. Horror chillig 🕯️,
-   Horror lustig 😱.
-4. Spielname nur, wenn er Teil des Hooks ist („Zum ersten Mal <Spiel>, blind“).
-5. Ehrlich: Rang-Ziel nur, wenn angegeben; keine Rekord- oder „Unmöglich“-Versprechen; keine
-   Großbuchstaben-Wörter außer Abkürzungen; höchstens ein Ausrufezeichen.
-6. Ziel ≤ 70 Zeichen (das Wichtigste vorn), hart ≤ 140 (Twitch).
-7. Deutsch und Englisch eigenständig und natürlich formuliert, nicht wörtlich übersetzt.
-8. Drei Titel pro Stream, die sich schon im ANFANG unterscheiden (Text vor dem „–“):
-   - ``goal``:   Ziel des Streams + Frage   („Großprojekt Tag 3 – wie weit kommen wir heute?“)
-   - ``mood``:   Stimmung + Einladung/Frage („Chilliges Valorant & Quatschen – sag Hallo“)
-   - ``invite``: beginnt mit der Einladung  („Bau mit mir weiter – Großprojekt Tag 3“)
-   Laut vorgelesen muss jeder Titel wie ein echter Twitch-Titel klingen.
+Regeln (auch in agents/docs/content-strategist.md; Tests prüfen 1, 2, 4, 5 und 6):
+1. Bausteine mit " | " statt ganzer Sätze: [Emoji + Hook] | [Fortschritt/Info] | [Twist/Einladung].
+   2–4 Bausteine.
+2. Genau ein Emoji, am ANFANG des Titels. Es steht im Text selbst; nichts wird angehängt.
+3. Persönlichkeit und Selbstironie sind ausdrücklich erwünscht („90 % Hoffnung, 10 % Skill“).
+4. Höchstens 2 Wörter pro Titel in GROSSBUCHSTABEN (Abkürzungen wie LoL, CS2, MMR zählen nicht).
+5. Höchstens ein „!“ („?!“ zählt als eins). Bezug auf den ganzen Stream, nie auf eine einzelne
+   Runde, Szene oder ein Match („diese Runde“ … sind verboten).
+6. Ziel ≤ 70 Zeichen ohne Befehle (bei normalen Spielnamen), hart ≤ 140 (Twitch).
+7. Chat-Formate sprechen den Chat mit „Ihr“ an, Einladungen mit „du“.
+
+Eigene Chat-Befehle (``commands``, z. B. ``!discord``) werden mit " | " ans Ende gehängt. Würde
+der Titel dadurch länger als 140 Zeichen, fallen die Befehle weg, nie der Titel selbst.
+
+Platzhalter: {n} {k} {rank} {from} {game} {zeit} {zeit_m} {time} {regel} {ziel} {thema} {skill}.
+Pro Stream gibt es drei Titel, die sich im ersten Baustein unterscheiden:
+``goal`` (Ziel/Fortschritt), ``mood`` (Stimmung des Genres) und ``invite`` (Einladung).
 
 Die früheren, auf einen Moment bezogenen Titel leben als Ideen für den Clip-Titel weiter
 (``CLIP_TITLES``), denn ein Kurzvideo zeigt genau einen Moment.
 """
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Literal
 
-from .genres import normalize
+from .twitch_limits import TITLE_MAX_CHARS
 
 Mood = Literal["chill", "ambitious", "funny"]
 Approach = Literal["goal", "mood", "invite"]
-Tail = Literal["question", "invite"]
-Text = tuple[str, str]
+Text = tuple[str, str]  # (Deutsch, Englisch)
 
 TITLE_TARGET_CHARS = 70
-
-# Ein Emoji pro Genre und Stimmung („racing“ = Rennspiele innerhalb von Sport).
-EMOJIS: dict[str, dict[str, str]] = {
-    "shooter": {"chill": "🎯", "ambitious": "🔥", "funny": "😂"},
-    "battle_royale": {"chill": "🪂", "ambitious": "🏆", "funny": "😂"},
-    "moba": {"chill": "☕", "ambitious": "⚔️", "funny": "😂"},
-    "story": {"chill": "📖", "ambitious": "🗡️", "funny": "😅"},
-    "horror": {"chill": "🕯️", "ambitious": "👻", "funny": "😱"},
-    "cozy": {"chill": "☕", "ambitious": "🌱", "funny": "😄"},
-    "sandbox": {"chill": "⛏️", "ambitious": "🏰", "funny": "😂"},
-    "sports": {"chill": "⚽", "ambitious": "🏆", "funny": "😂"},
-    "racing": {"chill": "🚗", "ambitious": "🏁", "funny": "😂"},
-    "just_chatting": {"chill": "☕", "ambitious": "💬", "funny": "😂"},
-    "general": {"chill": "🎮", "ambitious": "✨", "funny": "😂"},
-}
-ALL_EMOJIS = frozenset(emoji for group in EMOJIS.values() for emoji in group.values())
-_RACING = ("forza", "gran turismo", "f1", "mario kart", "trackmania", "assetto corsa",
-           "iracing", "rocket league")
+SEPARATOR = " | "
+MAX_COMMANDS = 3
+COMMAND_RE = re.compile(r"^![a-z0-9_]{1,20}$")
 
 GENRE_MOOD: dict[str | None, Mood] = {
     "shooter": "ambitious", "battle_royale": "ambitious", "moba": "ambitious",
@@ -60,93 +45,95 @@ GENRE_MOOD: dict[str | None, Mood] = {
 }
 RANKED_GENRES = frozenset({"shooter", "battle_royale", "moba", "sports"})
 
-# Stimmungs-Titel pro Genre: (Deutsch, Englisch, Art des zweiten Teils).
-# Platzhalter: {game}, {zeit} (Abend, Nacht …), {zeit_m} (nur männliche Formen), {time}.
-MOOD_TITLES: dict[str | None, dict[str, tuple[str, str, Tail]]] = {
-    "shooter": {
-        "chill": ("Chilliges {game} & Quatschen – sag Hallo",
-                  "Chill {game} & chatting – come say hi", "invite"),
-        "ambitious": ("Heute wird gegrindet – wie weit kommen wir?",
-                      "Grind session – how far can we push?", "question"),
-        "funny": ("Chaos-{zeit} in {game} – lach mit mir",
-                  "Chaos {time} in {game} – come laugh with me", "invite")},
-    "battle_royale": {
-        "chill": ("Entspannte Drops & Quatschen – sag Hallo",
-                  "Laid-back drops & chatting – come say hi", "invite"),
-        "ambitious": ("Heute jagen wir den Sieg – jagst du mit?",
-                      "Hunting a win today – want in?", "question"),
-        "funny": ("Chaos-Drops in {game} – wo landen wir diesmal?",
-                  "Chaotic drops in {game} – where do we land this time?", "question")},
-    "moba": {
-        "chill": ("Entspanntes {game} & Quatschen – sag Hallo",
-                  "Laid-back {game} & chatting – come say hi", "invite"),
-        "ambitious": ("Heute wird gegrindet – schaffen wir eine Siegesserie?",
-                      "Grind day – can we string some wins together?", "question"),
-        "funny": ("Chaos-{zeit} in {game} – wer feedet zuerst?",
-                  "Chaos {time} in {game} – who feeds first?", "question")},
-    "story": {
-        "chill": ("Gemütlicher Story-{zeit_m} – komm mit auf die Reise",
-                  "Cosy story {time} – come along for the ride", "invite"),
-        "ambitious": ("Heute geht's weit voran – wie viel schaffen wir?",
-                      "Big progress day – how far do we get?", "question"),
-        "funny": ("Lachen und Leiden in {game} – leidest du mit?",
-                  "Laughing and suffering through {game} – you with me?", "question")},
-    "horror": {
-        "chill": ("Gemütlicher Grusel-{zeit_m} – trau dich rein",
-                  "A cosy horror {time} – come in if you dare", "invite"),
-        "ambitious": ("Horror-{zeit} ohne Weglaufen – hältst du durch?",
-                      "Horror {time}, no running away – can you handle it?", "question"),
-        "funny": ("Horror-{zeit} in {game} – lachen oder schreien?",
-                  "Horror {time} in {game} – laughing or screaming?", "question")},
-    "cozy": {
-        "chill": ("Gemütlicher {zeit_m} in {game} – setz dich dazu",
-                  "Cosy {time} in {game} – come hang out", "invite"),
-        "ambitious": ("Fleißiger {zeit_m} in {game} – was schaffen wir alles?",
-                      "Busy {time} in {game} – how much can we get done?", "question"),
-        "funny": ("Gemütliches Chaos in {game} – was geht heute schief?",
-                  "Cosy chaos in {game} – what goes wrong today?", "question")},
-    "sandbox": {
-        "chill": ("Entspannt bauen in {game} – schau gern zu",
-                  "Chill building in {game} – pull up a chair", "invite"),
-        "ambitious": ("Bau-{zeit}: Wie viel steht am Ende?",
-                      "Build {time}: how much stands by the end?", "question"),
-        "funny": ("Bau-Chaos in {game} – hält das am Ende?",
-                  "Building chaos in {game} – will it hold?", "question")},
-    "sports": {
-        "chill": ("Lockeres {game} & Quatschen – sag Hallo",
-                  "Easygoing {game} & chatting – come say hi", "invite"),
-        "ambitious": ("Trainingstag – wie viel besser werde ich heute?",
-                      "Training day – how much better can I get?", "question"),
-        "funny": ("Spaß-{zeit} in {game} – wer lacht zuletzt?",
-                  "Fun {time} in {game} – who laughs last?", "question")},
-    "just_chatting": {
-        "chill": ("Kaffee & Quatschen – komm rein und sag Hallo",
-                  "Coffee & chatting – come say hi", "invite"),
-        "ambitious": ("Ein Thema, ehrlich besprochen – was denkst du?",
-                      "One topic, honestly discussed – what do you think?", "question"),
-        "funny": ("Quatsch-{zeit} – worüber lachen wir heute?",
-                  "Silly chat {time} – what are we laughing about today?", "question")},
-    None: {
-        "chill": ("Entspannt {game} zocken – sag Hallo",
-                  "Chilling with {game} – come say hi", "invite"),
-        "ambitious": ("Mit Ziel in {game} – schaffe ich es heute?",
-                      "Playing {game} with a goal – can I make it today?", "question"),
-        "funny": ("Chaos in {game} – was passiert als Nächstes?",
-                  "Chaos in {game} – what happens next?", "question")},
-}
-RANKED_MOOD: tuple[str, str, Tail] = ("Ranked-{zeit}: Wir klettern – kletterst du mit?",
-                                      "Ranked {time}: time to climb – you in?", "question")
-RANKED_GOAL_MOOD: tuple[str, str, Tail] = (
-    "Ranked-{zeit}: Wir klettern Richtung {rank} – komm mit!",
-    "Ranked {time}: climbing towards {rank} – come along!", "invite")
-RANK_GOAL: Text = ("Road to {rank}, Tag {k} – kommen wir heute ein Stück näher?",
-                   "Road to {rank}, day {k} – do we get closer today?")
-
 DAYPARTS = (  # (bis Stunde, Deutsch, Deutsch männlich, Englisch)
     (5, "Nacht", "Abend", "night"), (12, "Vormittag", "Vormittag", "morning"),
     (17, "Nachmittag", "Nachmittag", "afternoon"), (22, "Abend", "Abend", "evening"),
     (24, "Nacht", "Abend", "night"),
 )
+
+# Stimmungs-Titel pro Genre (None = kein Genre erkannt): (Deutsch, Englisch).
+MOOD_TITLES: dict[str | None, dict[str, Text]] = {
+    "shooter": {
+        "chill": ("🎯 Chilliges {game} & Quatschen | Komm rein und sag Hallo!",
+                 "🎯 Chill {game} & chatting | Come say hi!"),
+        "ambitious": ("🔴 Ranked Grind | Heute wird GESCHWITZT",
+                     "🔴 Ranked grind | SWEATY games today"),
+        "funny": ("😂 Chaos-{zeit} in {game} | Skill optional",
+                 "😂 Chaos {time} in {game} | Skill optional")},
+    "battle_royale": {
+        "chill": ("🪂 Entspannte Runden & Quatschen | Sag Hallo!",
+                 "🪂 Chill games & chatting | Say hi!"),
+        "ambitious": ("🏆 Erst ein Sieg, dann Feierabend | Komm rein!",
+                     "🏆 One win, then I'm done | Come in!"),
+        "funny": ("😂 Chaos-Drops in {game} | Wo landen wir diesmal?",
+                 "😂 Chaotic drops in {game} | Where do we land this time?")},
+    "moba": {
+        "chill": ("☕ Entspanntes {game} & Quatschen | Sag Hallo!",
+                 "☕ Laid-back {game} & chatting | Say hi!"),
+        "ambitious": ("🔴 Ranked Grind | Heute wird geklettert",
+                     "🔴 Ranked grind | Climbing today"),
+        "funny": ("😂 Chaos-{zeit} in {game} | Wer feedet zuerst?",
+                 "😂 Chaos {time} in {game} | Who feeds first?")},
+    "story": {
+        "chill": ("📖 Gemütlicher Story-{zeit_m} | Komm mit auf die Reise",
+                 "📖 Cosy story {time} | Come along for the ride"),
+        "ambitious": ("🗡️ Heute geht's WEIT voran | Komm mit!",
+                     "🗡️ BIG progress today | Come along!"),
+        "funny": ("😅 Lachen und Leiden in {game} | Leidest du mit?",
+                 "😅 Laughing and suffering through {game} | You with me?")},
+    "horror": {
+        "chill": ("🕯️ Gemütlicher Grusel-{zeit_m} | Trau dich rein",
+                 "🕯️ A cosy horror {time} | Come in if you dare"),
+        "ambitious": ("👻 Horror-{zeit} mit Licht aus | Hältst du durch?",
+                     "👻 Horror {time}, lights off | Can you handle it?"),
+        "funny": ("😱 Horror-{zeit} in {game} | Lachen oder schreien?",
+                 "😱 Horror {time} in {game} | Laughing or screaming?")},
+    "cozy": {
+        "chill": ("☕ Gemütlicher {zeit_m} in {game} | Kaffee & Quatschen",
+                 "☕ Cosy {time} in {game} | Coffee & chatting"),
+        "ambitious": ("🌱 Fleißiger {zeit_m} in {game} | Was schaffen wir alles?",
+                     "🌱 Busy {time} in {game} | How much can we get done?"),
+        "funny": ("😄 Gemütliches Chaos in {game} | Was geht heute schief?",
+                 "😄 Cosy chaos in {game} | What goes wrong today?")},
+    "sandbox": {
+        "chill": ("⛏️ Entspannt bauen in {game} | Komm rein und chill mit!",
+                 "⛏️ Chill building in {game} | Come hang out!"),
+        "ambitious": ("🏰 Bau-{zeit} | Heute wird RICHTIG was geschafft",
+                     "🏰 Build {time} | Getting LOTS done today"),
+        "funny": ("😂 Bau-Chaos in {game} | Hält das am Ende?",
+                 "😂 Building chaos in {game} | Will it hold?")},
+    "sports": {
+        "chill": ("⚽ Lockeres {game} & Quatschen | Sag Hallo!",
+                 "⚽ Easygoing {game} & chatting | Say hi!"),
+        "ambitious": ("🔴 Heute wird GESCHWITZT | Fiebere mit!",
+                     "🔴 SWEATY games today | Cheer me on!"),
+        "funny": ("😂 Spaß-{zeit} in {game} | Wer lacht zuletzt?",
+                 "😂 Fun {time} in {game} | Who laughs last?")},
+    "just_chatting": {
+        "chill": ("☕ Kaffee & Quatschen | Komm rein und sag Hallo!",
+                 "☕ Coffee & chatting | Come say hi!"),
+        "ambitious": ("💬 Großes Thema heute | Red mit!",
+                     "💬 Big topic today | Join the conversation!"),
+        "funny": ("😂 Quatsch-{zeit} | Worüber lachen wir heute?",
+                 "😂 Silly chat {time} | What are we laughing about?")},
+    None: {
+        "chill": ("🎮 Entspannt {game} zocken | Sag Hallo!",
+                 "🎮 Chilling with {game} | Say hi!"),
+        "ambitious": ("✨ Mit Ziel in {game} | Schaffe ich es heute?",
+                     "✨ Playing {game} with a goal | Can I make it today?"),
+        "funny": ("😂 Chaos in {game} | Was passiert als Nächstes?",
+                 "😂 Chaos in {game} | What happens next?")},
+}
+
+# Ranked (nur Ranked-Formate in Shooter, Battle Royale, MOBA, Sport).
+RANKED_MOOD: Text = ("🔴 Ranked-{zeit} | Heute wird geklettert – komm mit!",
+                     "🔴 Ranked {time} | Climbing today – come along!")
+RANKED_GOAL_MOOD: Text = ("🔴 Road to {rank} | Heute wird GEGRINDET",
+                          "🔴 Road to {rank} | GRINDING today")
+RANK_GOAL: Text = ("🔴 Ranked Grind | Tag {k} | Road to {rank}",
+                   "🔴 Ranked grind | Day {k} | Road to {rank}")
+RANK_JOURNEY: Text = ("🔴 Von {from} nach {rank} | Tag {k} | Komm rein!",
+                      "🔴 From {from} to {rank} | Day {k} | Come in!")
 
 FILLS: dict[str, dict[str, Text]] = {
     "shooter-chat-rule": {"regel": ("nur einer Waffe", "one weapon only")},
@@ -159,255 +146,296 @@ FILLS: dict[str, dict[str, Text]] = {
 
 @dataclass(frozen=True)
 class StreamTitle:
-    goal: Text                  # Ziel + Frage, als ganzer Satz
-    invite: Text                # beginnt mit der Einladung, als ganzer Satz
+    goal: Text                  # Ziel/Fortschritt des Streams
+    invite: Text                # Einladung
     first: Text | None = None   # „Zum ersten Mal …“ (nur mit first_time)
     ranked: bool = False        # Ranked-Format: Rang-Ziel möglich
     mood: Mood | None = None    # Standard-Stimmung des Formats (sonst die des Genres)
 
 
 STREAM_TITLES: dict[str, StreamTitle] = {
-    # Shooter
     "shooter-decision-review": StreamTitle(
-        ("Jede Niederlage wird zur Lektion – wie viel lerne ich heute?",
-         "Every loss becomes a lesson – how much do I learn today?"),
-        ("Komm mit – ich spiele und erkläre meine Entscheidungen",
-         "Come along – I play and explain my calls"), ranked=True),
+        ("🔴 Ranked mit Köpfchen | Tag {n} | Heute wird nicht getiltet",
+         "🔴 Big-brain ranked | Day {n} | No tilting today"),
+        ("🧠 Erst denken, dann peeken | Ranked | Klappt das heute?",
+         "🧠 Think first, peek second | Ranked | Will it work?"),
+        ranked=True),
     "shooter-micro-skill": StreamTitle(
-        ("Aim-Training Tag {n} – sitzt das Fadenkreuz heute?",
-         "Aim training, day {n} – does my crosshair behave today?"),
-        ("Schau mir beim Aim-Training zu, Tag {n}", "Watch me fix my aim, day {n}"),
+        ("🎯 Aim-Woche, Tag {n} | Heute trifft ALLES. Hoffentlich.",
+         "🎯 Aim week, day {n} | Today EVERYTHING hits. Hopefully."),
+        ("🎯 Fadenkreuz-Training | Tag {n} | Mein Aim braucht Hilfe",
+         "🎯 Crosshair training | Day {n} | My aim needs help"),
         ranked=True),
     "shooter-role-swap": StreamTitle(
-        ("Meine ungeliebte Rolle – wie schlimm wird's?",
-         "My least favourite role – how bad will it get?"),
-        ("Komm mit, ich spiele heute eine neue Rolle",
-         "Come along – I'm trying a new role today")),
+        ("😬 Heute spiele ich die Rolle, die ich hasse | Das wird was",
+         "😬 Playing the role I hate today | This will be fun"),
+        ("🔁 Rollentausch | Raus aus der Komfortzone | Komm rein und leide mit!",
+         "🔁 Role swap | Out of my comfort zone | Come suffer with me!")),
     "shooter-chat-rule": StreamTitle(
-        ("Jedes Match mit {regel} – wie lange halte ich durch?",
-         "Every match with {regel} – how long can I last?"),
-        ("Du bestimmst die Regel, ich muss damit klarkommen",
-         "You pick the rule, I have to live with it"), mood="funny"),
+        ("😂 Jedes Match mit {regel} | Ihr habt das so gewollt",
+         "😂 Every match with {regel} | You asked for this"),
+        ("🎲 Der Chat macht die Regeln | Ich muss trotzdem gewinnen",
+         "🎲 Chat makes the rules | I still have to win"),
+        mood="funny"),
     "shooter-coach": StreamTitle(
-        ("Mit Coach im Ohr – merkt man heute einen Unterschied?",
-         "Coach on comms – will you see a difference today?"),
-        ("Hör mit, was mein Coach mir rät", "Listen in on my coach's advice")),
-    # Battle Royale
+        ("🎧 Coach im Ohr | Ranked | Werde ich heute endlich besser?",
+         "🎧 Coach on comms | Ranked | Do I finally get better?"),
+        ("🎧 Live-Coaching | Hör mit, was ich alles falsch mache",
+         "🎧 Live coaching | Hear everything I do wrong")),
     "br-drop-study": StreamTitle(
-        ("Landeplatz-Test: zwei Orte, ein Sieger – wo lande ich ab jetzt?",
-         "Drop test: two spots, one winner – where do I land now?"),
-        ("Rate mit: Welcher Landeplatz gewinnt heute?", "Guess along: which drop spot wins today?"),
+        ("🪂 Neuer Lieblings-Drop gesucht | Tag {n} | Hot Drop oder Ecke?",
+         "🪂 Searching for a new favourite drop | Day {n} | Hot drop or corner?"),
+        ("🪂 Landeplatz-Test | Zwei Orte, ein Sieger | Rate mit!",
+         "🪂 Drop test | Two spots, one winner | Guess along!"),
         ranked=True),
     "br-rotation": StreamTitle(
-        ("Jede Zone mit Plan – reicht das heute für einen Sieg?",
-         "Every zone with a plan – enough for a win today?"),
-        ("Komm mit auf Siegjagd – ich erkläre jeden Zug",
-         "Join the hunt for a win – every move explained"), ranked=True),
+        ("🏆 Erst ein Sieg, dann Feierabend | Wie lange dauert's heute?",
+         "🏆 One win, then I'm done | How long will it take today?"),
+        ("🏆 Siegjagd mit Plan | Jede Zone zählt | Komm rein!",
+         "🏆 Win hunt with a plan | Every zone counts | Come in!"),
+        ranked=True),
     "br-loadout-lab": StreamTitle(
-        ("Ausrüstungs-Labor, Test {n} – welche Kombi gewinnt?",
-         "Loadout lab, test {n} – which setup wins?"),
-        ("Tüftel mit: zwei Ausrüstungen im fairen Test", "Tinker along: two loadouts, one fair test"),
+        ("🔬 Loadout-Labor | Test {n} | Welche Kombi holt den SIEG?",
+         "🔬 Loadout lab | Test {n} | Which combo gets the WIN?"),
+        ("🔬 Zwei Loadouts, ein Gewinner | Tüftel mit!",
+         "🔬 Two loadouts, one winner | Tinker with me!"),
         ranked=True),
     "br-squad-comms": StreamTitle(
-        ("Squad-{zeit} mit klaren Ansagen – werden wir besser?",
-         "Squad {time} with clean callouts – do we get better?"),
-        ("Hör unserem Squad zu – diesmal mit klaren Ansagen",
-         "Listen in on our squad – clean callouts this time")),
+        ("📢 Squad-{zeit} | Heute holen wir den Sieg zusammen",
+         "📢 Squad {time} | We're getting that win together"),
+        ("📢 Squad mit Ansagen | Endlich sagt mal jemand was Sinnvolles",
+         "📢 Squad with comms | Finally someone makes a useful call")),
     "br-chat-drop": StreamTitle(
-        ("Der Chat wählt jeden Landeplatz – überlebe ich das?",
-         "Chat picks every drop – can I survive this?"),
-        ("Du wählst, wo ich lande – such dir was aus", "You pick where I drop – choose wisely"),
+        ("😂 Ihr wählt jeden Landeplatz | Das kann ja heiter werden",
+         "😂 You pick every drop | This is going to be fun"),
+        ("🎯 Chat wählt den Drop | Überlebe ich das? Eher nicht.",
+         "🎯 Chat picks the drop | Will I survive? Probably not."),
         mood="funny"),
-    # MOBA
     "moba-scene-review": StreamTitle(
-        ("Weniger Fehler, mehr Siege – schaffen wir das heute?",
-         "Fewer mistakes, more wins – can we do it today?"),
-        ("Komm mit in meine Matches – wir finden meine Fehler",
-         "Come along – let's find my mistakes together"), ranked=True),
+        ("🔴 Ranked-{zeit} | Tag {n} | Heute wird geklettert",
+         "🔴 Ranked {time} | Day {n} | Climbing today"),
+        ("⚔️ Weniger feeden, mehr gewinnen | Ranked | Der Plan steht",
+         "⚔️ Less feeding, more winning | Ranked | That's the plan"),
+        ranked=True),
     "moba-new-character": StreamTitle(
-        ("Tag {n} mit meinem neuen Main – klappt heute der erste Sieg?",
-         "Day {n} on my new main – first win today?"),
-        ("Lern mit mir einen neuen Charakter – Tag {n}", "Learn a new character with me – day {n}")),
+        ("⚔️ Neuer Main, Tag {n} | 90 % Hoffnung, 10 % Skill",
+         "⚔️ New main, day {n} | 90% hope, 10% skill"),
+        ("🆕 Ich lerne einen neuen Main | Komm rein und lach mit!",
+         "🆕 Learning a new main | Come laugh along!")),
     "moba-one-number": StreamTitle(
-        ("Farm-Training – schaffe ich heute {ziel}?",
-         "Farm practice – can I hit {ziel} today?"),
-        ("Zähl mit: Komme ich heute auf {ziel}?", "Count along – do I get {ziel} today?"),
+        ("🌾 Farm-Challenge | {ziel} | Schaffe ich das HEUTE?",
+         "🌾 Farm challenge | {ziel} | Can I do it TODAY?"),
+        ("🌾 Last-Hit-Grind ohne Gnade | Tag {n} | Zähl mit!",
+         "🌾 No-mercy last-hit grind | Day {n} | Count along!"),
         ranked=True),
     "moba-chat-pick": StreamTitle(
-        ("Der Chat wählt jeden Charakter – gewinne ich mit allem?",
-         "Chat picks every character – can I win with anything?"),
-        ("Du suchst den Charakter aus, ich muss ihn spielen",
-         "You pick the character, I have to play it"), mood="funny"),
+        ("😂 Ihr wählt meinen Charakter | Gewinne ich trotzdem?",
+         "😂 You pick my character | Can I still win?"),
+        ("🎲 Chat-Picks only | Sucht mir was Schlimmes aus",
+         "🎲 Chat picks only | Pick me something awful"),
+        mood="funny"),
     "moba-duo": StreamTitle(
-        ("Duo-{zeit} mit Coach – wie viel lerne ich heute?",
-         "Duo {time} with a coach – how much do I learn today?"),
-        ("Hör zu, was mein Duo mir beibringt", "Listen in as my duo teaches me")),
-    # Story/Singleplayer
+        ("👥 Duo-{zeit} mit Profi | Trägt er mich heute nach oben?",
+         "👥 Duo {time} with a pro | Will they carry me up?"),
+        ("👥 Duo-Queue mit Coach | Hör mit, wie ich lerne",
+         "👥 Duo queue with a coach | Listen to me learn")),
     "story-first-playthrough": StreamTitle(
-        ("Mein erster Durchgang, Etappe {n} – was erwartet mich heute?",
-         "My first playthrough, part {n} – what's waiting today?"),
-        ("Erleb Etappe {n} mit mir – bitte keine Spoiler",
-         "Experience part {n} with me – no spoilers please"),
-        first=("Zum ersten Mal {game}, blind – was erwartet mich?",
-               "First time playing {game}, blind – what awaits?")),
+        ("📖 Erster Durchgang | Teil {n} | Keine Spoiler!",
+         "📖 First playthrough | Part {n} | No spoilers!"),
+        ("🗡️ Blind weiter | Teil {n} | Was erwartet uns heute?",
+         "🗡️ Going in blind | Part {n} | What's waiting today?"),
+        first=("🗡️ Zum ersten Mal {game} | Blind | Keine Spoiler!",
+               "🗡️ First time playing {game} | Blind | No spoilers!")),
     "story-attempt-counter": StreamTitle(
-        ("Ein harter Brocken – wie viele Versuche brauche ich?",
-         "One tough fight – how many tries will it take?"),
-        ("Zähl meine Versuche mit – heute wird's zäh", "Count my attempts with me – it'll be rough"),
+        ("💀 Heute fällt der Boss | Ich gebe nicht auf. Vielleicht.",
+         "💀 The boss goes down today | Not giving up. Probably."),
+        ("💀 Todeszähler läuft | Wie oft sterbe ich HEUTE?",
+         "💀 Death counter is running | How often do I die TODAY?"),
         mood="ambitious"),
     "story-recap": StreamTitle(
-        ("Story-{zeit} – wohin führt die Geschichte heute?",
-         "Story {time} – where does the story go today?"),
-        ("Neu dabei? Erst die Geschichte in 5 Minuten, dann weiter",
-         "New here? Catch up in 5 minutes, then we play on")),
+        ("📖 Neu hier? 5-Minuten-Rückblick | Dann geht's weiter!",
+         "📖 New here? 5-minute recap | Then we continue!"),
+        ("📖 Story-{zeit} | Teil {n} | Wohin führt uns die Geschichte?",
+         "📖 Story {time} | Part {n} | Where does the story take us?")),
     "story-explore": StreamTitle(
-        ("Langsam spielen, alles entdecken – was finden wir heute?",
-         "Slow play, see everything – what will we find today?"),
-        ("Erkunde mit mir jeden Winkel", "Explore every corner with me")),
+        ("🧭 Jede Ecke, jedes Geheimnis | Heute wird nichts übersprungen",
+         "🧭 Every corner, every secret | Skipping nothing today"),
+        ("🧭 Langsam & gründlich | Entdeck mit mir!",
+         "🧭 Slow & thorough | Explore with me!")),
     "story-chat-choices": StreamTitle(
-        ("Der Chat lenkt die Geschichte – wohin führt uns das?",
-         "Chat steers the story – where will it take us?"),
-        ("Du triffst die Entscheidungen in meiner Geschichte", "You make the choices in my story"),
+        ("😅 Ihr trefft jede Entscheidung | Wie schlimm endet das?",
+         "😅 You make every choice | How badly does this end?"),
+        ("🎲 Chat schreibt meine Geschichte | Stimm ab!",
+         "🎲 Chat writes my story | Come vote!"),
         mood="funny"),
-    # Horror
     "horror-honest-reactions": StreamTitle(
-        ("Horror mit Facecam – wie oft schreie ich heute?",
-         "Horror on facecam – how often will I scream?"),
-        ("Schau mir beim Gruseln zu – Facecam an", "Watch me get scared – facecam on"),
-        first=("Zum ersten Mal {game}, blind – wie oft schreie ich?",
-               "First time in {game}, blind – how often will I scream?")),
+        ("👻 Licht aus, Ton laut | Wie oft schreie ich heute?",
+         "👻 Lights off, sound up | How often will I scream?"),
+        ("😱 Horror mit Facecam | Komm rein, wenn du dich traust!",
+         "😱 Horror on facecam | Come in if you dare!"),
+        first=("👻 Zum ersten Mal {game} | Blind | Wie oft schreie ich?",
+               "👻 First time {game} | Blind | How often will I scream?")),
     "horror-courage-levels": StreamTitle(
-        ("Mutprobe in drei Stufen – wie weit komme ich heute?",
-         "Three-step courage test – how far will I get?"),
-        ("Steig mit mir Stufe für Stufe ins Dunkle", "Step into the dark with me, level by level")),
+        ("🕯️ Mutprobe | Stufe für Stufe dunkler | Wie weit komme ich?",
+         "🕯️ Courage test | Darker every level | How far do I get?"),
+        ("😱 Ich bin ein ANGSTHASE | Mutprobe-{zeit} | Halt mir die Hand",
+         "😱 I'm a total SCAREDY-CAT | Courage {time} | Hold my hand")),
     "horror-clue-board": StreamTitle(
-        ("Spurensuche, Teil {n} – was ist hier wirklich passiert?",
-         "Following the clues, part {n} – what really happened here?"),
-        ("Rätsel mit: Teil {n} der Spurensuche", "Puzzle it out with me – part {n}"),
-        first=("Zum ersten Mal {game}, blind – was steckt dahinter?",
-               "First time in {game}, blind – what's really going on?"), mood="chill"),
+        ("🕯️ Spurensuche | Teil {n} | Lösen wir heute das Rätsel?",
+         "🕯️ Mystery hunt | Part {n} | Do we crack it today?"),
+        ("🔎 Gruseliges Rätsel | Ermittle mit!",
+         "🔎 Creepy mystery | Investigate with me!"),
+        first=("🕯️ Zum ersten Mal {game} | Blind | Was steckt dahinter?",
+               "🕯️ First time {game} | Blind | What's behind it all?"),
+        mood="chill"),
     "horror-coop-night": StreamTitle(
-        ("Koop-Horror mit Freunden – wer bleibt am längsten ruhig?",
-         "Co-op horror with friends – who keeps it together longest?"),
-        ("Schau zu, wie unsere Gruppe auseinanderfällt", "Watch our group fall apart")),
+        ("👻 Koop-Horror mit Freunden | Wer schreit zuerst?",
+         "👻 Co-op horror with friends | Who screams first?"),
+        ("😂 Horror-Squad am Start | Wir sterben alle. Gemeinsam.",
+         "😂 Horror squad assembled | We all die. Together.")),
     "horror-chat-guess": StreamTitle(
-        ("Schreck-Wetten mit dem Chat – wer ahnt es zuerst?",
-         "Scare bets with chat – who calls it first?"),
-        ("Tipp mit: Wann kommt der nächste Schreck?", "Place your bet: when's the next scare?")),
-    # Cozy/Simulation
+        ("😱 Schreck-Wetten | Wer ahnt den nächsten Jumpscare?",
+         "😱 Scare bets | Who calls the next jumpscare?"),
+        ("🎲 Tipp mit, wann's knallt | Komm rein, wenn du dich traust!",
+         "🎲 Guess when it hits | Come in if you dare!")),
     "cozy-three-goals": StreamTitle(
-        ("Drei kleine Ziele, Woche {n} – schaffen wir alle?",
-         "Three small goals, week {n} – can we tick them all?"),
-        ("Hak mit mir drei kleine Ziele ab, Woche {n}", "Tick off three small goals with me, week {n}")),
+        ("🌱 Drei kleine Ziele | Woche {n} | Schaffen wir alle?",
+         "🌱 Three small goals | Week {n} | Can we do them all?"),
+        ("☕ Gemütlich Ziele abhaken | Kaffee & Quatschen",
+         "☕ Cosy goal-checking | Coffee & chatting")),
     "cozy-before-after": StreamTitle(
-        ("Ein leerer Ort wird gemütlich – wie sieht er am Ende aus?",
-         "Turning an empty spot cosy – how will it look by the end?"),
-        ("Gestalte mit: Von leer zu gemütlich in einem Stream",
-         "Decorate along: empty to cosy in one stream")),
+        ("🏡 Großer Umbau | Wie schön wird's bis Stream-Ende?",
+         "🏡 Big makeover | How pretty will it be by the end?"),
+        ("🏡 Vorher: trostlos. Nachher: ? | Gib mir Tipps!",
+         "🏡 Before: bleak. After: ? | Give me tips!")),
     "cozy-starter-tips": StreamTitle(
-        ("Gemütlich spielen mit Einsteiger-Tipps – neu im Spiel?",
-         "Cosy play with starter tips – new to the game?"),
-        ("Frisch angefangen? Spiel mit, ich zeig dir Tipps",
-         "Just started? Play along and pick up some tips")),
+        ("🌱 Neu in {game}? | Gemütlich starten mit Tipps",
+         "🌱 New to {game}? | A cosy start with tips"),
+        ("☕ Frisch angefangen? | Wir starten zusammen!",
+         "☕ Just started? | Let's start together!")),
     "cozy-one-rule": StreamTitle(
-        ("Den ganzen Stream mit {regel} – bleibt's gemütlich?",
-         "A whole stream with {regel} – can it stay cosy?"),
-        ("Schau, was mit {regel} entsteht", "See what I can make with {regel}"), mood="funny"),
+        ("😄 Alles mit {regel} | Bleibt's trotzdem gemütlich?",
+         "😄 Everything in {regel} | Still cosy?"),
+        ("🎨 Gemütlich, aber mit Regel | Was kann da schon schiefgehen?",
+         "🎨 Cosy, with a rule | What could possibly go wrong?"),
+        mood="funny"),
     "cozy-chat-names": StreamTitle(
-        ("Der Chat gibt die Namen – wie heißt unser neuer Ort?",
-         "Chat names everything – what's our new place called?"),
-        ("Gib meinem neuen Ort einen Namen", "Help name my new place")),
-    # Sandbox/Survival
+        ("🏷️ Ihr gebt die Namen | Wie heißt unser neues Zuhause?",
+         "🏷️ You name it | What's our new home called?"),
+        ("🏷️ Namens-{zeit} | Tauf mit!",
+         "🏷️ Naming {time} | Help name everything!")),
     "sandbox-three-solutions": StreamTitle(
-        ("Bau-Labor: drei Lösungen – welche gewinnt?",
-         "Build lab: three solutions – which one wins?"),
-        ("Tüftel mit: drei Wege zur selben Lösung", "Tinker along: three ways to the same goal")),
+        ("⛏️ Drei Wege, ein Problem | Welcher Bau gewinnt?",
+         "⛏️ Three ways, one problem | Which build wins?"),
+        ("🔧 Bau-Labor geöffnet | Tüftel mit!",
+         "🔧 Build lab is open | Tinker with me!")),
     "sandbox-fix-it": StreamTitle(
-        ("Fehlersuche am eigenen Bau – läuft es heute endlich?",
-         "Fixing my own build – will it finally work today?"),
-        ("Hilf mir, den Fehler in meinem Bau zu finden", "Help me find what's wrong with my build")),
+        ("🔧 Warum läuft mein Bau nicht?! | Heute wird's gelöst",
+         "🔧 Why won't my build work?! | Fixing it today"),
+        ("🔧 Fehlersuche live | Hilf mir, bevor ich alles abreiße",
+         "🔧 Live troubleshooting | Help me before I tear it all down")),
     "sandbox-big-project": StreamTitle(
-        ("Großprojekt Tag {n} – wie weit kommen wir heute?",
-         "Big build, day {n} – how far do we get today?"),
-        ("Bau mit mir weiter – Großprojekt Tag {n}", "Keep building with me – big build, day {n}")),
+        ("🏰 Großprojekt | Tag {n} | Wie weit kommen wir heute?",
+         "🏰 Mega build | Day {n} | How far do we get today?"),
+        ("🏰 Wir bauen was GROSSES | Tag {n} | Schau zu!",
+         "🏰 Building something BIG | Day {n} | Come watch!")),
     "sandbox-survival-start": StreamTitle(
-        ("Neue Welt, Tag {n} – schaffen wir das Tagesziel?",
-         "Fresh world, day {n} – do we hit today's goal?"),
-        ("Überleb mit mir Tag {n} in der neuen Welt", "Survive day {n} with me in a fresh world")),
+        ("⛏️ Neue Welt | Tag {n} | Überleben wir die Nacht?",
+         "⛏️ New world | Day {n} | Do we survive the night?"),
+        ("🔥 Survival von null | Tag {n} | Überleb mit!",
+         "🔥 Survival from scratch | Day {n} | Survive with me!")),
     "sandbox-chat-build": StreamTitle(
-        ("Der Chat plant, ich baue – was entsteht heute?",
-         "Chat plans, I build – what gets built today?"),
-        ("Du schlägst vor, ich baue", "You suggest it, I build it"), mood="funny"),
-    # Sport/Rennspiele
+        ("😂 {game}, aber der Chat baut | Das kann nur schiefgehen",
+         "😂 {game}, but chat builds | What could go wrong"),
+        ("🏗️ Ihr plant, ich baue | Was kommt dabei raus?",
+         "🏗️ You plan, I build | What will we end up with?"),
+        mood="funny"),
     "sports-one-technique": StreamTitle(
-        ("Technik-Training, Tag {n} – klappt der Move heute?",
-         "Skill practice, day {n} – will the move click today?"),
-        ("Trainier mit mir einen Move, Tag {n}", "Practise one move with me, day {n}")),
+        ("⚽ Trick-Training | Tag {n} | Sitzt der Move HEUTE?",
+         "⚽ Skill training | Day {n} | Does the move land TODAY?"),
+        ("💪 Training statt Ausreden | Tag {n} | Komm rein!",
+         "💪 Practice, not excuses | Day {n} | Come in!")),
     "sports-personal-best": StreamTitle(
-        ("Jagd auf meine Bestmarke – klappt's heute?",
-         "Chasing my personal best – is today the day?"),
-        ("Drück mir die Daumen: neue Bestmarke gesucht",
-         "Cross your fingers – going for a new best")),
+        ("🏁 Jagd auf meine Bestmarke | Heute fällt sie. Oder?",
+         "🏁 Chasing my personal best | It falls today. Right?"),
+        ("🏁 Neue Bestmarke gesucht | Drück mir die Daumen!",
+         "🏁 New personal best wanted | Cross your fingers!")),
     "sports-match-review": StreamTitle(
-        ("Jedes Spiel ein bisschen besser – wie viele Siege werden es heute?",
-         "A little better every game – how many wins today?"),
-        ("Komm mit – nach jedem Spiel zeige ich, wo's hakt",
-         "Come along – after every game I show what went wrong"), ranked=True),
+        ("🔴 Ranked-{zeit} | Tag {n} | Wie viele Siege holen wir?",
+         "🔴 Ranked {time} | Day {n} | How many wins today?"),
+        ("🏆 Heute ohne Controller-Wurf | Ranked | Versprochen.",
+         "🏆 No controller throwing today | Ranked | Promise."),
+        ranked=True),
     "sports-career": StreamTitle(
-        ("Meine Saison, Folge {n} – wie weit kommen wir?",
-         "My season, episode {n} – how far can we go?"),
-        ("Fiebere mit: Saison-Folge {n}", "Cheer me on: season episode {n}")),
+        ("🏆 Karriere-Modus | Folge {n} | Was passiert heute?",
+         "🏆 Career mode | Episode {n} | What happens today?"),
+        ("📺 Die Saison läuft | Folge {n} | Fiebere mit!",
+         "📺 The season's on | Episode {n} | Cheer along!")),
     "sports-chat-tactic": StreamTitle(
-        ("Der Chat stellt die Taktik – geht das gut?", "Chat calls the tactics – will it work?"),
-        ("Du bestimmst, wie ich spiele", "You decide how I play"), mood="funny"),
-    # Just Chatting
+        ("😂 Ihr bestimmt die Taktik | Geht das gut? Nein.",
+         "😂 You call the tactics | Will this work? No."),
+        ("📋 Chat ist Trainer | Gib die Ansage!",
+         "📋 Chat is the coach | Call the shots!"),
+        mood="funny"),
     "jc-three-points": StreamTitle(
-        ("Drei Dinge über {thema} – welches überrascht dich?",
-         "Three things about {thema} – which one surprises you?"),
-        ("Quatsch mit mir über {thema}", "Let's talk about {thema}")),
+        ("☕ Drei Dinge über {thema} | Rate mal, was kommt!",
+         "☕ Three things about {thema} | Guess what's coming!"),
+        ("💬 Kaffee & {thema} | Komm rein und quatsch mit!",
+         "💬 Coffee & {thema} | Come chat with me!")),
     "jc-live-project": StreamTitle(
-        ("Live-Projekt, Teil {n} – werde ich heute fertig?",
-         "Live project, part {n} – will I finish today?"),
-        ("Bastel mit mir weiter, Projekt Teil {n}", "Make stuff with me – project part {n}")),
+        ("🛠️ Live-Projekt | Teil {n} | Werde ich heute fertig?",
+         "🛠️ Live project | Part {n} | Will I finish today?"),
+        ("🛠️ Basteln & Quatschen | Teil {n} | Schau zu!",
+         "🛠️ Crafting & chatting | Part {n} | Come hang out!")),
     "jc-week-recap": StreamTitle(
-        ("Wochenrückblick & Plan – wie war deine Woche?",
-         "Week recap & next week's plan – how was yours?"),
-        ("Erzähl mir von deiner Woche, ich erzähl dir meine",
-         "Tell me about your week, I'll tell you mine")),
+        ("☕ Was für eine Woche | Und wie war deine?",
+         "☕ What a week | How was yours?"),
+        ("💬 Wochenrückblick | Erzähl mir von deiner Woche!",
+         "💬 Week in review | Tell me about your week!")),
     "jc-learn-live": StreamTitle(
-        ("Ich lerne {skill}, Tag {n} – wie weit komme ich heute?",
-         "Learning {skill}, day {n} – how far do I get today?"),
-        ("Lern mit mir {skill}, Tag {n}", "Learn {skill} with me, day {n}")),
+        ("📚 Ich lerne {skill} | Tag {n} | Wie PEINLICH wird's heute?",
+         "📚 Learning {skill} | Day {n} | How EMBARRASSING will it get?"),
+        ("📚 Live lernen von null | Tag {n} | Lach mit!",
+         "📚 Learning live from zero | Day {n} | Laugh along!")),
     "jc-qna": StreamTitle(
-        ("Kaffee, Quatschen und eure Fragen – was willst du wissen?",
-         "Coffee, chat and your questions – what do you want to know?"),
-        ("Frag mich, was du willst – ich antworte ehrlich", "Ask me anything – honest answers only")),
+        ("❓ Frag mich ALLES | Ich antworte ehrlich",
+         "❓ Ask me ANYTHING | Honest answers only"),
+        ("☕ Kaffee, Quatschen & eure Fragen | Komm rein!",
+         "☕ Coffee, chats & your questions | Come in!")),
     "jc-topic-vote": StreamTitle(
-        ("Der Chat wählt das Thema – worüber reden wir heute?",
-         "Chat picks the topic – what are we talking about?"),
-        ("Stimm ab, worüber wir heute reden", "Vote on today's topic"), mood="funny"),
-    # Allgemein
+        ("🗳️ Ihr wählt das Thema | Worüber reden wir heute?",
+         "🗳️ You pick the topic | What are we talking about?"),
+        ("😂 Chat bestimmt das Thema | Ich bereue es jetzt schon",
+         "😂 Chat picks the topic | I already regret this"),
+        mood="funny"),
     "general-first-impressions": StreamTitle(
-        ("Erste Stunde in {game} – lohnt es sich?", "First hour in {game} – is it worth it?"),
-        ("Probier {game} mit mir zum ersten Mal aus", "Try {game} with me for the first time"),
-        first=("Zum ersten Mal {game} – lohnt es sich?", "First time playing {game} – worth it?")),
+        ("🎮 Erste Stunde in {game} | Lohnt sich das?",
+         "🎮 First hour of {game} | Is it worth it?"),
+        ("🎮 Neues Spiel, null Ahnung | Schaut rein!",
+         "🎮 New game, no clue | Come watch!"),
+        first=("🎮 Zum ersten Mal {game} | Blind | Lohnt sich das?",
+               "🎮 First time playing {game} | Blind | Worth it?")),
     "general-skill-diary": StreamTitle(
-        ("Lern-Tagebuch, Tag {n} – schaffe ich mein Ziel?",
-         "Learning diary, day {n} – do I hit my goal?"),
-        ("Üb mit mir – Lern-Tagebuch, Tag {n}", "Practise with me – learning diary, day {n}")),
+        ("📈 Trainingstag {n} | Schaffe ich heute mein Ziel?",
+         "📈 Practice day {n} | Do I hit my goal today?"),
+        ("📈 Jeden Tag ein bisschen besser | Tag {n}",
+         "📈 A bit better every day | Day {n}")),
     "general-two-ways": StreamTitle(
-        ("Zwei Wege, ein Ziel – welcher ist besser?", "Two routes, one goal – which is better?"),
-        ("Rate mit: Welcher Weg bringt mich schneller ans Ziel?",
-         "Guess along: which route gets me there faster?")),
+        ("🔀 Zwei Wege, ein Ziel | Welcher ist schneller?",
+         "🔀 Two routes, one goal | Which is faster?"),
+        ("🔀 Ich teste beide Wege | Tipp mit!",
+         "🔀 Testing both ways | Place your bet!")),
     "general-moment-of-week": StreamTitle(
-        ("Die Woche in Momenten – welcher war dein Favorit?",
-         "The week in moments – which was your favourite?"),
-        ("Schau mit mir auf die besten Momente der Woche",
-         "Look back on the week's best moments with me")),
+        ("⭐ Die besten Momente der Woche | Welcher war deiner?",
+         "⭐ Best moments of the week | Which was yours?"),
+        ("⭐ Highlight-{zeit} | Stimm für den besten Moment!",
+         "⭐ Highlight {time} | Vote for the best moment!")),
     "general-audience-choice": StreamTitle(
-        ("Der Chat entscheidet alles – wohin geht's heute?",
-         "Chat decides everything – where are we headed?"),
-        ("Du entscheidest, wie es weitergeht", "You decide what happens next"), mood="funny"),
+        ("🗳️ Ihr entscheidet, wie's weitergeht | Wohin heute?",
+         "🗳️ You decide what's next | Where to today?"),
+        ("😂 Chat am Steuer | Was soll da schon passieren?",
+         "😂 Chat's in control | What could possibly happen?"),
+        mood="funny"),
 }
 
 # Ideen für den Titel des Kurzvideos: ein Moment, darum dürfen sie „diese Runde“ sagen.
@@ -521,18 +549,33 @@ CLIP_TITLES: dict[str, tuple[Text, Text]] = {
 
 @dataclass(frozen=True)
 class TitleOption:
-    """Ein Titel und die Bausteine, aus denen er besteht (für Tests und Begründungen)."""
+    """Ein Titel mit seinen Bausteinen (für Tests und Begründungen)."""
 
-    text: str
+    text: str               # ohne Befehle
     approach: Approach
-    lead_kind: Literal["goal", "mood"]
-    tail_kind: Tail
-    emoji: str
+    commands: str = ""      # angehängte Befehle oder leer
+
+    @property
+    def full(self) -> str:
+        return f"{self.text}{SEPARATOR}{self.commands}" if self.commands else self.text
+
+    @property
+    def blocks(self) -> list[str]:
+        return self.text.split(SEPARATOR)
+
+    @property
+    def emoji(self) -> str:
+        return self.text.split(" ", 1)[0]
 
     @property
     def opening(self) -> str:
-        """Der Anfang bis zum Gedankenstrich – daran unterscheiden sich die drei Titel."""
-        return self.text.split(" – ")[0].removesuffix(f" {self.emoji}").strip()
+        """Der erste Baustein ohne Emoji – daran unterscheiden sich die drei Titel."""
+        return self.blocks[0].split(" ", 1)[1] if " " in self.blocks[0] else self.blocks[0]
+
+
+def is_emoji(token: str) -> bool:
+    return bool(token) and all(
+        unicodedata.category(ch) in ("So", "Sk", "Mn", "Cf") or ch == "️" for ch in token)
 
 
 def daypart(minute_of_day: int) -> tuple[str, str, str]:
@@ -543,28 +586,33 @@ def daypart(minute_of_day: int) -> tuple[str, str, str]:
     return DAYPARTS[-1][1:]  # pragma: no cover
 
 
-def emoji_for(genre: str | None, game: str, mood: Mood) -> str:
-    key = genre or "general"
-    if genre == "sports" and any(f" {alias} " in f" {normalize(game)} " for alias in _RACING):
-        key = "racing"
-    return EMOJIS.get(key, EMOJIS["general"])[mood]
-
-
 def stream_mood(format_id: str, genre: str | None, requested: Mood | None) -> Mood:
     if requested:
         return requested
     return STREAM_TITLES[format_id].mood or GENRE_MOOD.get(genre, "chill")
 
 
+def check_commands(commands: list[str]) -> list[str]:
+    """Eigene Chat-Befehle prüfen: höchstens 3, jeder wie ``!discord``."""
+    if len(commands) > MAX_COMMANDS:
+        raise ValueError(f"Höchstens {MAX_COMMANDS} Befehle / at most {MAX_COMMANDS} commands")
+    for command in commands:
+        if not COMMAND_RE.match(command):
+            raise ValueError(f"Ungültiger Befehl / invalid command: {command!r} "
+                             "(Form: !name, Kleinbuchstaben, Ziffern, _)")
+    return list(dict.fromkeys(commands))
+
+
 def build_titles(format_id: str, genre: str | None, game: str, language: str, *,
                  counter: int = 1, start_minute: int = 18 * 60, mood: Mood | None = None,
-                 rank_goal: str | None = None, rank_counter: int = 1,
-                 first_time: bool = False, rotation: int | None = None) -> list[TitleOption]:
+                 rank_goal: str | None = None, current_rank: str | None = None,
+                 rank_counter: int = 1, first_time: bool = False, rotation: int | None = None,
+                 commands: list[str] | None = None) -> list[TitleOption]:
     """Drei Titel für den ganzen Stream (Ziel, Stimmung, Einladung); der erste ist der Haupttitel.
 
     ``counter`` zählt Folgen dieses Formats über die Wochen („Tag {n}“); ``rank_counter`` die
     Ranked-Streams mit Rang-Ziel. ``rotation`` wählt, welcher Ansatz Haupttitel ist (Standard:
-    nach ``counter``), damit sich die Titel über die Woche abwechseln.
+    nach ``counter``). ``commands`` werden angehängt, solange der Titel ≤ 140 Zeichen bleibt.
     """
     index = 0 if language == "de" else 1
     data = STREAM_TITLES[format_id]
@@ -572,29 +620,31 @@ def build_titles(format_id: str, genre: str | None, game: str, language: str, *,
     zeit, zeit_m, time = daypart(start_minute % 1440)
     fills = {key: value[index] for key, value in FILLS.get(format_id, {}).items()}
     values = {"game": game, "zeit": zeit, "zeit_m": zeit_m, "time": time, "n": counter,
-              "k": rank_counter, "rank": rank_goal or "", **fills}
-    emoji = emoji_for(genre, game, current)
-
-    def text(sentence: str) -> str:
-        return f"{sentence.format(**values)} {emoji}"
+              "k": rank_counter, "rank": rank_goal or "", "from": current_rank or "", **fills}
 
     ranked = data.ranked and genre in RANKED_GENRES
     if ranked and rank_goal:
-        goal = RANK_GOAL[index]
+        goal = (RANK_JOURNEY if current_rank else RANK_GOAL)[index]
     elif first_time and data.first:
         goal = data.first[index]
     else:
         goal = data.goal[index]
+    genre_mood = MOOD_TITLES.get(genre, MOOD_TITLES[None])[current][index]
+    mood_text = genre_mood
     if ranked and current == "ambitious":
-        mood_entry = RANKED_GOAL_MOOD if rank_goal else RANKED_MOOD
-    else:
-        mood_entry = MOOD_TITLES.get(genre, MOOD_TITLES[None])[current]
+        mood_text = (RANKED_GOAL_MOOD if rank_goal else RANKED_MOOD)[index]
+        # Beginnt das Ziel schon mit demselben Baustein („🔴 Ranked-Abend“), nimm den
+        # Stimmungs-Titel des Genres – die drei Titel sollen sich im Anfang unterscheiden.
+        if mood_text.format(**values).split(SEPARATOR)[0] == goal.format(**values).split(
+                SEPARATOR)[0]:
+            mood_text = genre_mood
 
-    options = [
-        TitleOption(text(goal), "goal", "goal", "question", emoji),
-        TitleOption(text(mood_entry[index]), "mood", "mood", mood_entry[2], emoji),
-        TitleOption(text(data.invite[index]), "invite", "goal", "invite", emoji),
-    ]
+    suffix = " ".join(check_commands(commands or []))
+    options = []
+    for approach, template in (("goal", goal), ("mood", mood_text), ("invite", data.invite[index])):
+        text = template.format(**values)
+        fits = suffix and len(text) + len(SEPARATOR) + len(suffix) <= TITLE_MAX_CHARS
+        options.append(TitleOption(text, approach, suffix if fits else ""))
     start = (counter - 1 if rotation is None else rotation) % len(options)
     return options[start:] + options[:start]
 

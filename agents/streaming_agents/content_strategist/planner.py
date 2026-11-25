@@ -395,13 +395,14 @@ def build_plan(request: StrategyRequest,
             options = build_titles(
                 entry.format_id, genres[entry.game], entry.game, lang, counter=counter,
                 start_minute=week_minute(entry.stream), mood=request.mood,
-                rank_goal=request.rank_goal,
+                rank_goal=request.rank_goal, current_rank=request.current_rank,
                 rank_counter=(request.week_number - 1) * ranked_total + max(ranked_seen, 1),
-                first_time=request.first_time, rotation=index + shift)
+                first_time=request.first_time, rotation=index + shift,
+                commands=request.commands)
             if options[0].text not in used_main[entry.format_id]:
                 break
         used_main[entry.format_id].add(options[0].text)
-        titles = [fit_title(option.text) for option in options]
+        titles = [fit_title(option.full) for option in options]
         entry.title, entry.title_alternatives = titles[0], titles[1:3]
 
     last_day = streams[-1].stream.day

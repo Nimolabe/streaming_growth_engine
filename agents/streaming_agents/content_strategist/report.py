@@ -49,7 +49,7 @@ def render_text(plan: ContentPlan) -> str:
             (f"{item.number}. {_when(item)} ({item.stream.minutes} {t['min']}) · {item.game} · "
              f"{item.format_name} [{t['chat'][item.needs_chat]}]"),
             f"   {t['stream_title']}: {item.title}",
-            f"   {t['alt']}: " + " | ".join(item.title_alternatives),
+            f"   {t['alt']}: " + "  ·  ".join(item.title_alternatives),
             f"   {t['tags']}: {', '.join(item.tags)}",
             f"   {t['prep']}: {item.preparation.label} {item.preparation.start}–"
             f"{item.preparation.end} – " + "; ".join(item.prep_steps),
@@ -60,7 +60,7 @@ def render_text(plan: ContentPlan) -> str:
         lines += [
             f"   {t['clip']} ({item.clip_day}): {item.clip_idea}",
             f"   {t['hook']}: {item.hook}",
-            f"   {t['clip_titles']}: " + " | ".join(item.clip_title_ideas),
+            f"   {t['clip_titles']}: " + "  ·  ".join(item.clip_title_ideas),
             f"   {t['measure']}: {item.measurement}",
             f"   {t['when']}: {item.timing_reason}",
         ]

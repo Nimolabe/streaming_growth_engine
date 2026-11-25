@@ -106,6 +106,12 @@ class StrategyRequest(BaseModel):
     rank_goal: str | None = Field(
         default=None, max_length=20,
         description="Optional: Rang-Ziel für Titel, z. B. „Platin“ (nur Buchstaben, Ziffern, Leerzeichen, +)")
+    current_rank: str | None = Field(
+        default=None, max_length=20,
+        description="Optional: aktueller Rang; mit rank_goal entsteht „Von {from} nach {rank}“")
+    commands: list[str] = Field(
+        default_factory=list,
+        description="Optional: bis zu 3 eigene Chat-Befehle wie !discord, ans Titelende gehängt")
     mood: Literal["chill", "ambitious", "funny"] | None = Field(
         default=None, description="Stimmung für Titel: chill, ambitious (ehrgeizig), funny (lustig); "
                                   "leer = passend zu Genre und Format")
@@ -122,7 +128,13 @@ class StrategyRequest(BaseModel):
         default=None, ge=-720, le=840,
         description="Zeitzone der Messungen; leer = Ortszeit des Rechners")
 
-    @field_validator("rank_goal")
+    @field_validator("commands")
+    @classmethod
+    def _commands(cls, values: list[str]) -> list[str]:
+        from .titles import check_commands
+        return check_commands([value.strip() for value in values])
+
+    @field_validator("rank_goal", "current_rank")
     @classmethod
     def _rank_goal(cls, value: str | None) -> str | None:
         if value is None:
