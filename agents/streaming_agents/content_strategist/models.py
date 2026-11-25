@@ -1,8 +1,15 @@
 """Eingaben und Ausgaben des Content Strategist (Variante A: lokal, regelbasiert)."""
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    WithJsonSchema,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from ..category_check.models import CategorySnapshot
 
@@ -33,24 +40,60 @@ def parse_day(value: str | int) -> int:
     raise ValueError(f"Unbekannter Wochentag / unknown weekday: {value!r}")
 
 
-def parse_clock(value: str | int) -> int:
-    """„18“, „18:30“, „24:00“ → Minuten seit Mitternacht (0–1440)."""
+CLOCK_HELP = ("Uhrzeit als „HH“ oder „HH:MM“ angeben, z. B. 18 oder „18:30“ (0–24), keine "
+              "Minuten seit Mitternacht / time as 'HH' or 'HH:MM', e.g. 18 or '18:30' (0–24), "
+              "not minutes since midnight")
+
+
+def parse_clock(value: str | float) -> int:
+    """„18“, „18:30“, „24:00“ oder die Zahl 18 → Minuten seit Mitternacht (0–1440).
+
+    Zahlen sind volle Stunden (0–24). Größere Zahlen – etwa 1080 als „Minuten seit
+    Mitternacht“ gemeint – werden mit einer Fehlermeldung abgelehnt, die das Format nennt.
+    """
+    if isinstance(value, bool):  # pydantic meldet nur ValueError verständlich
+        raise ValueError(CLOCK_HELP)  # noqa: TRY004
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(f"{CLOCK_HELP}: {value!r}")
+        value = int(value)
+    if isinstance(value, int):
+        if not 0 <= value <= 24:
+            raise ValueError(f"{CLOCK_HELP}: {value!r}")
+        return value * 60
     match = _TIME_RE.match(str(value).strip())
     if not match:
-        raise ValueError(f"Uhrzeit als HH oder HH:MM angeben / time as HH or HH:MM: {value!r}")
+        raise ValueError(f"{CLOCK_HELP}: {value!r}")
     hours, minutes = int(match.group(1)), int(match.group(2) or 0)
     total = hours * 60 + minutes
     if minutes >= 60 or total > 24 * 60:
-        raise ValueError(f"Ungültige Uhrzeit / invalid time: {value!r}")
+        raise ValueError(f"Ungültige Uhrzeit / invalid time: {value!r} ({CLOCK_HELP})")
     return total
+
+
+def format_clock(minutes: int) -> str:
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+# Im OpenAPI-Schema steht, was die API wirklich annimmt (intern sind es Minuten).
+_CLOCK_SCHEMA = {
+    "anyOf": [
+        {"type": "integer", "minimum": 0, "maximum": 24},
+        {"type": "string", "pattern": r"^\d{1,2}(:\d{2})?$"},
+    ],
+    "examples": [18, "18:30"],
+}
+Clock = Annotated[int, WithJsonSchema(_CLOCK_SCHEMA, mode="validation")]
 
 
 class TimeWindow(BaseModel):
     """Zeitfenster an einem Wochentag in Ortszeit. Ende ≤ Beginn: geht über Mitternacht."""
 
     day: int = Field(description="0 = Montag … 6 = Sonntag (auch „Mo“, „Sa“, „Sunday“)")
-    start: int = Field(description="Minuten seit Mitternacht (auch „18“ oder „18:30“)")
-    end: int = Field(description="Minuten seit Mitternacht; kleiner als start = über Mitternacht")
+    start: Clock = Field(description="Beginn als Uhrzeit „HH“ oder „HH:MM“ (z. B. „18:30“) "
+                                     "oder als Zahl 0–24 für volle Stunden (z. B. 18)")
+    end: Clock = Field(description="Ende als Uhrzeit „HH“ oder „HH:MM“ oder Zahl 0–24; "
+                                   "kleiner als start = über Mitternacht (z. B. 22 bis 2)")
 
     @field_validator("day", mode="before")
     @classmethod
@@ -61,6 +104,11 @@ class TimeWindow(BaseModel):
     @classmethod
     def _clock(cls, value):
         return parse_clock(value)
+
+    @field_serializer("start", "end")
+    def _clock_out(self, value: int) -> str:
+        """Ausgabe wieder als „HH:MM“, damit ein Fenster ohne Umweg zurückgelesen werden kann."""
+        return format_clock(value)
 
     @model_validator(mode="after")
     def _not_empty(self):
@@ -94,8 +142,11 @@ class StrategyRequest(BaseModel):
                              description="1–5 Spiele bzw. Twitch-Kategorien")
     windows: list[TimeWindow] = Field(min_length=1, max_length=21,
                                       description="Verfügbare Zeitfenster pro Wochentag (Ortszeit)")
-    hours_per_week: int = Field(ge=2, le=60,
-                                description="Gesamtzeit pro Woche inkl. Vorbereitung, Clip, Rückblick")
+    hours_per_week: int = Field(
+        ge=2, le=60,
+        description="GESAMTE Zeit pro Woche in Stunden: Streams plus Vorbereitung, Clips und "
+                    "Wochenrückblick. Ist sie knapp, kürzt der Plan zuerst den Rückblick, dann "
+                    "die Clip-Zeit, dann die Vorbereitung (auf 15 min) und sagt das in den Hinweisen.")
     streams_per_week: int = Field(ge=1, le=7)
     average_viewers: int = Field(default=0, ge=0, le=1_000_000)
     active_chatters: int = Field(default=0, ge=0, le=1_000_000)
@@ -115,8 +166,10 @@ class StrategyRequest(BaseModel):
     mood: Literal["chill", "ambitious", "funny"] | None = Field(
         default=None, description="Stimmung für Titel: chill, ambitious (ehrgeizig), funny (lustig); "
                                   "leer = passend zu Genre und Format")
-    first_time: bool = Field(default=False,
-                             description="Zum ersten Mal / blind (Story und Horror)")
+    first_time: bool = Field(
+        default=False,
+        description="Zum ersten Mal / blind. Nur dann gibt es Titel wie „Zum ersten Mal …“ und "
+                    "bei unbekannten Genres das Format „Erste Eindrücke“")
     week_number: int = Field(default=1, ge=1, le=520,
                              description="Woche der Planung; Zähler in Titeln („Tag 3“) laufen weiter")
     collab_partner: bool = Field(default=False,

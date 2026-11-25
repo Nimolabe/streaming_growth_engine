@@ -60,7 +60,9 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Zeitfenster in Ortszeit, z. B. \"Mo 18-22\", \"Sa 14:00-20:30\", "
                            "\"Fr 22-2\" (über Mitternacht)")
     plan.add_argument("--hours", type=int, required=True,
-                      help="Stunden pro Woche insgesamt (inkl. Vorbereitung, Clips, Rückblick)")
+                      help="GESAMTE Zeit pro Woche in Stunden: Streams plus Vorbereitung, Clips und "
+                           "Wochenrückblick. Ist sie knapp, kürzt der Plan diese Zusatzaufgaben "
+                           "und sagt es in den Hinweisen")
     plan.add_argument("--streams", type=int, required=True, help="Streams pro Woche (1–7)")
     plan.add_argument("--viewers", type=int, default=0, help="Durchschnittliche Zuschauer")
     plan.add_argument("--chatters", type=int, default=0, help="Aktive Chatter pro Stream")
@@ -79,7 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
                                          "lustig"],
                       help="Stimmung der Titel (Standard: passend zu Genre und Format)")
     plan.add_argument("--first-time", action="store_true",
-                      help="Zum ersten Mal / blind (Story und Horror)")
+                      help="Zum ersten Mal / blind: Titel „Zum ersten Mal …“, bei unbekannten "
+                           "Genres das Format „Erste Eindrücke“")
     plan.add_argument("--week", type=int, default=1,
                       help="Wievielte Woche du planst (Standard 1) – Zähler in Titeln laufen weiter")
     plan.add_argument("--collab", action="store_true",

@@ -14,6 +14,7 @@ from streaming_agents.content_strategist.formats import FORMATS, FORMATS_BY_ID, 
 from streaming_agents.content_strategist.genres import GENRE_LABELS, detect_genre
 from streaming_agents.content_strategist.models import StrategyRequest, TimeWindow
 from streaming_agents.content_strategist.planner import (
+    CHAT_ORDER,
     CLIP_MINUTES,
     PREP_MINUTES,
     REVIEW_MINUTES,
@@ -28,6 +29,7 @@ from streaming_agents.content_strategist.titles import (
     STREAM_TITLES,
     TITLE_TARGET_CHARS,
     build_titles,
+    compound_with_daypart,
     is_emoji,
 )
 from streaming_agents.content_strategist.twitch_limits import (
@@ -277,8 +279,11 @@ def test_overlapping_windows_count_once_and_short_windows_are_ignored():
 
 
 def test_too_few_hours_is_a_clear_error():
-    with pytest.raises(PlanError, match="mindestens 6 Stunden"):
-        build_plan(request(streams_per_week=3, hours_per_week=5))
+    # Fehler nur, wenn nicht einmal 3 × (60 min Stream + 15 min Vorbereitung) passen.
+    with pytest.raises(PlanError, match="mindestens 4 Stunden.*gesamte Zeit"):
+        build_plan(request(streams_per_week=3, hours_per_week=3))
+    with pytest.raises(PlanError, match="at least 4 hours"):
+        build_plan(request(streams_per_week=3, hours_per_week=3, language="en"))
 
 
 def test_stream_never_below_60_or_above_240_minutes():
@@ -607,3 +612,266 @@ def test_week_recap_only_on_the_last_stream():
             ids = [item.format_id for item in build_plan(request(
                 games=("Just Chatting",), language=language, **profile)).streams]
             assert "jc-week-recap" not in ids[:-1]
+
+
+# ------------------------------------------------------------------ Simulation (Nachtrag 5)
+# Fehler aus einer Simulation mit 100 Test-Streamern: falsche „Erste Stunde“-Titel bei vertrauten
+# Spielen, Fehler bei knappen Stunden, TimeWindow-Beschreibung, Wochen-Formate mitten in der Woche.
+FIRST_TIME_PHRASES = ("erste stunde", "neues spiel", "zum ersten mal", "first hour", "new game",
+                      "first time")
+
+
+@pytest.mark.parametrize(("name", "genre"), [
+    ("Hogwarts Legacy", "story"), ("Pokémon Legenden: Z-A", "story"),
+    ("Pokémon Karmesin/Purpur", "story"), ("Pokemon Karmesin", "story"),
+    ("Pokémon Legends: Arceus", "story"), ("Pokémon UNITE", "moba"),
+    ("Euro Truck Simulator 2", "cozy"), ("ETS2", "cozy"),
+    ("GTA V", None), ("World of Warcraft", None), ("Teamfight Tactics", None),
+])
+def test_genre_detection_after_simulation(name, genre):
+    assert detect_genre(name) == genre
+
+
+@pytest.mark.parametrize("game", ["World of Warcraft", "GTA V", "Teamfight Tactics"])
+def test_familiar_unknown_games_never_get_first_hour_titles(game):
+    for profile in PROFILES.values():
+        for language in ("de", "en"):
+            plan = build_plan(request(games=(game,), language=language, **profile))
+            ids = {item.format_id for item in plan.streams}
+            assert "general-first-impressions" not in ids
+            assert ids & {"general-evening-goal", "general-chill", "general-viewer-games",
+                          "general-progress"}
+            for item in plan.streams:
+                for title in (item.title, *item.title_alternatives):
+                    assert not any(p in title.casefold() for p in FIRST_TIME_PHRASES), title
+
+
+def test_first_impressions_only_with_first_time():
+    plan = build_plan(request(games=("World of Warcraft",), first_time=True))
+    assert plan.streams[0].format_id == "general-first-impressions"
+    assert "Zum ersten Mal World of Warcraft" in plan.streams[0].title
+
+
+def test_new_general_titles_are_taken_over_word_for_word():
+    def titles(format_id, language, **extra):
+        return {option.approach: option.text for option in build_titles(
+            format_id, None, "World of Warcraft", language, start_minute=19 * 60, **extra)}
+    assert titles("general-evening-goal", "de")["goal"] == \
+        "🎯 Heute mit Ziel in World of Warcraft | Schaffen wir das?"
+    assert titles("general-evening-goal", "en")["invite"] == \
+        "🎮 World of Warcraft with a plan | Come see if it works!"
+    assert titles("general-chill", "de")["invite"] == "🎮 World-of-Warcraft-Abend | Chill mit!"
+    assert titles("general-chill", "en")["invite"] == "🎮 World of Warcraft evening | Chill with me!"
+    assert titles("general-viewer-games", "de")["goal"] == \
+        "🤝 Zuschauerrunde in World of Warcraft | Spiel mit!"
+    assert titles("general-progress", "de", counter=4)["goal"] == \
+        "📈 World of Warcraft | Tag 4 | Wie weit kommen wir heute?"
+    assert titles("general-progress", "en", counter=4)["invite"] == \
+        "🔥 Back in World of Warcraft | Day 4 | Come in!"
+    assert FORMATS_BY_ID["general-viewer-games"].needs_chat == "low"
+    assert FORMATS_BY_ID["general-progress"].series
+
+
+def test_game_and_daypart_form_one_readable_word():
+    assert compound_with_daypart("World of Warcraft", "Abend") == "World-of-Warcraft-Abend"
+    assert compound_with_daypart("GTA V", "Nacht") == "GTA-V-Nacht"
+    assert compound_with_daypart("Palia", "Vormittag") == "Palia-Vormittag"
+    assert compound_with_daypart("Warhammer 40,000: Darktide", "Abend") == \
+        "Abend in Warhammer 40,000: Darktide"
+
+
+def test_tight_hours_trim_extras_instead_of_failing():
+    # 2 Streams à 2 h = 4 h: früher ein Fehler, jetzt mit gekürztem Rückblick.
+    plan = build_plan(request(streams_per_week=2, hours_per_week=4))
+    assert [item.stream.minutes for item in plan.streams] == [60, 60]
+    budget = plan.budget
+    assert budget.review_minutes < 30 and budget.unplanned_minutes >= 0
+    assert budget.stream_minutes + budget.preparation_minutes + budget.clip_minutes + \
+        budget.review_minutes + budget.unplanned_minutes == 240
+    assert any("Zeit ist knapp" in note and "Wochenrückblick" in note for note in plan.notes)
+    # 2 Streams in 3 h: Rückblick und Clip-Zeit fallen weg, Vorbereitung bleibt.
+    plan = build_plan(request(streams_per_week=2, hours_per_week=3, language="en"))
+    assert plan.budget.clip_minutes == 0 and plan.review.minutes == 0
+    assert all(item.preparation.minutes == 20 for item in plan.streams)
+    assert "no fixed clip time" in plan.streams[0].clip_day
+    assert any("weekly review left out" in note for note in plan.notes)
+    assert "optional" in render_text(plan) and "optional" in render_html(plan)
+    # 4 Streams in 5 h: als Letztes wird die Vorbereitung auf 15 min gekürzt.
+    plan = build_plan(request(streams_per_week=4, hours_per_week=5))
+    assert all(item.preparation.minutes == 15 and item.stream.minutes == 60
+               for item in plan.streams)
+    assert plan.budget.unplanned_minutes == 0
+    # Mit genug Zeit bleibt alles wie bisher – ohne Hinweis.
+    plan = build_plan(request(streams_per_week=2, hours_per_week=8))
+    assert plan.review.minutes == 30 and not any("knapp" in note for note in plan.notes)
+
+
+def test_time_window_accepts_clock_times_and_rejects_minutes():
+    assert TimeWindow(day="Mo", start=18, end="22:30").start == 18 * 60
+    assert TimeWindow(day=0, start="18", end=24).end == 1440
+    window = TimeWindow(day="Fr", start="22", end=2)
+    assert window.model_dump() == {"day": 4, "start": "22:00", "end": "02:00"}
+    assert TimeWindow.model_validate(window.model_dump()) == window
+    for bad in (1080, 25, -1, 18.5, True):
+        with pytest.raises(ValueError, match="HH:MM"):
+            TimeWindow(day=0, start=bad, end=22)
+
+
+def test_api_time_window_numbers_and_schema():
+    body = {"games": ["Minecraft"], "hours_per_week": 6, "streams_per_week": 1,
+            "windows": [{"day": "Mo", "start": 18, "end": 22}]}
+    assert client.post("/api/v1/content/strategy", json=body).status_code == 200
+    body["windows"] = [{"day": "Mo", "start": 1080, "end": 1320}]
+    response = client.post("/api/v1/content/strategy", json=body)
+    assert response.status_code == 422
+    assert "HH:MM" in response.text and "Minuten seit Mitternacht" in response.text
+    schema = client.get("/api/v1/openapi.json").json()["components"]["schemas"]
+    window = schema["TimeWindow"]["properties"]
+    for key in ("start", "end"):
+        types = {option["type"] for option in window[key]["anyOf"]}
+        assert types == {"integer", "string"}
+        assert "HH:MM" in window[key]["description"]
+        assert "Minuten seit Mitternacht" not in window[key]["description"]
+    assert "GESAMTE" in schema["StrategyRequest"]["properties"]["hours_per_week"]["description"]
+
+
+def test_moment_of_week_only_as_the_last_stream():
+    plan = build_plan(request(games=("World of Warcraft",), streams_per_week=4, hours_per_week=12,
+                              goal="community", active_chatters=5))
+    ids = [item.format_id for item in plan.streams]
+    assert ids[-1] == "general-moment-of-week" and "general-moment-of-week" not in ids[:-1]
+    single = build_plan(request(games=("World of Warcraft",), streams_per_week=1,
+                                goal="community"))
+    assert single.streams[0].format_id != "general-moment-of-week"
+
+
+def test_story_recap_never_opens_a_game_in_week_one():
+    seen_later = False
+    for game in ("Hogwarts Legacy", "Elden Ring", "Hollow Knight"):
+        for experience in ("beginner", "intermediate", "advanced"):
+            for goal in ("discovery", "community", "consistency"):
+                for streams in (1, 2, 3):
+                    plan = build_plan(request(games=(game,), experience=experience, goal=goal,
+                                              streams_per_week=streams, hours_per_week=10))
+                    assert plan.streams[0].format_id != "story-recap"
+                    seen_later |= "story-recap" in {item.format_id for item in plan.streams}
+    assert seen_later  # das Format bleibt erreichbar, nur nicht als Einstieg
+    later = build_plan(request(games=("Elden Ring",), experience="advanced", week_number=2))
+    assert later.streams[0].format_id == "story-recap"
+
+
+W_FIVE = WINDOWS
+W_ALL = ["Mo 18-22", "Di 18-22", "Mi 18-22", "Do 18-22", "Fr 18-23", "Sa 12-20", "So 12-20"]
+W_WEEKEND = ["Fr 22-2", "Sa 14-20", "So 15-19"]
+W_EVENINGS = ["Mo 19-21", "Di 19-21", "Mi 19-21", "Do 19-21", "Fr 19-21", "Sa 19-21"]
+# (Spiele, Streams, Stunden, Zuschauer, Chatter, Ziel, Erfahrung, first_time, Sprache, Fenster,
+#  Woche, Mitspieler, Stimmung, Befehle)
+SIMULATION = [
+    (("World of Warcraft",), 3, 8, 0, 0, "discovery", "advanced", False, "de", W_FIVE, 1, False, None, ()),
+    (("GTA V",), 4, 10, 12, 6, "community", "intermediate", False, "de", W_FIVE, 1, False, None, ()),
+    (("Teamfight Tactics",), 2, 4, 3, 1, "consistency", "advanced", False, "en", W_FIVE, 2, False, None, ()),
+    (("Valorant",), 5, 15, 40, 12, "discovery", "advanced", False, "de", W_ALL, 1, True, None, ("!discord",)),
+    (("Fortnite",), 2, 4, 1, 0, "discovery", "beginner", False, "de", W_FIVE, 1, False, None, ()),
+    (("League of Legends",), 3, 9, 100, 30, "community", "advanced", False, "en", W_FIVE, 3, True, "ambitious", ()),
+    (("Hogwarts Legacy",), 3, 8, 2, 0, "discovery", "beginner", True, "de", W_FIVE, 1, False, None, ()),
+    (("Pokémon Karmesin",), 4, 8, 5, 3, "consistency", "intermediate", False, "de", W_ALL, 1, False, "funny", ()),
+    (("Elden Ring",), 2, 5, 8, 2, "discovery", "advanced", False, "en", W_WEEKEND, 1, False, None, ()),
+    (("Phasmophobia",), 3, 9, 20, 9, "community", "intermediate", True, "de", W_FIVE, 1, True, None, ()),
+    (("Stardew Valley",), 6, 12, 4, 1, "consistency", "beginner", False, "de", W_ALL, 1, False, None, ()),
+    (("Euro Truck Simulator 2",), 3, 6, 0, 0, "discovery", "beginner", False, "en", W_FIVE, 1, False, None, ()),
+    (("Minecraft",), 5, 20, 60, 15, "community", "advanced", False, "de", W_ALL, 4, True, None, ("!insta", "!yt")),
+    (("Rocket League",), 2, 3, 7, 4, "discovery", "intermediate", False, "de", W_FIVE, 1, False, None, ()),
+    (("Just Chatting",), 4, 8, 15, 10, "community", "intermediate", False, "de", W_EVENINGS, 1, False, None, ()),
+    (("Just Chatting", "World of Warcraft"), 4, 12, 9, 5, "community", "intermediate", False, "en", W_ALL, 1, False, None, ()),
+    (("Valorant", "Teamfight Tactics"), 3, 6, 2, 0, "discovery", "beginner", False, "de", W_FIVE, 1, False, None, ()),
+    (("Tetris Effect",), 2, 4, 0, 0, "discovery", "beginner", True, "de", W_FIVE, 1, False, None, ()),
+    (("Palia",), 4, 7, 3, 3, "community", "beginner", False, "de", W_EVENINGS, 1, False, "chill", ()),
+    (("Path of Exile 2",), 6, 9, 25, 8, "consistency", "advanced", False, "de", W_EVENINGS, 5, False, None, ()),
+    (("Warhammer 40,000: Darktide",), 3, 8, 6, 3, "community", "intermediate", False, "de", W_FIVE, 1, True, None, ()),
+    (("CS2",), 6, 24, 80, 25, "discovery", "advanced", False, "en", W_ALL, 1, True, "funny", ("!discord",)),
+    (("Apex Legends", "Fortnite"), 4, 10, 10, 5, "discovery", "intermediate", False, "de", W_FIVE, 1, False, None, ()),
+    (("Dead by Daylight",), 2, 4, 0, 0, "community", "beginner", False, "de", W_WEEKEND, 1, False, None, ()),
+    (("Hollow Knight",), 3, 5, 1, 0, "consistency", "beginner", False, "de", W_FIVE, 1, False, None, ()),
+    (("EA Sports FC 26",), 5, 10, 30, 10, "community", "advanced", False, "de", W_ALL, 2, True, None, ()),
+    (("Satisfactory",), 3, 12, 5, 2, "consistency", "intermediate", False, "en", W_WEEKEND, 1, False, None, ()),
+    (("Lethal Company", "World of Warcraft", "GTA V"), 5, 15, 18, 9, "community", "advanced", False, "de", W_ALL, 1, True, None, ()),
+    (("Pokémon Legenden: Z-A", "Animal Crossing"), 2, 4, 4, 2, "discovery", "beginner", True, "en", W_FIVE, 1, False, None, ()),
+    (("Grand Theft Auto V",), 6, 8, 0, 0, "consistency", "beginner", False, "de", W_ALL, 1, False, None, ()),
+]
+
+
+def _check_plan_title(title: str, games: tuple[str, ...]) -> None:
+    text = title.split(" | !")[0]  # angehängte Befehle abschneiden
+    assert is_valid_title(title), title
+    emoji = text.split(" ", 1)[0]
+    assert is_emoji(emoji), title
+    rest = text[len(emoji):]
+    assert not any(unicodedata.category(ch) == "So" for ch in rest), title
+    assert 2 <= len(text.split(" | ")) <= 4, title
+    for game in games:  # Spielnamen wie „GTA V“ zählen nicht als Großbuchstaben-Wort
+        rest = rest.replace(game.replace(" ", "-"), "").replace(game, "")
+    assert len(caps_words(rest)) <= 2, title
+    assert text.replace("?!", "!").count("!") <= 1, title
+    assert "{" not in text and "}" not in text, title
+    assert not any(phrase in text.casefold() for phrase in SINGLE_MOMENT), title
+    # Ziel ≤ 70 Zeichen bei normalen Namen (bis „League of Legends“, 17 Zeichen); längere
+    # Namen dürfen den Titel entsprechend verlängern, hart gilt is_valid_title (≤ 140).
+    assert len(text) <= TITLE_TARGET_CHARS + max(0, max(len(game) for game in games) - 17), title
+
+
+def test_simulation_profiles_are_all_planned():
+    assert len(SIMULATION) == 30
+    assert len({profile[0] for profile in SIMULATION}) >= 25
+
+
+@pytest.mark.parametrize("profile", SIMULATION, ids=lambda p: "+".join(p[0]) + f"-{p[1]}x{p[2]}h")
+def test_simulation_regression(profile):
+    (games, streams, hours, viewers, chatters, goal, experience, first_time, language, windows,
+     week, collab, mood, commands) = profile
+    plan = build_plan(request(
+        games=games, windows=windows, streams_per_week=streams, hours_per_week=hours,
+        average_viewers=viewers, active_chatters=chatters, goal=goal, experience=experience,
+        first_time=first_time, language=language, week_number=week, collab_partner=collab,
+        mood=mood, commands=list(commands)))
+    assert len(plan.streams) == streams
+    assert all(60 <= item.stream.minutes <= 240 for item in plan.streams)
+    budget = plan.budget
+    assert budget.unplanned_minutes >= 0
+    assert budget.stream_minutes + budget.preparation_minutes + budget.clip_minutes + \
+        budget.review_minutes + budget.unplanned_minutes == hours * 60
+    ids = [item.format_id for item in plan.streams]
+    # Wochen-Formate nur am Ende des Plans, und nie bei nur einem Stream
+    for index, format_id in enumerate(ids):
+        if FORMATS_BY_ID[format_id].week_end:
+            assert index == len(ids) - 1 and streams > 1, ids
+    # „Erste Stunde“ / „Neues Spiel“ nur mit first_time
+    if not first_time:
+        assert not any(FORMATS_BY_ID[fid].first_time_only for fid in ids), ids
+    # Rückblick-Formate nie als erster Stream eines Spiels in Woche 1
+    if week == 1:
+        firsts = {}
+        for item in plan.streams:
+            firsts.setdefault(item.game, item.format_id)
+        assert not any(FORMATS_BY_ID[fid].needs_history for fid in firsts.values()), firsts
+    level = plan.chat_level
+    for item in plan.streams:
+        assert CHAT_ORDER[item.needs_chat] <= CHAT_ORDER[level]
+        assert collab or not item.needs_collab
+        assert 1 <= len(item.tags) <= TAGS_MAX_COUNT and all(is_valid_tag(t) for t in item.tags)
+        for title in (item.title, *item.title_alternatives):
+            if not first_time:
+                assert not any(p in title.casefold() for p in FIRST_TIME_PHRASES), title
+            _check_plan_title(title, games)
+        if language == "en":
+            text = " ".join((item.title, *item.title_alternatives, *item.run_of_show, item.hook))
+            assert not set(text) & set("äöüßÄÖÜ") - set("".join(games)), text
+
+
+@pytest.mark.parametrize(("windows", "streams", "hours", "match"), [
+    (W_FIVE, 3, 3, "Zu wenig Zeit"),            # 3 × (60 + 15) min > 3 h
+    (W_FIVE, 7, 20, "nutzbare"),                # 5 Fenster, 7 Streams
+    (["Mo 18-22", "Mo 19-21"], 2, 10, "nutzbare"),
+])
+def test_simulation_only_real_impossibilities_fail(windows, streams, hours, match):
+    with pytest.raises(PlanError, match=match):
+        build_plan(request(windows=windows, streams_per_week=streams, hours_per_week=hours))
