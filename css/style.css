@@ -391,7 +391,9 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
   font-size: .78rem; font-weight: 600; letter-spacing: .02em; color: var(--accent);
   background: rgba(139, 124, 246, .12); border: 1px solid rgba(139, 124, 246, .35);
 }
-.card-wide .card-badge + h3 { margin-top: .7rem; }
+.card-wide .card-badge + h3, .card-badge-soft + h3 { margin-top: .7rem; }
+.card-badge-soft { color: #f3c969; background: rgba(243, 201, 105, .1); border-color: rgba(243, 201, 105, .35); }
+.card-note { margin-top: .6rem; font-size: .9rem; }
 @media (min-width: 761px) {
   .card-wide { flex-direction: row; }
   .card-wide .card-img { flex: 0 0 46%; aspect-ratio: auto; min-height: 280px; }
@@ -418,20 +420,31 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
 .xp-meter { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.3rem; }
 .xp-meter-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .8rem; font-family: var(--font-head); }
 .xp-level { color: var(--text-dim); }
-.xp-level strong { color: var(--text); font-size: 1.8rem; margin-left: .3rem; }
+.xp-level strong { display: inline-block; color: var(--text); font-size: 1.8rem; margin-left: .3rem; }
 .xp-total { color: var(--text-dim); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .xp-total strong { color: var(--accent); }
 .xp-bar { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .06); overflow: hidden; }
-.xp-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6c5ce7, var(--accent), #ff7a8a); transform-origin: left; transform: scaleX(1); box-shadow: 0 0 20px rgba(139, 124, 246, .7); }
-.motion .xp-bar span { transform: scaleX(0); }
+.xp-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6c5ce7, var(--accent), #ff7a8a); transform-origin: left; transform: scaleX(var(--xp, 0)); transition: transform .6s var(--ease); box-shadow: 0 0 20px rgba(139, 124, 246, .7); }
+/* Die Leiste bewegt nur CSS (--xp aus js/quests.js), nie GSAP – siehe Fallstrick 3 */
+.quest-hint { margin: .9rem 0 0; color: var(--text-dim); font-size: .85rem; }
+.quest-reset { margin-top: .6rem; padding: .3rem 0; background: none; border: 0; color: var(--accent); font: inherit; font-size: .85rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.quest-reset:hover { color: var(--text); }
+.quest-reset:focus-visible, .quest-check:focus-visible, .quest-links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .quest-pin .quests { margin: 0; max-width: none; gap: 1.2rem; }
-.quests li { position: relative; transition: opacity .5s var(--ease), border-color .5s, background .5s; padding-right: 4rem; }
+.quests li { position: relative; transition: border-color .5s, background .5s; padding-right: 4.4rem; }
+.quest-body { min-width: 0; }
+.quest-links { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .55rem; font-size: .9rem; }
+.quest-links a { color: var(--accent); text-decoration: none; }
+.quest-links a:hover { text-decoration: underline; }
+/* Checkbox (button role="checkbox"): GSAP bewegt nur das li, nie diesen Kreis */
 .quest-check {
-  position: absolute; right: 1.4rem; top: 50%; width: 1.6rem; height: 1.6rem; margin-top: -.8rem;
-  border-radius: 50%; border: 2px solid var(--border); transition: background .4s var(--ease), border-color .4s, transform .4s var(--ease);
+  position: absolute; right: 1.4rem; top: 50%; width: 1.9rem; height: 1.9rem; margin-top: -.95rem; padding: 0;
+  background: transparent; cursor: pointer; color: inherit;
+  border-radius: 50%; border: 2px solid var(--text-dim); transition: background .4s var(--ease), border-color .4s, transform .4s var(--ease);
 }
-.quest-check::after { content: ""; position: absolute; left: .45rem; top: .22rem; width: .4rem; height: .75rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .3s var(--ease) .1s; }
-.motion .quests li:not(.is-done) { opacity: .45; }
+.quest-check::before { content: ""; position: absolute; inset: -.6rem; border-radius: 50%; } /* größere Klickfläche */
+.quest-check:hover { border-color: var(--accent); }
+.quest-check::after { content: ""; position: absolute; left: .58rem; top: .3rem; width: .4rem; height: .75rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .3s var(--ease) .1s; }
 .quests li.is-done { background: linear-gradient(90deg, rgba(139, 124, 246, .1), var(--bg-card) 60%); }
 .quests li.is-done .quest-check { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
 .quests li.is-done .quest-check::after { transform: rotate(45deg) scale(1); }
@@ -464,7 +477,7 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
   .page-home .hero { grid-template-columns: 1fr; padding-top: 6.5rem; }
   .stream { transform: none; }
   .quest-pin { grid-template-columns: 1fr; gap: 1.5rem; }
-  .quest-head { top: 4.5rem; z-index: 2; background: rgba(11, 10, 18, .92); backdrop-filter: blur(10px); padding: 1rem 0; }
+  .quest-head { position: static; padding: 0; }
   .quest-head .section-title { margin-bottom: 1rem; }
 }
 @media (max-width: 600px) {
@@ -473,5 +486,5 @@ html.lenis, html.lenis body { height: auto; scroll-behavior: auto; }
   .page-home .scroll-cue { display: none; }
   .showcase-shade { background: linear-gradient(0deg, rgba(11, 10, 18, .95) 10%, rgba(11, 10, 18, .4) 70%, rgba(11, 10, 18, .2)); }
   .quests li { padding-right: 1.6rem; }
-  .quest-check { top: 1.4rem; margin-top: 0; }
+  .quest-check { top: 1.2rem; margin-top: 0; }
 }

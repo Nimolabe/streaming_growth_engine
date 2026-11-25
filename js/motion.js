@@ -186,32 +186,17 @@
     });
   }
 
-  // Quests: jede erreichte Quest wird abgehakt, XP-Leiste und Level steigen
+  // Quests: nur Einblenden. Abgehakt wird ausschließlich per Klick (js/quests.js),
+  // nie beim Scrollen. Die XP-Leiste bewegt sich per CSS (--xp), nicht per GSAP.
   function quests() {
-    const items = $$(".quests li");
-    const xpEl = $("[data-xp]"), lvlEl = $("[data-level]");
-    const bar = $(".xp-bar span");
-    const MAX = 1100;
-    const xpOf = (li) => parseInt($(".xp", li).textContent.replace(/\D/g, ""), 10) || 0;
-    const shown = { xp: 0 };
-    const update = () => {
-      const done = items.filter((li) => li.classList.contains("is-done"));
-      const xp = done.reduce((s, li) => s + xpOf(li), 0);
-      gsap.to(shown, { xp, duration: .8, ease: "power2.out", overwrite: true, onUpdate: () => { xpEl.textContent = Math.round(shown.xp); } });
-      gsap.to(bar, { scaleX: xp / MAX, duration: .8, ease: "power3.out", overwrite: true });
-      const level = done.length === items.length ? 2 : 1;
-      if (lvlEl.textContent !== String(level)) {
-        lvlEl.textContent = level;
-        gsap.fromTo(lvlEl, { scale: 1.8, color: "#8b7cf6" }, { scale: 1, color: "#e6e7ea", duration: .7, ease: "back.out(2)" });
-      }
-    };
-    items.forEach((li) => {
-      ScrollTrigger.create({
-        trigger: li, start: "top 62%",
-        onEnter: () => { li.classList.add("is-done"); update(); },
-        onLeaveBack: () => { li.classList.remove("is-done"); update(); },
-      });
+    $$(".quests li").forEach((li) => {
       gsap.fromTo(li, { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: .9, ease: "power3.out", clearProps: "opacity,visibility,transform", scrollTrigger: { trigger: li, start: "top 92%", once: true } });
+    });
+    // Level-Sprung nur nach einem echten Klick, der das Level ändert
+    const lvlEl = $("[data-level]");
+    document.addEventListener("sge:quests", (e) => {
+      if (!lvlEl || !e.detail.levelChanged) return;
+      gsap.fromTo(lvlEl, { scale: 1.8, color: "#8b7cf6" }, { scale: 1, color: "#e6e7ea", duration: .7, ease: "back.out(2)", clearProps: "transform,color" });
     });
   }
 
