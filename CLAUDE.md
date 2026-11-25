@@ -6,7 +6,7 @@
   aktualisiert.
 - Neue Erkenntnisse und Stolperfallen kommen in **Abschnitt 10** (Bekannte Fallstricke).
 
-Stand: 23.11.2026 (nach dem Merge von #29) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
+Stand: 25.11.2026 (nach dem Merge von #30) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
 Website (GitHub Pages): https://nimolabe.github.io/streaming_growth_engine/
 
 > **Für Claude Code:** Lies dieses Dokument vollständig, bevor du etwas änderst. Kommuniziere
@@ -88,7 +88,8 @@ database.rules.json    Realtime-Database-Regeln
 Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 `js/guides.js`, `js/layout-core.js`, `js/layouts.js`, `js/layouts-share.js`,
 `js/layout-profile.js`, `js/waitlist.js`, `js/setups-i18n.js`, `css/guides.css`,
-`css/layouts.css`, `css/overlay.css`.
+`css/layouts.css`, `css/overlay.css`. Seit dem PR „Quests und Community“: `js/quests.js`
+(Erste Quests der Startseite, nur per Klick abhakbar, Stand im `localStorage` unter `sge-quests`).
 
 **Wichtige Mechanismen der Website:**
 - **i18n (`js/i18n.js`):** Eine Map Deutsch→Englisch. Übersetzt werden **nur Textknoten mit
@@ -119,7 +120,11 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 - CI: `.github/workflows/agents-tests.yml` (bei Änderungen unter `agents/`); manuell mit
   Eingabe `enable_video_tests` auch die ffmpeg-Video-Tests.
 - Module: `clip_hunter/` (Clip Hunter v4), `category_check/`, `content_strategist/`
-  (Wochenplan, Variante A: Genres, Formate, Planer, Twitch-Grenzen, Bericht, CLI),
+  (Content Strategist Variante A seit #30, ersetzt v2/v3: `genres.py` mit 9 Genres,
+  `formats.py` mit Formaten pro Genre, `planner.py` für den Wochenplan mit Zeitbudget und
+  Kategorie-Check-Uhrzeiten, `titles.py` für Titel im Stil echter Twitch-Titel,
+  `twitch_limits.py`, `report.py`, `cli.py`; CLI `python -m streaming_agents.content_strategist
+  plan`, API `POST /api/v1/content/strategy`),
   `agents/` (Growth Analyst = Creator Intelligence + `creator_strategy*`, geparkt),
   `llm/` (OpenAI-Provider, opt-in mit `--live`, Kostenbremse; soll später mit
   `clip_hunter/ai_stage.py` zusammengelegt werden), `api.py`, `registry.py`. Entfernt:
@@ -162,18 +167,22 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #27 | Bilder der Startseite selbst hosten (`images/`, WebP mit 600-px-Variante), Test gegen fremde Hosts |
 | #28 | Doku: Bestandsaufnahme der KI-Agenten (`agents/docs/bestandsaufnahme-2026-11.md`) |
 | #29 | KI-Agenten: Altlasten aus der ChatGPT-Zeit entfernt (Clip Intelligence v1/v2, Prüfliste, `clip_evaluation`, Content-Strategist-Empfehler v2) |
+| #30 | Content Strategist Variante A: neues Paket `content_strategist/` (ersetzt v3 und `/content/weekly-plan`), 9 Genres, Wochenplan in den eigenen Zeitfenstern mit Zeitbudget, Anbindung an den Kategorie-Check (Uhrzeiten nach Publikum pro Platz), Titel im Stil echter Twitch-Titel (Bausteine mit „ \| “, Emoji vorn, drei Titel pro Stream) und Tags nach Twitch-Grenzen; optionale Eingaben `rank_goal`/`current_rank`/`mood`/`first_time`/`commands` |
 
-#1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026. Stand nach
-#29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests), alle Seiten DE/EN ohne
-JS-Fehler.
+#1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026, #30 am
+25.11.2026. Stand nach #29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests),
+alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün.
 
 ## 5. Offene Pull Requests
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
-- **Content Strategist Variante A** (Branch `feature/content-strategist-a`): Wochenplan mit
-  Zeitfenstern, 9 Genres, Twitch-konformen Titeln und Tags, Kategorie-Check-Uhrzeiten.
-  Ersetzt Content Strategist v3 und `/content/weekly-plan`. Nach dem Merge in Abschnitt 4
+- **#31** Content Strategist: Fehler aus einer Simulation mit 100 Test-Streamern behoben
+  (Formate für vertraute Spiele ohne Genre, Kürzen bei knappen Stunden, TimeWindow als
+  Uhrzeit, Wochen-Formate nur am Wochenende, Regressionstest). Nach dem Merge in Abschnitt 4
   eintragen.
+- **Quests und Community** (Branch `fix/website-quests-community`): Quests nur per Klick
+  abhakbar, Leer-Zustand der Community, Hinweis „im Aufbau“, dieser Eintrag. Nach dem Merge in
+  Abschnitt 4 eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -290,7 +299,7 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
    dem Server). Wartet auf die **Hosting-Entscheidung**.
 5. ✅ **Content Strategist auf echten Daten** (PR #20, Kategorie-Check).
    Offen: echter Test mit Twitch-App.
-   ⏳ **Variante A** (PR offen, siehe Abschnitt 5): lokaler, regelbasierter Wochenplan für
+   ✅ **Variante A** (PR #30): lokaler, regelbasierter Wochenplan für
    0–20 Zuschauer – echte Wochentage und Uhrzeiten in den eigenen Zeitfenstern, 9 Genres mit
    eigenen Formaten, Chat-Bedarf als Merkmal pro Format, Titel/Tags nach Twitch-Grenzen,
    Uhrzeiten nach Kategorie-Check-Messungen. CLI `python -m streaming_agents.content_strategist
@@ -393,6 +402,11 @@ Prüfliste für Website-Änderungen:
     in `images/README.md`). Der Test `test_no_requests_to_foreign_hosts` erlaubt fremde Hosts
     nur aus der Firebase-Liste `ALLOWED_FOREIGN` in `tests/web/test_pages.py`;
     `test_no_requests_to_google_fonts` prüft zusätzlich Google Fonts für jede Seite.
+14. Dekorative Fortschrittsanzeigen nie automatisch füllen – nur echte Nutzeraktionen zählen.
+    Die „Ersten Quests“ der Startseite haben sich früher beim Scrollen selbst abgehakt und die
+    XP-Leiste gefüllt; das wirkte unehrlich. Seit dem PR „Quests und Community“ zählt nur ein
+    Klick auf die Checkbox (`js/quests.js`). Dasselbe gilt für Zähler, Badges und
+    Community-Angaben: nichts versprechen oder anzeigen, was nicht wirklich passiert ist.
 
 ---
 
