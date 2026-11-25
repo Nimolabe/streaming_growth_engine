@@ -10,6 +10,12 @@ const list = document.getElementById("results");
 const status = document.getElementById("results-status");
 const title = document.getElementById("results-title");
 const meCta = document.getElementById("me-cta");
+const empty = document.getElementById("community-empty");
+const emptyJoin = empty.querySelector("[data-community-join]");
+const emptyMe = empty.querySelector("[data-community-me]");
+
+// Bis zu so vielen Profilen sagt die Seite ehrlich, dass die Community gerade startet.
+const SMALL_COMMUNITY = 6;
 
 let app = null;
 let latest = null;
@@ -21,19 +27,37 @@ function render(profiles) {
 
 async function showLatest() {
   title.textContent = T("Neu dabei");
+  title.hidden = false;
   status.textContent = T("Wird geladen …");
+  empty.hidden = true;
   try {
     latest = latest || (await latestProfiles(app, 12));
     render(latest);
-    status.textContent = latest.length ? "" : T("Noch keine Profile. Sei der Erste!");
+    status.textContent = "";
+    empty.hidden = latest.length >= SMALL_COMMUNITY;
+    title.hidden = latest.length === 0; // keine Überschrift „Neu dabei“ über einer leeren Liste
   } catch (err) {
+    // z. B. PERMISSION_DENIED, solange die Regeln nicht veröffentlicht sind: freundliche Meldung,
+    // kein Leer-Zustand (die Community ist dann nicht leer, sondern gerade nicht erreichbar).
     console.error("Profile konnten nicht geladen werden (Datenbank-Regeln veröffentlicht?):", err);
     status.textContent = T("Profile konnten gerade nicht geladen werden. Lade die Seite neu.");
   }
 }
 
+// Leer-Zustand: abgemeldet → „Profil anlegen“, angemeldet mit Profil → kurzer Satz statt Button.
+function updateEmpty(user, profile) {
+  emptyJoin.hidden = Boolean(user);
+  emptyMe.hidden = !(user && profile && profile.username);
+}
+emptyJoin.addEventListener("click", () => {
+  document.getElementById("login-btn")?.click();
+  document.querySelector('.auth-tab[data-tab="register"]')?.click();
+});
+
 async function search(q) {
   const id = ++requestId;
+  empty.hidden = true;
+  title.hidden = false;
   title.textContent = T("Suchergebnisse");
   status.textContent = T("Suche läuft …");
   try {
@@ -63,6 +87,7 @@ form.addEventListener("submit", (e) => { e.preventDefault(); clearTimeout(timer)
 
 // Hinweis auf das eigene Profil
 function updateMe(user, profile) {
+  updateEmpty(user, profile);
   if (!user) {
     meCta.hidden = false;
     meCta.innerHTML = `<p>${escapeHtml(T("Erstelle dein Profil, damit andere dich finden."))}</p><button type="button" class="btn btn-small" data-open-auth="register">${escapeHtml(T("Kostenlos registrieren"))}</button>`;

@@ -133,8 +133,11 @@
           <div class="card-img"><img src="images/karte-kopfhoerer-computer.webp" srcset="images/karte-kopfhoerer-computer-600.webp 600w, images/karte-kopfhoerer-computer.webp 900w" sizes="(max-width: 600px) 92vw, (max-width: 1100px) 45vw, 340px" width="900" height="1350" alt="Person mit Kopfhörern am Computer" loading="lazy"></div>
           <div class="card-body">
             <div class="card-icon">🤝</div>
+            <span class="card-badge card-badge-soft">Im Aufbau</span>
             <h3>Community</h3>
             <p>Vernetze dich mit anderen Streamern, raide euch gegenseitig und wachst zusammen.</p>
+            <p class="card-note">Die Community startet gerade – noch sind wenige Streamer dabei.</p>
+            <a href="community.html" class="card-link">Zur Community →</a>
           </div>
         </article>
         <article class="card card-media card-wide" id="clip-hunter">
@@ -156,21 +159,23 @@
       </div>
     </section>
 
-    <!-- ===== Erste Schritte: XP-Leiste füllt sich beim Scrollen ===== -->
+    <!-- ===== Erste Schritte: Quests hakt man selbst ab (js/quests.js) ===== -->
     <section id="start" class="quest-section">
       <div class="quest-pin section">
         <div class="quest-head">
           <h2 class="section-title">Erste <span class="glow">Quests</span></h2>
-          <div class="xp-meter" aria-hidden="true">
-            <div class="xp-meter-top"><span class="xp-level">Level <strong data-level>1</strong></span><span class="xp-total"><strong data-xp>0</strong> / 1100 XP</span></div>
-            <div class="xp-bar"><span></span></div>
+          <div class="xp-meter">
+            <div class="xp-meter-top" aria-live="polite"><span class="xp-level">Level <strong data-level>1</strong></span><span class="xp-total"><strong data-xp>0</strong> / 1100 XP</span></div>
+            <div class="xp-bar" aria-hidden="true"><span></span></div>
+            <p class="quest-hint">Hake eine Quest ab, sobald du sie erledigt hast. Der Stand bleibt nur in diesem Browser gespeichert.</p>
+            <button type="button" class="quest-reset" data-quest-reset hidden>Zurücksetzen</button>
           </div>
         </div>
         <ol class="quests">
-          <li><span class="xp">+100 XP</span><div><h3>Plattform wählen</h3><p>Twitch, YouTube oder Kick: finde heraus, was zu dir passt.</p></div><span class="quest-check" aria-hidden="true"></span></li>
-          <li><span class="xp">+200 XP</span><div><h3>Setup einrichten</h3><p>Streaming-Software installieren und deine erste Szene bauen.</p></div><span class="quest-check" aria-hidden="true"></span></li>
-          <li><span class="xp">+300 XP</span><div><h3>Zeitplan festlegen</h3><p>Regelmäßigkeit schlägt Länge. Plane feste Stream-Tage.</p></div><span class="quest-check" aria-hidden="true"></span></li>
-          <li><span class="xp">+500 XP</span><div><h3>Go Live!</h3><p>Dein erster Stream. Der wichtigste Schritt von allen.</p></div><span class="quest-check" aria-hidden="true"></span></li>
+          <li data-quest="platform"><span class="xp">+100 XP</span><div class="quest-body"><h3>Plattform wählen</h3><p>Twitch, YouTube oder Kick: finde heraus, was zu dir passt.</p><p class="quest-links"><a href="guides.html#plattform">Guide: Plattform wählen →</a></p></div><button type="button" class="quest-check" role="checkbox" aria-checked="false" aria-label="Erledigt: Plattform wählen"></button></li>
+          <li data-quest="setup"><span class="xp">+200 XP</span><div class="quest-body"><h3>Setup einrichten</h3><p>Streaming-Software installieren und deine erste Szene bauen.</p><p class="quest-links"><a href="setups.html">Setup-Finder →</a><a href="guides.html#obs">Guide: OBS einrichten →</a></p></div><button type="button" class="quest-check" role="checkbox" aria-checked="false" aria-label="Erledigt: Setup einrichten"></button></li>
+          <li data-quest="schedule"><span class="xp">+300 XP</span><div class="quest-body"><h3>Zeitplan festlegen</h3><p>Regelmäßigkeit schlägt Länge. Plane feste Stream-Tage.</p><p class="quest-links"><a href="guides.html#zeitplan">Guide: Zeitplan →</a></p></div><button type="button" class="quest-check" role="checkbox" aria-checked="false" aria-label="Erledigt: Zeitplan festlegen"></button></li>
+          <li data-quest="golive"><span class="xp">+500 XP</span><div class="quest-body"><h3>Go Live!</h3><p>Dein erster Stream. Der wichtigste Schritt von allen.</p><p class="quest-links"><a href="guides.html#erster-stream">Guide: Erster Stream →</a></p></div><button type="button" class="quest-check" role="checkbox" aria-checked="false" aria-label="Erledigt: Go Live!"></button></li>
         </ol>
       </div>
     </section>
@@ -251,6 +256,7 @@
   <script src="js/vendor/lenis.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/quests.js"></script>
   <script src="js/motion.js"></script>
   <script type="module" src="js/auth.js"></script>
   <script type="module" src="js/waitlist.js"></script>
