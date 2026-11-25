@@ -1,4 +1,4 @@
-# Content Strategist – 27 Beispielpläne
+# Content Strategist – 30 Beispielpläne
 
 Automatisch erzeugt mit `build_plan` (Variante A, ohne Messungen, Sprache Deutsch).
 Gekürzt: pro Stream Zeit, Format, Haupttitel mit 2 Alternativen, Tags, Vorbereitung und
@@ -6,6 +6,9 @@ Clip. Vollständige Pläne (Ablauf, Hook, Messgröße, Begründungen, Hinweise) 
 `python -m streaming_agents.content_strategist plan … --html plan.html`.
 
 Zeitfenster in allen Beispielen: Mo 18-22, Mi 18-22, Fr 19-23, Sa 14-20, So 15-19.
+
+Je Genre ein Spiel (9 Genres) plus **World of Warcraft** als vertrautes Spiel ohne erkanntes
+Genre, jeweils in drei Kanalgrößen: 10 × 3 = 30 Pläne.
 
 | Profil | Zuschauer | aktive Chatter | Stunden/Woche | Streams | Erfahrung | Ziel | Mitspieler |
 | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
@@ -62,6 +65,29 @@ Stream um 19 Uhr; die Befehle bei Just Chatting (Fragerunde), die Ränge bei Val
 - `rank_goal="Platin"`, `current_rank="Silber"`: „🔴 Von Silber nach Platin | Tag 5 | Komm rein!“
 - `rank_goal="Platin"` (ohne aktuellen Rang): „🔴 Ranked Grind | Tag 5 | Road to Platin“
 - alles zusammen, Englisch: „🔴 From Silver to Platinum | Day 5 | Come in! | !discord“
+
+## Vertraute Spiele ohne Genre und knappe Zeit
+
+Seit der Simulation mit 100 Test-Streamern (25.11.2026):
+
+- **Ohne `first_time`** bekommt ein Spiel ohne erkanntes Genre (World of Warcraft, GTA V,
+  Teamfight Tactics …) die Formate für vertraute Spiele: „Abend mit Ziel“, „Entspanntes Spielen
+  & Quatschen“, „Mit Zuschauern spielen“ (ab 3 aktiven Chattern) und „Fortschritt mit
+  Tageszähler“ – nie mehr „🎮 Erste Stunde in World of Warcraft | Lohnt sich das?“.
+- **Mit `first_time`** (2 Streams, 6 Stunden): 1. „Erste Eindrücke“ – „🎮 Zum ersten Mal World
+  of Warcraft | Blind | Lohnt sich das?“, 2. „Abend mit Ziel“ – „✨ Mit Ziel in World of
+  Warcraft | Schaffe ich es heute?“.
+- Tageszeit im Titel als ein Wort, durchgekoppelt: „🎮 World-of-Warcraft-Abend | Chill mit!“.
+
+Knappe Stunden (World of Warcraft, Profil 0–3 Zuschauer, sonst gleiche Eingaben):
+
+| Stunden | Streams | Stream | Vorbereitung | Clip-Zeit | Rückblick | nicht verplant | Hinweis im Plan |
+| ---: | ---: | --- | --- | --- | --- | ---: | --- |
+| 6 | 2 | 2 × 105 min | 2 × 20 min | 2 × 30 min | 30 min | 20 | – |
+| 4 | 2 | 2 × 60 min | 2 × 20 min | 2 × 30 min | 15 min | 5 | Wochenrückblick auf 15 min gekürzt |
+| 3 | 2 | 2 × 60 min | 2 × 20 min | – | – | 20 | Wochenrückblick weggelassen, keine feste Clip-Zeit |
+| 5 | 4 | 4 × 60 min | 4 × 15 min | – | – | 0 | … und Vorbereitung auf 15 min gekürzt |
+| 3 | 3 | – | – | – | – | – | Fehler: 3 × (60 + 15) min brauchen mindestens 4 Stunden |
 
 ## Shooter: Valorant
 
@@ -772,3 +798,79 @@ Mini-Serie: Live etwas Neues lernen – Tag 1: Anfang · Tag 2: Übung · Tag 3:
    - Clip (So): Wochenrückblick in 60 Sekunden
 
 Mini-Serie: Live-Projekt nebenbei – Teil 1: Start · Teil 2: Hauptarbeit · Teil 3: fertig und Rückblick
+
+## Kein Genre erkannt (vertrautes Spiel): World of Warcraft
+
+### 0–3 Zuschauer
+
+1. **Mo 18:00–19:45** (105 min) · Abend mit Ziel · _ohne Chat_
+   - Titel: „🎯 Heute mit Ziel in World of Warcraft | Schaffen wir das?“
+   - Alternativen: „✨ Mit Ziel in World of Warcraft | Schaffe ich es heute?“ · „🎮 World of Warcraft mit Plan | Komm rein und schau, ob's klappt!“
+   - Titel fürs Kurzvideo: „Ziel geschafft – oder knapp daneben?“ · „So lange hat mein Ziel gedauert“
+   - Tags: WorldOfWarcraft, Deutsch, Ziel
+   - Vorbereitung (Mo 17:30): Ein Ziel wählen, das in einem Stream schaffbar ist
+   - Clip (Di): Der Moment, in dem das Ziel klappt oder scheitert
+2. **Fr 19:00–20:45** (105 min) · Zwei Wege zum selben Ziel · _ohne Chat_
+   - Titel: „🎮 Entspannt World of Warcraft zocken | Sag Hallo!“
+   - Alternativen: „🔀 Ich teste beide Wege | Tipp mit!“ · „🔀 Zwei Wege, ein Ziel | Welcher ist schneller?“
+   - Titel fürs Kurzvideo: „Zwei Wege, ein Ziel – welcher passt besser?“ · „Schnell oder sicher?“
+   - Tags: WorldOfWarcraft, Deutsch, Vergleich
+   - Vorbereitung (Fr 18:30): Ziel und Kriterien festlegen
+   - Clip (Sa): Beide Wege im Schnelldurchlauf, dann das Ergebnis
+
+### 5–10 Zuschauer
+
+1. **Mo 18:00–20:15** (135 min) · Mit Zuschauern spielen · _kleiner Chat_
+   - Titel: „🤝 Zuschauerrunde in World of Warcraft | Spiel mit!“
+   - Alternativen: „😂 Chaos in World of Warcraft | Was passiert als Nächstes?“ · „😂 Ihr spielt mit mir | Das kann ja heiter werden“
+   - Titel fürs Kurzvideo: „Meine Zuschauer spielen mit mir“ · „Das passiert, wenn der Chat mitspielt“
+   - Tags: WorldOfWarcraft, Deutsch, Zuschauerrunde, Community
+   - Vorbereitung (Mo 17:30): Prüfen, ob und wie Zuschauer im Spiel beitreten können
+   - Clip (Di): Der lustigste Moment mit den Mitspielern aus dem Chat
+2. **Mi 18:00–20:15** (135 min) · Zuschauer entscheiden den nächsten Abschnitt · _kleiner Chat_
+   - Titel: „😂 Chaos in World of Warcraft | Was passiert als Nächstes?“
+   - Alternativen: „😂 Chat am Steuer | Was soll da schon passieren?“ · „🗳️ Ihr entscheidet, wie's weitergeht | Wohin heute?“
+   - Titel fürs Kurzvideo: „Mein Chat hat entschieden“ · „So ging es weiter“
+   - Tags: WorldOfWarcraft, Deutsch, Community
+   - Vorbereitung (Mi 17:30): Optionen vorab festlegen
+   - Clip (Do): Die Wahl und ihr Ergebnis in einem Clip
+3. **Sa 14:00–16:15** (135 min) · Moment der Woche mit Kontext · _ohne Chat_
+   - Titel: „⭐ Highlight-Nachmittag | Stimm für den besten Moment!“
+   - Alternativen: „⭐ Die besten Momente der Woche | Welcher war deiner?“ · „🎮 Entspannt World of Warcraft zocken | Sag Hallo!“
+   - Titel fürs Kurzvideo: „Dieser Moment hat meine Woche geprägt“ · „Wie kam es zu diesem Moment?“
+   - Tags: WorldOfWarcraft, Deutsch, Highlights
+   - Vorbereitung (Sa 13:30): Eigene Clips der Woche durchsehen
+   - Clip (So): Der Moment mit einer Einblendung zum Kontext
+
+### 15–20 Zuschauer
+
+1. **Mo 18:00–20:30** (150 min) · Fortschritt mit Tageszähler · _ohne Chat_
+   - Titel: „📈 World of Warcraft | Tag 1 | Wie weit kommen wir heute?“
+   - Alternativen: „✨ Mit Ziel in World of Warcraft | Schaffe ich es heute?“ · „🔥 Weiter geht's in World of Warcraft | Tag 1 | Komm rein!“
+   - Titel fürs Kurzvideo: „Tag 1 gegen heute“ · „Wie weit bin ich nach ein paar Tagen?“
+   - Tags: WorldOfWarcraft, Deutsch, Fortschritt
+   - Vorbereitung (Mo 17:30): Stand vom letzten Stream notieren
+   - Clip (Di): Vorher und nachher: Stand zu Beginn und am Ende des Tages
+2. **Mi 18:00–20:30** (150 min) · Lern-Tagebuch: ein sichtbarer Fortschritt · _ohne Chat_
+   - Titel: „🎮 Entspannt World of Warcraft zocken | Sag Hallo!“
+   - Alternativen: „📈 Jeden Tag ein bisschen besser | Tag 1“ · „📈 Trainingstag 1 | Schaffe ich heute mein Ziel?“
+   - Titel fürs Kurzvideo: „Erster gegen letzten Versuch“ · „Habe ich mein Ziel geschafft?“
+   - Tags: WorldOfWarcraft, Deutsch, Lernen
+   - Vorbereitung (Mi 17:30): Ziel so wählen, dass es in einen Stream passt
+   - Clip (Do): Erster gegen letzten Versuch
+3. **Fr 19:00–21:30** (150 min) · Abend mit Ziel · _ohne Chat_
+   - Titel: „🎮 World of Warcraft mit Plan | Komm rein und schau, ob's klappt!“
+   - Alternativen: „🎯 Heute mit Ziel in World of Warcraft | Schaffen wir das?“ · „✨ Mit Ziel in World of Warcraft | Schaffe ich es heute?“
+   - Titel fürs Kurzvideo: „Ziel geschafft – oder knapp daneben?“ · „So lange hat mein Ziel gedauert“
+   - Tags: WorldOfWarcraft, Deutsch, Ziel
+   - Vorbereitung (Fr 18:30): Ein Ziel wählen, das in einem Stream schaffbar ist
+   - Clip (Sa): Der Moment, in dem das Ziel klappt oder scheitert
+4. **Sa 14:00–16:30** (150 min) · Mit Zuschauern spielen · _kleiner Chat_
+   - Titel: „🤝 Zuschauerrunde in World of Warcraft | Spiel mit!“
+   - Alternativen: „😂 Chaos in World of Warcraft | Was passiert als Nächstes?“ · „😂 Ihr spielt mit mir | Das kann ja heiter werden“
+   - Titel fürs Kurzvideo: „Meine Zuschauer spielen mit mir“ · „Das passiert, wenn der Chat mitspielt“
+   - Tags: WorldOfWarcraft, Deutsch, Zuschauerrunde, Community
+   - Vorbereitung (Sa 13:30): Prüfen, ob und wie Zuschauer im Spiel beitreten können
+   - Clip (So): Der lustigste Moment mit den Mitspielern aus dem Chat
+
+Mini-Serie: Fortschritt mit Tageszähler – Tag 1: Ausgangslage und Ziel · Tag 2: das erste Etappenziel · Tag 3: Rückblick auf die Tage 1 bis 3
