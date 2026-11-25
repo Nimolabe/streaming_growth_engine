@@ -6,7 +6,7 @@ es gibt keine Verbindung zur Website und keine öffentliche Bereitstellung.
 
 | Agent | Status | Was er heute kann |
 | --- | --- | --- |
-| Content Strategist | Prototyp | Format-Empfehlungen und Mini-Serien nach Streamer-Profil, Wochenplan nach Zeitbudget. Neu: **Kategorie-Check auf echten Twitch-Daten** – in welcher Kategorie man mit seinen Zuschauern gesehen wird und zu welchen Zeiten. Spielspezifische Beispiele bisher nur für Valorant, Minecraft und Fortnite |
+| Content Strategist | Prototyp | **Wochenplan für kleine Streamer:** echte Wochentage und Uhrzeiten in den eigenen Zeitfenstern, genretypische Formate für 9 Genres, Titel und Tags nach den Twitch-Grenzen, Vorbereitung und Clip pro Stream. Dazu der **Kategorie-Check auf echten Twitch-Daten** – in welcher Kategorie man mit seinen Zuschauern gesehen wird und zu welchen Zeiten; mit Messungen wählt der Wochenplan die Uhrzeiten danach |
 | Growth Analyst | Prototyp | Vergleicht selbst eingegebene Wochenwerte, wählt ein passendes Experiment und wertet es aus, ohne Wachstum zu versprechen |
 | Clip Hunter | Prototyp (v4) | Findet Clip-Momente über **Chat-Reaktionen** (Live-Mitschnitt, Emote-Arten, Filter für Subs/Raids/Bots) und **plötzliche Audio-Spitzen**, schneidet sie im Hochformat 9:16 und misst sich an den Clips der Zuschauer. Optional prüft eine **KI-Stufe** (lokal per Ollama, Whisper-Transkript) die besten Kandidaten und schreibt Schnitt, Titel und Hook |
 | Trend Scout | geplant | soll auf den Messungen des Kategorie-Checks aufbauen (welche Kategorien wachsen?) |
@@ -40,22 +40,25 @@ Danach im Browser: <http://127.0.0.1:8000/api/v1/docs> (zum Ausprobieren aller E
 | --- | --- | --- | --- |
 | GET | `/health` | – | |
 | GET | `/api/v1/agents` | Übersicht mit Status | |
-| POST | `/api/v1/content/strategy` | Content Strategist | [`v3_minecraft.json`](examples/v3_minecraft.json) |
-| POST | `/api/v1/content/weekly-plan` | Content Strategist | siehe unten |
+| POST | `/api/v1/content/strategy` | Content Strategist: Wochenplan | [`content_strategy_request.json`](examples/content_strategy_request.json) |
 | POST | `/api/v1/content/category-check` | Content Strategist: gespeicherte Twitch-Messungen auswerten | [docs/category-check.md](docs/category-check.md) |
 | POST | `/api/v1/growth/analysis` | Growth Analyst | [`creator_intelligence_v1_request.json`](examples/creator_intelligence_v1_request.json) |
 | POST | `/api/v1/growth/strategy` | Growth Analyst | [`creator_intelligence_v2_strategy.json`](examples/creator_intelligence_v2_strategy.json) |
 | POST | `/api/v1/growth/review` | Growth Analyst | [`creator_intelligence_v2_review.json`](examples/creator_intelligence_v2_review.json) |
 | POST | `/api/v1/clips/chat-moments` | Clip Hunter: Momente aus einem Chat-Mitschnitt | |
 
-Wochenplan-Beispiel:
+### Content Strategist (Wochenplan)
 
-```json
-{
-  "platform": "Twitch", "category": "Minecraft", "audience": "Anfänger", "language": "de",
-  "weekly_hours": 8, "stream_days": 3, "primary_goal": "community"
-}
+```bash
+python -m streaming_agents.content_strategist plan --game "Stardew Valley" \
+    --window "Mo 18-22" --window "Mi 18-22" --window "Sa 14-20" \
+    --hours 8 --streams 3 --viewers 3 --chatters 1 --html plan.html
+# optional: --measurements messungen.jsonl (aus dem Kategorie-Check) für Uhrzeiten nach Publikum
 ```
+
+Lokal und regelbasiert, ohne Sprachmodell und ohne Kosten. Anleitung:
+[docs/content-strategist.md](docs/content-strategist.md), 27 Beispielpläne:
+[docs/content-strategist-beispiele.md](docs/content-strategist-beispiele.md).
 
 ### Kategorie-Check (echte Twitch-Daten)
 
@@ -125,5 +128,9 @@ Zweiter Schritt (November 2026, nach der
 (Audio-Scanner v1 mit eigener Kommandozeile, Upload-Scan v2, verblindete Prüfliste,
 Treffer-Auswertung gegen Markierungen) und der Content-Strategist-Empfehler v2 wurden
 entfernt. Der Clip Hunter v4 deckt die Clip-Suche ab und misst sich selbst an
-Zuschauer-Clips und am LIGHTOR-Datensatz. Der Formatkatalog heißt jetzt
-`streaming_agents/agents/catalog.py`. Der alte Code ist in der Git-Historie nachlesbar.
+Zuschauer-Clips und am LIGHTOR-Datensatz.
+
+Dritter Schritt (November 2026): Der Content Strategist v3 mit Formatkatalog und der separate
+Wochenplaner (Endpunkt `/content/weekly-plan`) sind im neuen Paket
+`streaming_agents/content_strategist/` aufgegangen (Variante A der Bestandsaufnahme).
+Der alte Code ist in der Git-Historie nachlesbar.

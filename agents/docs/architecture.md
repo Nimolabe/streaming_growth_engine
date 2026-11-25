@@ -6,11 +6,12 @@
 agents/
 ├── streaming_agents/
 │   ├── api.py            → FastAPI-App, alle Endpunkte unter /api/v1
-│   ├── contracts.py      → gemeinsame Datenmodelle (Agent-Liste, Wochenplan)
+│   ├── contracts.py      → gemeinsame Datenmodelle (Agent-Liste, Anfrage für llm/)
 │   ├── registry.py       → ehrlicher Status jedes Agenten (geplant / Prototyp / fertig)
 │   ├── clip_hunter/      → Clip Hunter v4: Chat-Mitschnitt, Chat- und Audio-Signale,
 │   │                       Zusammenführung, Export, Bericht, Twitch-API, Kommandozeile
 │   ├── category_check/   → Kategorie-Check: Twitch-Messungen, Auswertung, Kommandozeile
+│   ├── content_strategist/ → Wochenplan: Genres, Formate, Planer, Twitch-Grenzen, Bericht, CLI
 │   ├── agents/           → die Logik der einzelnen Agenten
 │   └── llm/              → austauschbare Sprachmodell-Schnittstelle (standardmäßig aus)
 ├── tests/                → pytest, läuft ohne Netzwerk
@@ -22,16 +23,19 @@ agents/
 
 | Agent | Module in `streaming_agents/agents/` | Endpunkte |
 | --- | --- | --- |
-| Content Strategist | `v3_recommender`, `v3_contracts`, `v3_game_knowledge`, `catalog`, `weekly_planner`; Kategorie-Check in `category_check/` | `/content/strategy`, `/content/weekly-plan`, `/content/category-check` |
+| Content Strategist | `content_strategist/` (Wochenplan) und `category_check/` (Kategorie-Check) | `/content/strategy`, `/content/category-check` |
 | Growth Analyst | `creator_intelligence`, `creator_strategy`, `creator_strategy_review` (+ `_contracts`) | `/growth/analysis`, `/growth/strategy`, `/growth/review` |
 | Clip Hunter | `clip_hunter/` (v4, Chat + Audio, optionale KI-Stufe) | `/clips/chat-moments` (alles andere über die Kommandozeile) |
 | Trend Scout | – (geplant, soll auf den Messungen des Kategorie-Checks aufbauen) | – |
 | Setup Advisor | – (heute der Setup-Finder der Website; eigener Agent im PR #5 geparkt) | – |
 
-`catalog` enthält die 26 kuratierten Formate, `v3_recommender` die Spiel-Einordnung
-(`classify_game`) und die Auswahl. Die älteren Clip-Werkzeuge und der Empfehler v2 wurden
-im November 2026 entfernt (siehe [Bestandsaufnahme](bestandsaufnahme-2026-11.md));
-sie sind in der Git-Historie nachlesbar.
+Der Content Strategist hat eine zentrale Genre-Liste (`content_strategist/genres.py`), einen
+Formatkatalog mit explizitem Chat-Bedarf pro Format (`formats.py`) und einen Planer, der die
+„beste Zeiten“-Logik des Kategorie-Checks (`category_check.analysis.slot_stats`) wiederverwendet.
+Die früheren Module `v3_recommender`, `v3_game_knowledge`, `catalog` und `weekly_planner` sind
+darin aufgegangen; die älteren Clip-Werkzeuge und der Empfehler v2 wurden im November 2026
+entfernt (siehe [Bestandsaufnahme](bestandsaufnahme-2026-11.md)). Alles ist in der Git-Historie
+nachlesbar.
 
 ## Grundsätze
 

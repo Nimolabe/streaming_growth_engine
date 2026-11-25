@@ -6,7 +6,7 @@
   aktualisiert.
 - Neue Erkenntnisse und Stolperfallen kommen in **Abschnitt 10** (Bekannte Fallstricke).
 
-Stand: 22.11.2026 (nach dem Merge von #23 und #24) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
+Stand: 23.11.2026 (nach dem Merge von #29) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
 Website (GitHub Pages): https://nimolabe.github.io/streaming_growth_engine/
 
 > **Für Claude Code:** Lies dieses Dokument vollständig, bevor du etwas änderst. Kommuniziere
@@ -118,13 +118,15 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
   `.[whisper]`).
 - CI: `.github/workflows/agents-tests.yml` (bei Änderungen unter `agents/`); manuell mit
   Eingabe `enable_video_tests` auch die ffmpeg-Video-Tests.
-- Module: `clip_hunter/` (Clip Hunter v4), `category_check/`, `agents/` (Content
-  Strategist v3 mit Formatkatalog `catalog.py` und Wochenplaner; Growth Analyst =
-  Creator Intelligence + `creator_strategy*`, geparkt), `llm/` (OpenAI-Provider, opt-in mit
-  `--live`, Kostenbremse; soll später mit `clip_hunter/ai_stage.py` zusammengelegt werden),
-  `api.py`, `registry.py`. Die älteren Clip-Intelligence-Module (v1/v2, Prüfliste,
-  `clip_evaluation`, `clip_cli`) und der Content-Strategist-Empfehler v2 sind entfernt.
+- Module: `clip_hunter/` (Clip Hunter v4), `category_check/`, `content_strategist/`
+  (Wochenplan, Variante A: Genres, Formate, Planer, Twitch-Grenzen, Bericht, CLI),
+  `agents/` (Growth Analyst = Creator Intelligence + `creator_strategy*`, geparkt),
+  `llm/` (OpenAI-Provider, opt-in mit `--live`, Kostenbremse; soll später mit
+  `clip_hunter/ai_stage.py` zusammengelegt werden), `api.py`, `registry.py`. Entfernt:
+  die älteren Clip-Intelligence-Module (v1/v2, Prüfliste, `clip_evaluation`, `clip_cli`),
+  Content Strategist v2/v3 und der separate Wochenplaner (`/content/weekly-plan`).
 - Doku: `agents/README.md`, `agents/docs/clip-hunter.md`, `agents/docs/category-check.md`,
+  `agents/docs/content-strategist.md` (+ `content-strategist-beispiele.md`),
   `agents/docs/architecture.md`, `agents/docs/bestandsaufnahme-2026-11.md`.
 
 ---
@@ -155,14 +157,23 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #22 | Browser-Tests (`tests/web/`, eigene CI) und Handy-Fixes für Guides und Layout-Baukasten |
 | #23 | Aufräum-Paket: `CLAUDE.md` nach #21/#22, Setups-Reiter bei 320 px, Guides-Link zur Clip-Hunter-Kachel |
 | #24 | Layouts v2: Facecam-Positionen und -Größen, schlichter Rahmen, Socials am Rahmen, eigener Logo-Upload, neue Overlay-Hintergründe und selbst gehostete Schriften |
+| #25 | Doku: `CLAUDE.md` auf Stand 22.11.2026 |
+| #26 | Schriften der Website selbst hosten statt Google Fonts (`css/fonts.css`, `fonts/`) |
+| #27 | Bilder der Startseite selbst hosten (`images/`, WebP mit 600-px-Variante), Test gegen fremde Hosts |
+| #28 | Doku: Bestandsaufnahme der KI-Agenten (`agents/docs/bestandsaufnahme-2026-11.md`) |
+| #29 | KI-Agenten: Altlasten aus der ChatGPT-Zeit entfernt (Clip Intelligence v1/v2, Prüfliste, `clip_evaluation`, Content-Strategist-Empfehler v2) |
 
-#1–#20 gemergt bis 17.11.2026, #21–#25 bis 22.11.2026. Stand nach #24: CI grün (Website
-201 Browser-Tests, Agenten 407 Python-Tests), alle Seiten DE/EN ohne JS-Fehler.
+#1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026. Stand nach
+#29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests), alle Seiten DE/EN ohne
+JS-Fehler.
 
 ## 5. Offene Pull Requests
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
-- Sonst keine.
+- **Content Strategist Variante A** (Branch `feature/content-strategist-a`): Wochenplan mit
+  Zeitfenstern, 9 Genres, Twitch-konformen Titeln und Tags, Kategorie-Check-Uhrzeiten.
+  Ersetzt Content Strategist v3 und `/content/weekly-plan`. Nach dem Merge in Abschnitt 4
+  eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -279,6 +290,11 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
    dem Server). Wartet auf die **Hosting-Entscheidung**.
 5. ✅ **Content Strategist auf echten Daten** (PR #20, Kategorie-Check).
    Offen: echter Test mit Twitch-App.
+   ⏳ **Variante A** (PR offen, siehe Abschnitt 5): lokaler, regelbasierter Wochenplan für
+   0–20 Zuschauer – echte Wochentage und Uhrzeiten in den eigenen Zeitfenstern, 9 Genres mit
+   eigenen Formaten, Chat-Bedarf als Merkmal pro Format, Titel/Tags nach Twitch-Grenzen,
+   Uhrzeiten nach Kategorie-Check-Messungen. CLI `python -m streaming_agents.content_strategist
+   plan`, API `POST /api/v1/content/strategy`. Noch keine Website-Oberfläche.
 6. ⏳ Später: **Growth Analyst** und **Trend Scout**. Der Trend Scout kann auf den Messungen
    des Kategorie-Checks aufbauen (Wachstum von Kategorien über Tage).
 
@@ -385,3 +401,11 @@ Prüfliste für Website-Änderungen:
 - Trend Scout auf Basis der Kategorie-Messungen (welche Kategorien wachsen?).
 - Import von Twitch-Analytics-Exporten für den Growth Analyst. Braucht eine echte
   Beispieldatei, weil das Format nicht verifiziert ist.
+- **TikTok-Untertitel für Clip-Exporte** (vom Nutzer beschlossen; umsetzen erst nach dem
+  echten Test des Clip Hunters):
+  - Wort-für-Wort-Untertitel per Whisper, lokal und mit Zeitstempel pro Wort.
+  - Beim Hochformat-Export mit FFmpeg eingebrannt: große fette Schrift (z. B. Anton aus
+    `fonts/`), 2–4 Wörter gleichzeitig, das aktive Wort farbig hervorgehoben.
+  - Zusätzlich als Textdatei (z. B. `.srt`/`.ass`), um sie zu korrigieren und mit einem
+    Befehl neu zu rendern.
+  - Eigene Wortliste (Kanalname, Spielbegriffe) für bessere Erkennung.

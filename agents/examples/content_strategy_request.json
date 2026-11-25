@@ -1,0 +1,16 @@
+{
+  "games": ["Stardew Valley", "Phasmophobia"],
+  "windows": [
+    {"day": "Mo", "start": "18:00", "end": "22:00"},
+    {"day": "Mi", "start": "18:00", "end": "22:00"},
+    {"day": "Sa", "start": "14:00", "end": "20:00"}
+  ],
+  "hours_per_week": 8,
+  "streams_per_week": 3,
+  "average_viewers": 3,
+  "active_chatters": 1,
+  "goal": "discovery",
+  "experience": "beginner",
+  "language": "de",
+  "platform": "twitch"
+}

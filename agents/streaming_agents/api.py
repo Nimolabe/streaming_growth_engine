@@ -17,14 +17,13 @@ from .agents.creator_strategy_review import (
     ExperimentReviewV2,
     review_creator_experiment,
 )
-from .agents.v3_contracts import ContentStrategyV3, CreatorProfileV3
-from .agents.v3_recommender import generate_strategy_v3
-from .agents.weekly_planner import make_weekly_plan
 from .category_check.analysis import analyze, local_time_from_offset, parse_window
 from .category_check.models import CategoryCheckRequest, CategoryCheckResult
 from .clip_hunter.hunter import hunt
 from .clip_hunter.models import ChatHuntRequest, HuntResult
-from .contracts import AgentInfo, WeeklyPlanRequest, WeeklyPlanResponse
+from .content_strategist.models import ContentPlan, StrategyRequest
+from .content_strategist.planner import PlanError, build_plan
+from .contracts import AgentInfo
 from .registry import AGENTS
 
 API_PREFIX = "/api/v1"
@@ -50,12 +49,16 @@ def list_agents() -> list[AgentInfo]:
 
 
 # ---------- Content Strategist ----------
-@api.post("/content/strategy", response_model=ContentStrategyV3, tags=["Content Strategist"])
-def content_strategy(profile: CreatorProfileV3) -> ContentStrategyV3:
-    """Erklärbare Format-Empfehlungen und Mini-Serien (offline, regelbasiert)."""
+@api.post("/content/strategy", response_model=ContentPlan, tags=["Content Strategist"])
+def content_strategy(request: StrategyRequest) -> ContentPlan:
+    """Wochenplan: Spiel, Uhrzeit, Format, Titel, Tags, Vorbereitung und Clip (offline, regelbasiert).
+
+    Optional mit Messungen aus dem Kategorie-Check; Uhrzeiten folgen dann dem besten Publikum
+    pro Platz innerhalb der angegebenen Zeitfenster. Die API fragt Twitch nicht an.
+    """
     try:
-        return generate_strategy_v3(profile)
-    except ValueError as exc:
+        return build_plan(request)
+    except PlanError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
@@ -73,15 +76,6 @@ def content_category_check(request: CategoryCheckRequest) -> CategoryCheckResult
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return analyze(request.snapshots, own_viewers=request.own_viewers, language=request.language,
                    to_local=local_time_from_offset(request.utc_offset_minutes), window=window)
-
-
-@api.post("/content/weekly-plan", response_model=WeeklyPlanResponse, tags=["Content Strategist"])
-def weekly_plan(request: WeeklyPlanRequest) -> WeeklyPlanResponse:
-    """Verteilt das Wochenbudget auf Streams, Vorbereitung und Nacharbeit."""
-    try:
-        return make_weekly_plan(request)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 # ---------- Growth Analyst ----------
