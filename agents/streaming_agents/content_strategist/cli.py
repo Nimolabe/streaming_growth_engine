@@ -9,6 +9,9 @@ Beispiele:
   python -m streaming_agents.content_strategist plan --game "Minecraft" --window "Fr 18-23" \
       --window "Sa 12-22" --hours 6 --streams 2 --viewers 3 --measurements messungen.jsonl
 
+  # Inhalte für die Website exportieren (aus der Repo-Wurzel; die Datei wird committet):
+  python -m streaming_agents.content_strategist export-web --out data/content-strategist.json
+
 Alles läuft lokal, ohne Sprachmodell und ohne Kosten.
 """
 import argparse
@@ -21,6 +24,7 @@ from ..category_check.store import StoreError, load_snapshots
 from .models import StrategyRequest, TimeWindow
 from .planner import PlanError, build_plan
 from .report import render_html, render_text
+from .web_export import DEFAULT_PATH, write
 
 
 class CliError(Exception):
@@ -95,7 +99,21 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--html", help="HTML-Bericht speichern")
     plan.add_argument("--overwrite", action="store_true")
     plan.set_defaults(handler=cmd_plan)
+
+    export = sub.add_parser("export-web",
+                            help="Inhalte (Genres, Formate, Titel) als JSON für die Website")
+    export.add_argument("--out", default=str(DEFAULT_PATH),
+                        help=f"Zieldatei (Standard: {DEFAULT_PATH}, relativ zum aktuellen Ordner)")
+    export.set_defaults(handler=cmd_export_web)
     return parser
+
+
+def cmd_export_web(args: argparse.Namespace) -> int:
+    target = write(args.out)
+    size = target.stat().st_size
+    print(f"Export gespeichert: {target} ({size / 1024:.1f} KB). Danach die Paritäts-Fixtures "
+          "neu erzeugen: python tests/strategist_parity.py (in agents/)", flush=True)
+    return 0
 
 
 def cmd_plan(args: argparse.Namespace) -> int:

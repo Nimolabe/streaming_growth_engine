@@ -18,6 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
+from ..category_check.aliases import alias_target
 from ..category_check.analysis import (
     analyze,
     local_time_from_offset,
@@ -70,6 +71,15 @@ GENRE_TAG = {
     "sandbox": ("Sandbox", "Sandbox"), "sports": ("Sport", "Sports"),
     "just_chatting": ("JustChatting", "JustChatting"),
 }
+# Hinweis ohne Messungen in der Website-Version (``surface="web"``): ohne Kommandozeilen-Befehl,
+# denn der Kategorie-Check braucht das Twitch-Secret und läuft nie im Browser. Der endgültige
+# Website-Text kommt mit der Seite (Teil 2); bis dahin gilt dieser.
+WEB_NO_MEASUREMENTS = (
+    ("Uhrzeiten kommen nur aus deinen Zeitfenstern. Für Uhrzeiten nach Publikum braucht der Plan "
+     "eine Woche Messungen aus dem Kategorie-Check."),
+    ("Times only come from your windows. To pick times by audience, the plan needs a week of "
+     "measurements from the category check."),
+)
 GOAL_LABEL = {"discovery": ("neue Zuschauer", "new viewers"),
               "community": ("Community", "community"),
               "consistency": ("Regelmäßigkeit", "consistency")}
@@ -210,8 +220,13 @@ def _trim_note(extras: Extras, language: str) -> str | None:
 # ------------------------------------------------------------------ Kategorie-Check
 def _snapshots_for(game: str, snapshots: list[CategorySnapshot],
                    language: str) -> list[CategorySnapshot]:
-    key = normalize(game)
-    matching = [item for item in snapshots if normalize(item.category) == key]
+    # Kurzformen wie „CS2“ finden Messungen zu „Counter-Strike“ (dieselbe Alias-Liste wie im
+    # Kategorie-Check, nicht doppelt gepflegt).
+    keys = {normalize(game)}
+    target = alias_target(game)
+    if target:
+        keys.add(normalize(target))
+    matching = [item for item in snapshots if normalize(item.category) in keys]
     for wanted in (language, "any"):
         chosen = [item for item in matching if item.language == wanted]
         if chosen:
@@ -337,7 +352,10 @@ def _tags(game: str, genre: str | None, item: Format, language: str) -> list[str
 
 # ------------------------------------------------------------------ Hauptfunktion
 def build_plan(request: StrategyRequest,
-               to_local: Callable[[float], datetime] | None = None) -> ContentPlan:
+               to_local: Callable[[float], datetime] | None = None, *,
+               surface: str = "cli") -> ContentPlan:
+    """Wochenplan. ``surface="web"`` nur für den Hinweis ohne Messungen (ohne CLI-Befehl);
+    so erzeugt Python die erwarteten Pläne für die JavaScript-Version (Paritätstest)."""
     de = request.language == "de"
     lang = request.language
     # Glücksspiel wird nicht unterstützt (Entscheidung des Nutzers vom 26.11.2026): kein Plan,
@@ -524,7 +542,7 @@ def build_plan(request: StrategyRequest,
             f"{TAG_MAX_CHARS} characters without spaces or special characters. Source: "
             f"{SOURCE_URL} (as of {SOURCE_DATE})"),
         notes=[rejection(game, lang) for game in refused]
-        + _notes(request, level, genres, game_slots, streams, extras),
+        + _notes(request, level, genres, game_slots, streams, extras, surface),
         limitations=[
             "Redaktionelle Regeln, kein Sprachmodell und keine Wachstumsvorhersage." if de else
             "Editorial rules, no language model and no growth prediction.",
@@ -624,7 +642,7 @@ def _timing_reason(game: str, slot: SlotInfo | None, stream: Session, request: S
 
 def _notes(request: StrategyRequest, level: str, genres: dict[str, str | None],
            game_slots: dict[str, list[SlotInfo]], streams: list[StreamPlan],
-           extras: Extras) -> list[str]:
+           extras: Extras, surface: str = "cli") -> list[str]:
     de = request.language == "de"
     notes: list[str] = []
     trim = _trim_note(extras, request.language)
@@ -643,7 +661,9 @@ def _notes(request: StrategyRequest, level: str, genres: dict[str, str | None],
                 "Schreibweise nicht stimmt: die Twitch-Kategorie genau angeben." if de else
                 f"“{game}”: no genre recognised – the plan uses general formats. If the spelling "
                 "is off, use the exact Twitch category.")
-    if not any(game_slots.values()):
+    if not any(game_slots.values()) and surface == "web":
+        notes.append(_t(WEB_NO_MEASUREMENTS, request.language))
+    elif not any(game_slots.values()):
         notes.append(
             "Uhrzeiten kommen nur aus deinen Zeitfenstern. Für Uhrzeiten nach Publikum eine Woche "
             "messen: python -m streaming_agents.category_check watch \"Spiel\" --every 60 "

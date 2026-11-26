@@ -205,6 +205,61 @@ des Plans; kein Rückblick-Format als erster Stream eines Spiels in Woche 1; Cha
 Mitspieler-Bedarf passt; alle Titelregeln und Twitch-Grenzen. Echte Unmöglichkeiten (zu wenig
 Stunden für 60-Minuten-Streams, zu wenige Zeitfenster) müssen dagegen einen Fehler ergeben.
 
+## Website-Version: Export und Parität
+
+Entscheidung des Nutzers („Weg A“, 26.11.2026): Der Planer läuft auf der Website als
+JavaScript im Browser. Die **Inhalte** kommen aus Python, damit es nur **eine** Quelle gibt.
+
+| Datei | Inhalt |
+| --- | --- |
+| `data/content-strategist.json` | Export aus Python (committet): Genres mit Aliassen, alle 55 Formate (DE/EN, alle Felder), alle Titel inkl. Stimmungs- und Rang-Titel, Emoji-Regeln, Twitch-Grenzen, Eingaberegeln, Planer-Konstanten, die **Glücksspiel-Liste** (normalisiert) und die Kurzformen des Kategorie-Checks. Dazu `version` und eine SHA-256-Prüfsumme. Etwa 106 KB. |
+| `js/strategist-core.js` | Reines ES-Modul ohne DOM, Netzwerk und Zufall: `buildPlan(request, data)`, `parseRequest`, `runCase`. Eine genaue Übertragung von `planner.py`, `titles.py`, `twitch_limits.py`, `genres.py` und der Eingabeprüfung aus `models.py`. |
+| `tests/fixtures/strategist-parity.json` | Erwartete Ergebnisse aus Python für 153 feste Fälle. |
+
+**Export erzeugen** (aus `agents/`):
+
+```bash
+python -m streaming_agents.content_strategist export-web --out ../data/content-strategist.json
+python tests/strategist_parity.py   # Paritäts-Fixtures neu erzeugen
+```
+
+`agents/tests/test_strategist_web.py` schlägt fehl, wenn Export oder Fixtures nicht mehr zum
+Code passen („Export vergessen“).
+
+**Kein Kategorie-Check im Browser:** Er braucht das Twitch-Secret. Die Website-Version hat
+deshalb keine Messungen. Statt des Hinweises mit dem Kommandozeilen-Befehl zeigt sie
+`planner.WEB_NO_MEASUREMENTS`; den endgültigen Website-Text liefert Teil 2.
+`build_plan(request, surface="web")` erzeugt in Python genau diese Variante.
+
+**Paritätstest:** Die Fälle umfassen
+- die 54 Beispielprofile (9 Genres × 3 Profile × DE/EN),
+- die 30 Regressionsprofile aus #31,
+- Grenzfälle: Fenster über Mitternacht, Stream kurz nach Mo 0:00, knappe Stunden, unbekannte
+  Spiele, Glücksspiel allein und gemischt, alle Stimmungen, Rang-Ziel und Rang-Reise, Befehle,
+  Emojis an der 140-Zeichen-Grenze, ß und Groß-/Kleinschreibung,
+- 26 ungültige Eingaben.
+
+`js/strategist-core.js` muss für jeden Fall **exakt** dasselbe JSON liefern, mit gleichen Feldern, gleicher
+Reihenfolge der Schlüssel, gleichen Hinweisen und gleichen Fehlermeldungen. Geprüft wird an
+zwei Stellen:
+- in Node (`agents/tests/test_strategist_web.py` über `tests/web/strategist_parity.mjs`),
+- in Chromium, in einem Web Worker ohne DOM (`tests/web/test_strategist_parity.py`).
+
+Beide CI-Läufe starten bei Änderungen unter `agents/` und am JavaScript-Kern.
+
+Bewusst behandelte Unterschiede zwischen Python und JavaScript (im Code kommentiert):
+- **Zeichenlänge:** Python `len()` zählt Codepoints, JavaScript `.length` zählt UTF-16-Einheiten. Deshalb `[...text].length`.
+- **Groß-/Kleinschreibung:** `casefold()` statt `toLowerCase()` („ß“ → „ss“, „ς“ → „σ“, „µ“ → „μ“).
+- **Unicode:** Python `\w` entspricht `[\p{L}\p{N}_]` mit u-Flag. Python `\d` erkennt auch „１８“.
+- **Leerzeichen:** Python `split()`/`strip()` nutzen andere Zeichen als JavaScript `\s`.
+- **Rechnen:** `//` rundet ab, `%` ist nie negativ (Wochenminuten vor Mo 0:00).
+- **Sortieren und Platzhalter:** stabile Tupel-Sortierung. Platzhalter werden per Funktion ersetzt, nie mit `$`-Mustern.
+
+Fehlermeldungen: Eigene Prüfungen (Uhrzeit, Wochentag, Befehle, Rang-Ziel, Spielname) und die
+pydantic-Meldungen für Typ, Grenzen, Auswahl und Pflichtfelder sind identisch. Seltenere
+pydantic-Fälle (z. B. mehrere Fehler gleichzeitig) meldet JavaScript nur mit dem ersten Fehler,
+genau wie die Fixtures.
+
 ## Glücksspiel wird nicht unterstützt
 
 Entscheidung des Nutzers vom 26.11.2026: Für Glücksspiel-Kategorien gibt es keinen Plan, keine
@@ -216,7 +271,8 @@ Titel und keine Formate. Geprüft wird mit derselben Liste wie im Kategorie-Chec
   von der Streaming Growth Engine nicht unterstützt …“ (auch auf Englisch).
 - Sind andere Spiele dabei, wird nur das Glücksspiel entfernt; der Plan zeigt denselben Satz
   als ersten Hinweis.
-- Eine spätere Website-Oberfläche muss dieselbe Liste übernehmen.
+- Die Website-Version bekommt dieselbe Liste über `data/content-strategist.json`
+  (`gambling.names`), siehe „Website-Version: Export und Parität“.
 
 ## Grenzen
 
