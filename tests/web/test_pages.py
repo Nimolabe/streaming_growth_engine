@@ -38,6 +38,34 @@ def test_guides_link_in_navigation(context, base_url, path):
     assert links.first.text_content().strip() == "Guides"
 
 
+@pytest.mark.parametrize("path", MAIN_PAGES)
+def test_wochenplan_link_in_navigation(context, base_url, path):
+    page, _ = open_page(context, base_url, path, "de")
+    links = page.locator('.nav-links a[href="wochenplan.html"]')
+    assert links.count() == 1
+    assert links.first.text_content().strip() == "Wochenplan"
+    # Reihenfolge wie überall: direkt nach „Guides“
+    hrefs = page.locator(".nav-links a").evaluate_all("els => els.map(e => e.getAttribute('href'))")
+    assert hrefs.index("wochenplan.html") == hrefs.index("guides.html") + 1
+
+
+@pytest.mark.parametrize("width", [768, 900, 1024])
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("path", MAIN_PAGES)
+def test_desktop_navigation_fits_in_one_row(make_context, base_url, path, language, width):
+    """Seit „Wochenplan“ in der Navigation steht: auf mittleren Breiten kein Überlauf, keine 2. Zeile."""
+    context = make_context(viewport={"width": width, "height": 800})
+    context.add_init_script(WIDE_FONT)
+    page, errors = open_page(context, base_url, path, language)
+    box = page.evaluate("""(() => { const links = [...document.querySelectorAll('.nav-links > a')];
+      const tops = new Set(links.map(a => Math.round(a.getBoundingClientRect().top)));
+      return { right: document.querySelector('.nav-links').getBoundingClientRect().right,
+               client: document.documentElement.clientWidth, rows: tops.size }; })()""")
+    assert box["right"] <= box["client"], box
+    assert box["rows"] == 1, box
+    assert errors == []
+
+
 PHONE_WIDTHS = [390, 360]
 
 # Die Webfonts sind im Test geblockt, also entscheidet die installierte Ersatzschrift über die

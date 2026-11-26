@@ -365,7 +365,7 @@ def test_measurements_are_found_via_short_names():
 def test_web_surface_note_has_no_command_line():
     plan = build_plan(request(), surface="web")
     assert not any("python -m" in note for note in plan.notes)
-    assert any(note.startswith("Uhrzeiten kommen nur aus deinen Zeitfenstern.") for note in plan.notes)
+    assert any(note.startswith("Die Uhrzeiten kommen aus deinen eigenen Zeitfenstern.") for note in plan.notes)
 
 
 def test_without_measurements_the_plan_says_how_to_measure():

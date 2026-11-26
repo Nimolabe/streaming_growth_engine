@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wochenplan | Streaming Growth Engine</title>
+  <meta name="description" content="Kostenloser Wochenplan für kleine Streamer: wann du streamst, welches Format, welcher Titel und welche Tags – in zwei Minuten, ohne Anmeldung.">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/setups.css">
+  <link rel="stylesheet" href="css/social.css">
+  <link rel="stylesheet" href="css/wochenplan.css">
+</head>
+<body>
+  <!-- ===== Navigation ===== -->
+  <header class="nav">
+    <a href="index.html" class="logo">SGE<span>.</span></a>
+    <button class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    <nav class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="setups.html">Setups</a>
+      <a href="guides.html">Guides</a>
+      <a href="wochenplan.html" class="active" aria-current="page">Wochenplan</a>
+      <a href="index.html#start">Erste Schritte</a>
+      <a href="community.html">Community</a>
+      <!-- Wird von js/auth.js gesteuert -->
+      <button type="button" class="btn btn-small" id="login-btn" data-open-auth="login">Anmelden</button>
+      <div class="user-menu" id="user-menu" hidden>
+        <a class="user-name" id="user-name" href="profil.html"></a>
+        <button type="button" class="btn btn-small btn-ghost" id="logout-btn">Abmelden</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="page-head wp-head">
+      <p class="tag">🗓️ Wochenplan</p>
+      <h1><span class="glow">Wochenplan</span> in zwei Minuten</h1>
+      <p class="lead">Sag uns, was du spielst und wann du Zeit hast. Du bekommst für jeden Stream Uhrzeit, Format, Titel und Tags – kostenlos und ohne Anmeldung.</p>
+    </section>
+
+    <div class="wp-layout">
+      <!-- ===== Formular (die Berechnung läuft komplett in deinem Browser) ===== -->
+      <form class="wp-form box" id="wp-form" novalidate>
+        <div class="wp-alert" id="wp-errors" role="alert" hidden></div>
+
+        <fieldset class="wp-group" id="wp-games-group">
+          <legend>1. Deine Spiele</legend>
+          <p class="wp-hint">1 bis 5 Spiele oder Twitch-Kategorien, z. B. Minecraft oder Just Chatting.</p>
+          <div class="wp-games" id="wp-games"></div>
+          <button type="button" class="link-btn wp-add" id="wp-add-game">+ Spiel</button>
+          <p class="wp-field-error" id="wp-games-error" hidden></p>
+          <datalist id="wp-game-list"></datalist>
+        </fieldset>
+
+        <fieldset class="wp-group" id="wp-windows-group">
+          <legend>2. Wann hast du Zeit?</legend>
+          <p class="wp-hint">Zeitfenster in deiner Ortszeit. Endet ein Fenster nach Mitternacht, gib einfach die frühere Uhrzeit als Ende an (z. B. 22:00 bis 01:00).</p>
+          <div class="wp-quick">
+            <span class="wp-quick-label">Schnellauswahl:</span>
+            <button type="button" class="wp-chip" data-quick="evenings">Abends unter der Woche</button>
+            <button type="button" class="wp-chip" data-quick="weekend">Wochenende nachmittags</button>
+          </div>
+          <div class="wp-windows" id="wp-windows"></div>
+          <button type="button" class="link-btn wp-add" id="wp-add-window">+ Zeitfenster</button>
+          <p class="wp-field-error" id="wp-windows-error" hidden></p>
+        </fieldset>
+
+        <fieldset class="wp-group">
+          <legend>3. Deine Woche</legend>
+          <div class="wp-grid">
+            <label class="wp-field" for="wp-hours">
+              <span>Stunden pro Woche</span>
+              <input type="number" id="wp-hours" name="hours" min="2" max="60" step="1" value="8" inputmode="numeric" aria-describedby="wp-hours-hint wp-hours-error">
+              <small class="wp-hint" id="wp-hours-hint">Die ganze Zeit: Streams plus Vorbereitung, Clips und Wochenrückblick.</small>
+              <small class="wp-field-error" id="wp-hours-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-streams">
+              <span>Streams pro Woche</span>
+              <input type="number" id="wp-streams" name="streams" min="1" max="7" step="1" value="3" inputmode="numeric" aria-describedby="wp-streams-error">
+              <small class="wp-field-error" id="wp-streams-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-viewers">
+              <span>Ø Zuschauer</span>
+              <input type="number" id="wp-viewers" name="viewers" min="0" step="1" value="0" inputmode="numeric" aria-describedby="wp-viewers-error">
+              <small class="wp-field-error" id="wp-viewers-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-chatters">
+              <span>Aktive Chatter pro Stream</span>
+              <input type="number" id="wp-chatters" name="chatters" min="0" step="1" value="0" inputmode="numeric" aria-describedby="wp-chatters-error">
+              <small class="wp-field-error" id="wp-chatters-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-goal">
+              <span>Dein Ziel</span>
+              <select id="wp-goal" name="goal">
+                <option value="discovery">Neue Zuschauer finden</option>
+                <option value="community">Community aufbauen</option>
+                <option value="consistency">Regelmäßig streamen</option>
+              </select>
+            </label>
+            <label class="wp-field" for="wp-experience">
+              <span>Erfahrung</span>
+              <select id="wp-experience" name="experience">
+                <option value="beginner">Einsteiger</option>
+                <option value="intermediate">Fortgeschritten</option>
+                <option value="advanced">Erfahren</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <details class="wp-more" id="wp-more">
+          <summary>Mehr Optionen</summary>
+          <div class="wp-grid">
+            <label class="wp-field" for="wp-mood">
+              <span>Stimmung der Titel</span>
+              <select id="wp-mood" name="mood">
+                <option value="">Passend zu Spiel und Format</option>
+                <option value="chill">Entspannt</option>
+                <option value="ambitious">Ehrgeizig</option>
+                <option value="funny">Lustig</option>
+              </select>
+            </label>
+            <label class="wp-field" for="wp-week">
+              <span>Woche Nr.</span>
+              <input type="number" id="wp-week" name="week" min="1" max="520" step="1" value="1" inputmode="numeric" aria-describedby="wp-week-hint wp-week-error">
+              <small class="wp-hint" id="wp-week-hint">Zähler in Titeln wie „Tag 3“ laufen weiter.</small>
+              <small class="wp-field-error" id="wp-week-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-rank-goal">
+              <span>Rang-Ziel</span>
+              <input type="text" id="wp-rank-goal" name="rankGoal" maxlength="20" placeholder="z. B. Platin" autocomplete="off" aria-describedby="wp-rank-goal-error">
+              <small class="wp-field-error" id="wp-rank-goal-error" hidden></small>
+            </label>
+            <label class="wp-field" for="wp-current-rank">
+              <span>Aktueller Rang</span>
+              <input type="text" id="wp-current-rank" name="currentRank" maxlength="20" placeholder="z. B. Silber" autocomplete="off" aria-describedby="wp-current-rank-error">
+              <small class="wp-field-error" id="wp-current-rank-error" hidden></small>
+            </label>
+            <label class="wp-field wp-span" for="wp-commands">
+              <span>Chat-Befehle für die Titel (höchstens 3)</span>
+              <input type="text" id="wp-commands" name="commands" placeholder="z. B. !discord !insta" autocomplete="off" aria-describedby="wp-commands-error">
+              <small class="wp-field-error" id="wp-commands-error" hidden></small>
+            </label>
+            <label class="wp-check wp-span" for="wp-first-time">
+              <input type="checkbox" id="wp-first-time" name="firstTime">
+              <span>Ich spiele das Spiel zum ersten Mal</span>
+            </label>
+            <label class="wp-check wp-span" for="wp-collab">
+              <input type="checkbox" id="wp-collab" name="collab">
+              <span>Ein Mitspieler oder Gast ist dabei</span>
+            </label>
+          </div>
+        </details>
+
+        <button type="submit" class="btn btn-block wp-submit" id="wp-submit">Wochenplan erstellen</button>
+        <p class="wp-privacy">Alles wird nur in deinem Browser berechnet. Deine letzten Eingaben merkt sich nur dieser Browser.</p>
+      </form>
+
+      <!-- ===== Ergebnis (Texte setzt js/wochenplan.js per textContent; translate="no", weil Spielnamen und Plantexte nie über die Übersetzungs-Map laufen sollen) ===== -->
+      <section class="wp-result" id="wp-result" translate="no" tabindex="-1" aria-labelledby="wp-result-title" hidden></section>
+      <p class="sr-only" id="wp-status" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Streaming Growth Engine. Made for new streamers.</p>
+  </footer>
+
+  <!-- ===== Anmelde-Fenster ===== -->
+  <div class="modal" id="auth-modal" hidden>
+    <div class="modal-backdrop" data-close-auth></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button type="button" class="modal-close" data-close-auth aria-label="Schließen">✕</button>
+      <h2 id="auth-title">Anmelden</h2>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" data-tab="login">Anmelden</button>
+        <button type="button" class="auth-tab" data-tab="register">Registrieren</button>
+      </div>
+
+      <p class="auth-message" id="auth-message" hidden></p>
+
+      <form id="auth-form" novalidate>
+        <label class="field" id="username-field" hidden>
+          <span>Nutzername</span>
+          <span class="handle-input"><span aria-hidden="true">@</span><input type="text" id="auth-username" autocomplete="username" maxlength="20" placeholder="z. B. nightowl_tv"></span>
+          <small class="sge-field-hint">3–20 Zeichen: Buchstaben, Zahlen und _. Darüber finden dich andere.</small>
+        </label>
+        <label class="field" id="name-field" hidden>
+          <span>Streamer-Name</span>
+          <input type="text" id="auth-name" autocomplete="nickname" placeholder="z. B. NightOwlTV">
+        </label>
+        <label class="field">
+          <span>E-Mail</span>
+          <input type="email" id="auth-email" autocomplete="email" required placeholder="du@beispiel.de">
+        </label>
+        <label class="field">
+          <span>Passwort</span>
+          <input type="password" id="auth-password" autocomplete="current-password" required minlength="6" placeholder="Mindestens 6 Zeichen">
+        </label>
+        <button type="button" class="link-btn" id="forgot-btn">Passwort vergessen?</button>
+        <button type="submit" class="btn btn-block" id="auth-submit">Anmelden</button>
+      </form>
+
+      <div class="divider"><span>oder</span></div>
+
+      <button type="button" class="btn btn-ghost btn-block google-btn" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Mit Google fortfahren
+      </button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/i18n.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/wochenplan.js"></script>
+</body>
+</html>

@@ -26,6 +26,7 @@ MAIN_PAGES = [
     "index.html",
     "setups.html",
     "guides.html",
+    "wochenplan.html",
     "layouts.html",
     "community.html",
     "profil.html",

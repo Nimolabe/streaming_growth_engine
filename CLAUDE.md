@@ -90,11 +90,15 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 `js/layout-profile.js`, `js/waitlist.js`, `js/setups-i18n.js`, `css/guides.css`,
 `css/layouts.css`, `css/overlay.css`. Seit dem PR „Quests und Community“: `js/quests.js`
 (Erste Quests der Startseite, nur per Klick abhakbar, Stand im `localStorage` unter `sge-quests`).
-Seit dem PR „Strategist Web-Kern“: `js/strategist-core.js` (Planer des Content Strategist als
+Seit #35 („Strategist Web-Kern“): `js/strategist-core.js` (Planer des Content Strategist als
 ES-Modul ohne DOM/Netzwerk/Zufall, `buildPlan(request, data)`), `data/content-strategist.json`
 (Inhalte als Export aus Python, committet), `tests/fixtures/strategist-parity.json`
 (Paritäts-Fixtures), `tests/web/strategist_parity.mjs` und `tests/web/test_strategist_parity.py`.
-Noch keine Seite dafür (kommt in Teil 2).
+Seit dem PR „Wochenplan-Seite“: `wochenplan.html` + `js/wochenplan.js` + `css/wochenplan.css`
+(Formular → `buildPlan()`, Karten pro Stream, Kopieren, Kalender `.ics`, Drucken, Link teilen
+`#p=…` mit deflate-raw + base64url, letzte Eingaben in `localStorage` unter `sge-wochenplan`),
+Tests in `tests/web/test_wochenplan.py`. „Wochenplan“ steht in der Navigation aller Seiten direkt
+nach „Guides“; die Kachel „Wachstum“ der Startseite verlinkt darauf.
 
 **Wichtige Mechanismen der Website:**
 - **i18n (`js/i18n.js`):** Eine Map Deutsch→Englisch. Übersetzt werden **nur Textknoten mit
@@ -106,6 +110,9 @@ Noch keine Seite dafür (kommt in Teil 2).
   → **Neue Übersetzungen am Ende der Map anhängen**, nicht mittendrin. Sonst gibt es
   Merge-Konflikte zwischen parallelen PRs.
   → Keys gelten global: Ein Eintrag wie `"Pause"` übersetzt **jeden** Textknoten „Pause“.
+  → Seit der Wochenplan-Seite: Textknoten innerhalb von `translate="no"` übersetzt die Map
+  **nicht**. Für Bereiche mit Inhalten aus Daten (Spielnamen, Plantexte) nutzen; die Seite setzt
+  dort jeden Text selbst in der richtigen Sprache (`SGE_I18N.t()` für Beschriftungen).
 - **Auth/Events:** `sge:auth` (detail `{user, app}`) und `window.sgeAuth` für den aktuellen
   Stand; `sge:profile` nach dem Laden des Profils. Login-Fenster programmatisch über
   `document.getElementById("login-btn").click()`.
@@ -188,10 +195,12 @@ nach #34: 1003.
 ## 5. Offene Pull Requests
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
-- **Strategist Web-Kern, Teil 1** (Branch `feature/strategist-web-kern`): Export
-  `data/content-strategist.json`, `js/strategist-core.js`, Paritätstest Python ↔ JavaScript,
-  Planer findet Messungen über Kurzformen. Noch keine Seite (Teil 2). Nach dem Merge in
-  Abschnitt 4 eintragen.
+- **#35 Strategist Web-Kern (Teil 1)** ist am 26.11.2026 gemergt; in Abschnitt 4 zusammen mit
+  der Wochenplan-Seite eintragen.
+- **Wochenplan-Seite (Teil 2)** (Branch `feature/wochenplan-seite`): `wochenplan.html`,
+  Navigation auf allen Seiten, Kachel „Wachstum“, `translate="no"` in `js/i18n.js`, schmalere
+  Navigation auf mittleren Breiten (`css/style.css`), endgültiger Website-Hinweis ohne Messungen
+  (`planner.WEB_NO_MEASUREMENTS`). Nach dem Merge in Abschnitt 4 eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -315,8 +324,11 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
    eigenen Formaten, Chat-Bedarf als Merkmal pro Format, Titel/Tags nach Twitch-Grenzen,
    Uhrzeiten nach Kategorie-Check-Messungen. CLI `python -m streaming_agents.content_strategist
    plan`, API `POST /api/v1/content/strategy`. Website „Weg A“: Planer als JavaScript
-   (`js/strategist-core.js`), Inhalte als Export aus Python. Teil 1 (Kern + Paritätstest) im
-   PR, die Seite selbst kommt in Teil 2.
+   (`js/strategist-core.js`), Inhalte als Export aus Python, Paritätstest (#35).
+   ✅ **Website-Version** `wochenplan.html` (Teil 2, im PR): kostenlos, ohne Anmeldung, alles
+   im Browser; Formular in unter 2 Minuten, Plan mit Karten pro Stream, Kopieren, Kalender
+   (.ics), Drucken, Link teilen. Ohne Messungen: Uhrzeiten aus den eigenen Zeitfenstern, die
+   Messung nach Publikum kommt später (kein Kategorie-Check im Browser).
 6. ⏳ Später: **Growth Analyst** und **Trend Scout**. Der Trend Scout kann auf den Messungen
    des Kategorie-Checks aufbauen (Wachstum von Kategorien über Tage).
 
@@ -384,7 +396,8 @@ Browser-Tests: `tests/web/` (Playwright, Chromium headless), Aufruf aus der Repo
 Anfragen nach außen mit 204 und bauen Firebase über Stub-Module nach
 (`gstatic.com/firebasejs/...` → `tests/web/stubs/`). Anleitung: `tests/web/README.md`.
 Die CI (`.github/workflows/web-tests.yml`) führt sie bei Änderungen an `*.html`, `js/**`,
-`css/**`, `database.rules.json` und `tests/web/**` aus.
+`css/**`, `database.rules.json`, `tests/web/**`, `tests/fixtures/**`, `data/**` und `agents/**`
+aus. Lokal ohne passende Playwright-Browser: `SGE_CHROMIUM=/pfad/zu/chrome`.
 
 Prüfliste für Website-Änderungen:
 - Deutsch und Englisch, auch beim Umschalten; keine deutschen Reste im Englischen.
@@ -460,10 +473,41 @@ Prüfliste für Website-Änderungen:
     Dateien passieren, sonst schlägt der Paritätstest fehl. Nicht den Test lockern, sondern die
     Ursache beheben. Typische Stolperfallen JS ↔ Python: Codepoints statt `.length`, `casefold`
     statt `toLowerCase`, Unicode-`\w`, Python-Whitespace, `//` und `%` bei negativen Zahlen.
+17. Inhalte aus Daten (Spielnamen, Plantexte, Profile) gehören in einen Bereich mit
+    `translate="no"`, sonst übersetzt `js/i18n.js` zufällig passende Textknoten (ein Spiel namens
+    „Pause“ würde zu „Be right back“). Beschriftungen dort per `SGE_I18N.t()` setzen und bei
+    `sge:language` neu zeichnen.
+18. Navigation und mittlere Breiten: Jeder neue Navigationseintrag muss bei 768–1180 px in eine
+    Zeile passen (`test_desktop_navigation_fits_in_one_row`). `html` scrollt weich
+    (`scroll-behavior: smooth`) und die Navigation klebt oben: Beim Scrollen zu Meldungen
+    `scroll-margin-top` setzen, in Tests auf das Ende der Animation warten.
 
 ---
 
 ## 11. Ideenliste (nicht ohne Auftrag bauen)
+
+**Hohe Priorität (vom Nutzer beschlossen, 26.11.2026): direkt nach der Wochenplan-Seite und den
+Prüfwerkzeugen umsetzen.**
+
+- **Community-Paket:**
+  - „Streamer der Woche“ auf der Startseite: nur mit Zustimmung im Profil, nur vollständige
+    Profile, keine Glücksspiel-Streamer (Fallstrick 15), anfangs von Hand ausgewählt.
+  - Abzeichen „Gründungsmitglied“ für Profile aus der Aufbauphase.
+  - Vollständiges Profil → Vorrang auf der Clip-Hunter-Beta-Warteliste.
+  - Später (wenn der Clip Hunter online und kostenpflichtig ist): einige kostenlose Analysen
+    pro Monat für Gründungsmitglieder; Guthaben nur serverseitig.
+  - „Streamer mit gleichem Spiel / ähnlicher Zeit finden“.
+  - Quest „Profil anlegen“.
+  - Keine Geld- oder Sachgeschenke.
+- **Clip-Stile und Feinschnitt** (nach dem echten Clip-Hunter-Test):
+  - 3–4 Hochformat-Vorlagen: Facecam oben/Gameplay unten, unscharfer Hintergrund, Zoom,
+    Facecam-Kreis.
+  - Facecam-Position automatisch aus dem Layout-Baukasten übernehmen.
+  - Start und Ende pro Clip anpassen.
+  - Keine Effekte, Musik oder Übergänge – stattdessen ein sauberer Clip plus Untertitel-Datei
+    zum Weiterbearbeiten in CapCut.
+
+**Weitere Ideen:**
 
 - Trend Scout auf Basis der Kategorie-Messungen (welche Kategorien wachsen?).
 - Import von Twitch-Analytics-Exporten für den Growth Analyst. Braucht eine echte

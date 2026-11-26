@@ -228,7 +228,16 @@ Code passen („Export vergessen“).
 
 **Kein Kategorie-Check im Browser:** Er braucht das Twitch-Secret. Die Website-Version hat
 deshalb keine Messungen. Statt des Hinweises mit dem Kommandozeilen-Befehl zeigt sie
-`planner.WEB_NO_MEASUREMENTS`; den endgültigen Website-Text liefert Teil 2.
+`planner.WEB_NO_MEASUREMENTS`: „Die Uhrzeiten kommen aus deinen eigenen Zeitfenstern. Uhrzeiten
+nach Publikum – wann in deinem Spiel viel los ist und du trotzdem gut gefunden wirst – kommen
+später dazu.“
+
+**Die Seite** `wochenplan.html` (`js/wochenplan.js`, `css/wochenplan.css`) nutzt nur
+`buildPlan()`: Formular (Pflichtfelder zuerst, „Mehr Optionen“ aufklappbar), Plan in der
+Sprache der Website (beim Umschalten neu berechnet), Fehler aus `buildPlan` freundlich am Feld,
+Karten pro Stream mit Kopieren-Knöpfen, Kalender-Datei (.ics, Ortszeit, Streams und
+Vorbereitung für die Woche ab dem nächsten Montag), Drucken und „Link teilen“ (Eingaben
+komprimiert im `#p=…` der URL). Keine Datenbank, kein Login, keine fremden Hosts.
 `build_plan(request, surface="web")` erzeugt in Python genau diese Variante.
 
 **Paritätstest:** Die Fälle umfassen
