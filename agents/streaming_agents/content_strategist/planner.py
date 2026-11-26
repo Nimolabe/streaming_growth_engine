@@ -71,14 +71,14 @@ GENRE_TAG = {
     "sandbox": ("Sandbox", "Sandbox"), "sports": ("Sport", "Sports"),
     "just_chatting": ("JustChatting", "JustChatting"),
 }
-# Hinweis ohne Messungen in der Website-Version (``surface="web"``): ohne Kommandozeilen-Befehl,
-# denn der Kategorie-Check braucht das Twitch-Secret und läuft nie im Browser. Der endgültige
-# Website-Text kommt mit der Seite (Teil 2); bis dahin gilt dieser.
+# Hinweis ohne Messungen in der Website-Version (``surface="web"``, Seite wochenplan.html): ohne
+# Kommandozeilen-Befehl, denn der Kategorie-Check braucht das Twitch-Secret und läuft nie im
+# Browser.
 WEB_NO_MEASUREMENTS = (
-    ("Uhrzeiten kommen nur aus deinen Zeitfenstern. Für Uhrzeiten nach Publikum braucht der Plan "
-     "eine Woche Messungen aus dem Kategorie-Check."),
-    ("Times only come from your windows. To pick times by audience, the plan needs a week of "
-     "measurements from the category check."),
+    ("Die Uhrzeiten kommen aus deinen eigenen Zeitfenstern. Uhrzeiten nach Publikum – wann in "
+     "deinem Spiel viel los ist und du trotzdem gut gefunden wirst – kommen später dazu."),
+    ("The times come from your own windows. Times based on the audience – when your game is busy "
+     "and you can still be found – will come later."),
 )
 GOAL_LABEL = {"discovery": ("neue Zuschauer", "new viewers"),
               "community": ("Community", "community"),

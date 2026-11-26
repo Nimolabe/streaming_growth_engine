@@ -94,3 +94,8 @@ Die Datenbank-Regeln (`database.rules.json`) prüft der Nachbau **nicht**.
   aus Python. Weicht etwas ab: nicht den Test lockern, sondern Python und JavaScript angleichen
   und die Fixtures neu erzeugen (siehe `agents/docs/content-strategist.md`, „Website-Version“).
   Ohne Browser geht derselbe Vergleich mit `node tests/web/strategist_parity.mjs`.
+- `test_wochenplan.py` prüft die Wochenplan-Seite: Formular → Plan (DE/EN), Sprachwechsel,
+  Fehler am Feld (auch Glücksspiel und „zu wenig Zeit“), geteilter Link, `.ics`-Datei,
+  Kopieren (Kontext mit `permissions=["clipboard-read", "clipboard-write"]`), Handy mit Plan,
+  XSS im Spielnamen, Drucken. `html` scrollt weich – nach Klicks, die scrollen, auf das Ziel
+  warten statt sofort zu messen.
