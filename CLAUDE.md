@@ -6,7 +6,7 @@
   aktualisiert.
 - Neue Erkenntnisse und Stolperfallen kommen in **Abschnitt 10** (Bekannte Fallstricke).
 
-Stand: 25.11.2026 (nach dem Merge von #30) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
+Stand: 26.11.2026 (nach dem Merge von #31/#32 und dem echten Test des Kategorie-Checks) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
 Website (GitHub Pages): https://nimolabe.github.io/streaming_growth_engine/
 
 > **Für Claude Code:** Lies dieses Dokument vollständig, bevor du etwas änderst. Kommuniziere
@@ -168,21 +168,17 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #28 | Doku: Bestandsaufnahme der KI-Agenten (`agents/docs/bestandsaufnahme-2026-11.md`) |
 | #29 | KI-Agenten: Altlasten aus der ChatGPT-Zeit entfernt (Clip Intelligence v1/v2, Prüfliste, `clip_evaluation`, Content-Strategist-Empfehler v2) |
 | #30 | Content Strategist Variante A: neues Paket `content_strategist/` (ersetzt v3 und `/content/weekly-plan`), 9 Genres, Wochenplan in den eigenen Zeitfenstern mit Zeitbudget, Anbindung an den Kategorie-Check (Uhrzeiten nach Publikum pro Platz), Titel im Stil echter Twitch-Titel (Bausteine mit „ \| “, Emoji vorn, drei Titel pro Stream) und Tags nach Twitch-Grenzen; optionale Eingaben `rank_goal`/`current_rank`/`mood`/`first_time`/`commands` |
+| #31 | Content Strategist: Fehler aus einer Simulation mit 100 Test-Streamern behoben (Formate für vertraute Spiele ohne Genre, Kürzen bei knappen Stunden, TimeWindow als Uhrzeit, Wochen-Formate nur am Wochenende, Regressionstest) |
+| #32 | Website: Quests nur per Klick abhakbar, ehrlicher Leer-Zustand der Community, Hinweis „im Aufbau“; `CLAUDE.md` nach #30 |
 
-#1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026, #30 am
+#1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026, #30–#32 am
 25.11.2026. Stand nach #29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests),
-alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün.
+alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün; nach #31/#32: 965.
 
 ## 5. Offene Pull Requests
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
-- **#31** Content Strategist: Fehler aus einer Simulation mit 100 Test-Streamern behoben
-  (Formate für vertraute Spiele ohne Genre, Kürzen bei knappen Stunden, TimeWindow als
-  Uhrzeit, Wochen-Formate nur am Wochenende, Regressionstest). Nach dem Merge in Abschnitt 4
-  eintragen.
-- **Quests und Community** (Branch `fix/website-quests-community`): Quests nur per Klick
-  abhakbar, Leer-Zustand der Community, Hinweis „im Aufbau“, dieser Eintrag. Nach dem Merge in
-  Abschnitt 4 eintragen.
+- #31 und #32 sind seit dem 25.11.2026 gemergt (siehe Abschnitt 4).
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -298,7 +294,9 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 4. ⏸ **Backend und Beta-Bereich** (Firebase-Login, Limits pro Nutzer, Chat-Mitschnitt auf
    dem Server). Wartet auf die **Hosting-Entscheidung**.
 5. ✅ **Content Strategist auf echten Daten** (PR #20, Kategorie-Check).
-   Offen: echter Test mit Twitch-App.
+   ✅ Am 26.11.2026 echt gegen die Twitch-API getestet (`measure`, `suggest`, `report
+   --html/--json`, Content Strategist mit `--measurements`): alles funktionierte, keine
+   Fehler, kein Anfragelimit. Ergebnis zu Fallstrick 8 siehe Abschnitt 10.
    ✅ **Variante A** (PR #30): lokaler, regelbasierter Wochenplan für
    0–20 Zuschauer – echte Wochentage und Uhrzeiten in den eigenen Zeitfenstern, 9 Genres mit
    eigenen Formaten, Chat-Bedarf als Merkmal pro Format, Titel/Tags nach Twitch-Grenzen,
@@ -321,9 +319,10 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
   hinzufügt (Nutzer oder Kumpel): Realtime Database → Regeln → Inhalt von
   `database.rules.json` einfügen → Veröffentlichen. Zuletzt am 22.11.2026.
 - **Impressum und Datenschutzerklärung** ergänzen, bevor die Beta öffentlich wird.
-- **Twitch-Entwickler-App** anlegen (dev.twitch.tv/console, 2FA nötig) → Client-ID und
-  Secret als Umgebungsvariablen. Dann einmal den Kategorie-Check und den Clip-Hunter-Abgleich
-  echt testen.
+- ✅ **Twitch-Entwickler-App** angelegt; Client-ID und Secret liegen als Umgebungsvariablen
+  vor. Der Kategorie-Check wurde am 26.11.2026 echt getestet. Offen: den
+  Clip-Hunter-Abgleich (VOD-Startzeit, Zuschauer-Clips) echt testen und `watch` über mehrere
+  Tage laufen lassen, damit „beste Zeiten“ echte Daten bekommen.
 - **KI-Stufe testen:** Ollama installieren, `ollama pull qwen2.5:7b`, dann
   `python -m streaming_agents.clip_hunter analyze --video vod.mp4 --chat chat.jsonl --ai --transcribe --report bericht.html`.
 - **Entscheidungen:** Hosting für Schritt 4; Modell und Budget für einen gehosteten KI-Anbieter.
@@ -334,7 +333,11 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
 ## 8. Nicht getestet (ehrlich)
 
 - KI-Stufe mit einem echten Modell und echtem Whisper (getestet nur mit nachgebautem Server).
-- Kategorie-Check gegen die echte Twitch-API (getestet nur mit nachgebauter API).
+- Kategorie-Check: `watch` über längere Zeit und damit „beste Zeiten“ aus echten Messungen
+  (am 26.11.2026 nur einzelne Messungen um etwa 12 Uhr Ortszeit). `measure`, `suggest`,
+  `report` und der Content Strategist mit echten Messungen sind seit dem 26.11.2026 echt
+  getestet.
+- Clip-Hunter-Abgleich mit der echten Twitch-API.
 - Audio-Spitzen des Clip Hunters an echten VODs.
 
 ---
@@ -386,8 +389,14 @@ Prüfliste für Website-Änderungen:
    (`PERMISSION_DENIED` → freundliche Meldung).
 7. Seiten mit neuer Navigation: Wer eine Seite aus einer älteren kopiert, übernimmt deren
    Navigation. Prüfen, dass alle Nav-Links (inklusive „Guides“) vorhanden sind.
-8. Twitch-API: Bei Get Games ist der Name ein exakter Treffer. Ob die Groß-/Kleinschreibung
-   egal ist, ist **nicht belegt**. Deshalb gibt es den Rückfall über Search Categories.
+8. Twitch-API: Bei Get Games ist der Name ein exakter Treffer, die Groß-/Kleinschreibung ist
+   aber **egal** (echt getestet am 26.11.2026: „valorant“, „Valorant“ → VALORANT,
+   „MINECRAFT“ → Minecraft, „just chatting“ → Just Chatting). Der Rückfall über Search
+   Categories greift damit nur bei echten Abweichungen und liefert dort brauchbare
+   Vorschläge („Phasmo“ → Phasmophobia, „Fortnight“ → Fortnite). Achtung: Counter-Strike 2
+   heißt auf Twitch „Counter-Strike“ (ID 32399); „Counter Strike 2“ und „Counter-Strike 2“
+   werden nicht gefunden. Abkürzungen können exakt auf ein anderes Spiel passen („CS2“ →
+   „Carrot Slime 2“); der Bericht zeigt immer den Twitch-Namen, darauf achten.
 9. Nichts mergen ohne ausdrücklichen Auftrag. Branches löschen oder Repos archivieren
    wird für die KI blockiert.
 10. Neue Datenbank-Bereiche → Regeln in der Firebase-Konsole neu veröffentlichen, sonst
