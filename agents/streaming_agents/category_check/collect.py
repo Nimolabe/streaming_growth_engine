@@ -1,6 +1,7 @@
 """Messungen über die Twitch-API (Helix) – nur öffentliche Live-Daten, App-Token genügt.
 
-Pro Kategorie: Get Games (exakter Name) → sonst Search Categories für Vorschläge →
+Pro Kategorie: Alias (z. B. „CS2“ → „Counter-Strike“) → Get Games (exakter Name, Groß-/
+Kleinschreibung egal) → sonst Search Categories für Vorschläge →
 Get Streams nach Spiel-ID und Sprache, seitenweise (je 100, nach Zuschauern sortiert).
 Gespeichert werden ausschließlich Zuschauerzahlen.
 """
@@ -9,6 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..clip_hunter.twitch_api import HelixClient, TwitchApiError
+from .aliases import alias_target
+from .gambling import is_gambling
 from .models import MAX_VIEWERS_PER_SNAPSHOT, CategorySnapshot
 
 PAGE_SIZE = 100
@@ -24,6 +27,11 @@ class CategoryNotFound(ValueError):
 class Category:
     id: str
     name: str
+    alias: str | None = None  # Eingabe des Nutzers, wenn ein Alias gegriffen hat (z. B. „CS2“)
+
+    @property
+    def gambling(self) -> bool:
+        return is_gambling(self.id, self.name)
 
 
 def _clean_name(value: str) -> str:
@@ -34,8 +42,15 @@ def _clean_name(value: str) -> str:
 
 
 def resolve_category(client: HelixClient, name: str) -> Category:
-    """Findet die Kategorie über den exakten Namen; sonst mit Vorschlägen abbrechen."""
+    """Findet die Kategorie über Alias oder exakten Namen; sonst mit Vorschlägen abbrechen."""
     name = _clean_name(name)
+    target = alias_target(name)
+    if target:
+        for item in client.get("games", [("name", target)]).get("data") or []:
+            if item.get("id"):
+                return Category(id=str(item["id"]), name=str(item.get("name") or target),
+                                alias=name)
+        # Ziel gibt es nicht (mehr): normal mit dem eingegebenen Namen weitersuchen.
     for item in client.get("games", [("name", name)]).get("data") or []:
         if item.get("id"):
             return Category(id=str(item["id"]), name=str(item.get("name") or name))
@@ -55,6 +70,35 @@ def top_categories(client: HelixClient, count: int = 30) -> list[Category]:
     data = client.get("games/top", [("first", str(count))]).get("data") or []
     return [Category(id=str(item["id"]), name=str(item.get("name") or item["id"]))
             for item in data if item.get("id")][:count]
+
+
+@dataclass
+class Suggestions:
+    categories: list[Category]
+    excluded_gambling: list[Category]
+
+
+def suggestion_categories(client: HelixClient, count: int = 30, *,
+                          include_gambling: bool = False) -> Suggestions:
+    """Meistgesehene Kategorien für ``suggest``; Glücksspiel standardmäßig ausgefiltert.
+
+    Ausgefilterte Plätze werden mit den nächsten Kategorien aufgefüllt, damit trotzdem ``count``
+    Kategorien gemessen werden. ``excluded_gambling`` nennt die Glücksspiel-Kategorien, die
+    sonst unter den ersten ``count`` gewesen wären.
+    """
+    count = max(1, min(count, 100))
+    if include_gambling:
+        return Suggestions(top_categories(client, count), [])
+    kept: list[Category] = []
+    excluded: list[Category] = []
+    for category in top_categories(client, min(100, count + 20)):
+        if len(kept) >= count:
+            break
+        if category.gambling:
+            excluded.append(category)
+        else:
+            kept.append(category)
+    return Suggestions(kept, excluded)
 
 
 def measure(client: HelixClient, category: Category, language: str = "de", *,
@@ -93,7 +137,7 @@ def measure(client: HelixClient, category: Category, language: str = "de", *,
     else:
         complete = False  # Seitenlimit erreicht, es gibt wahrscheinlich noch mehr Kanäle
     return CategorySnapshot(taken_at=taken_at, category_id=category.id, category=category.name,
-                            language=language, complete=complete,
+                            alias=category.alias, language=language, complete=complete,
                             viewers=list(seen.values()))
 
 

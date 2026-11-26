@@ -125,6 +125,8 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
   Kategorie-Check-Uhrzeiten, `titles.py` für Titel im Stil echter Twitch-Titel,
   `twitch_limits.py`, `report.py`, `cli.py`; CLI `python -m streaming_agents.content_strategist
   plan`, API `POST /api/v1/content/strategy`),
+  `category_check/aliases.py` (Kurzformen → Twitch-Name) und `category_check/gambling.py`
+  (Glücksspiel-Filter),
   `agents/` (Growth Analyst = Creator Intelligence + `creator_strategy*`, geparkt),
   `llm/` (OpenAI-Provider, opt-in mit `--live`, Kostenbremse; soll später mit
   `clip_hunter/ai_stage.py` zusammengelegt werden), `api.py`, `registry.py`. Entfernt:
@@ -179,6 +181,10 @@ alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün; nach
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
 - #31 und #32 sind seit dem 25.11.2026 gemergt (siehe Abschnitt 4).
+- **Aliasse und Glücksspiel-Filter** (Branch `fix/kategorie-aliasse-gluecksspiel`):
+  Kategorie-Check mit Kurzformen (CS2 → Counter-Strike usw.), Glücksspiel standardmäßig
+  aus `suggest`/`report`/API gefiltert (`--include-gambling`), Fallstrick 8 und 15.
+  Nach dem Merge in Abschnitt 4 eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -396,7 +402,13 @@ Prüfliste für Website-Änderungen:
    Vorschläge („Phasmo“ → Phasmophobia, „Fortnight“ → Fortnite). Achtung: Counter-Strike 2
    heißt auf Twitch „Counter-Strike“ (ID 32399); „Counter Strike 2“ und „Counter-Strike 2“
    werden nicht gefunden. Abkürzungen können exakt auf ein anderes Spiel passen („CS2“ →
-   „Carrot Slime 2“); der Bericht zeigt immer den Twitch-Namen, darauf achten.
+   „Carrot Slime 2“). **Seit dem PR „Aliasse und Glücksspiel-Filter“** übersetzt
+   `category_check/aliases.py` gängige Kurzformen VOR Get Games in den offiziellen Namen
+   (CS2 → Counter-Strike, LoL, GTA/GTA 5, WoW, Apex, R6 → Rainbow Six Siege, EA FC → EA Sports
+   FC 27, TFT, DbD u. a.; jedes Ziel per API geprüft). Ausgabe, Bericht und Messdatei zeigen
+   „CS2 → Counter-Strike (Alias)“. Neue Aliasse nur aufnehmen, wenn Get Games den Zielnamen
+   exakt kennt; „EA FC“ bei der nächsten FC-Ausgabe anpassen. Die Genre-Aliasse in
+   `content_strategist/genres.py` sind etwas anderes (Wort-Treffer → Genre) und bleiben getrennt.
 9. Nichts mergen ohne ausdrücklichen Auftrag. Branches löschen oder Repos archivieren
    wird für die KI blockiert.
 10. Neue Datenbank-Bereiche → Regeln in der Firebase-Konsole neu veröffentlichen, sonst
@@ -416,6 +428,11 @@ Prüfliste für Website-Änderungen:
     XP-Leiste gefüllt; das wirkte unehrlich. Seit dem PR „Quests und Community“ zählt nur ein
     Klick auf die Checkbox (`js/quests.js`). Dasselbe gilt für Zähler, Badges und
     Community-Angaben: nichts versprechen oder anzeigen, was nicht wirklich passiert ist.
+15. Keine Glücksspiel-Kategorien empfehlen (standardmäßig gefiltert). `suggest`, `report` und
+    die API blenden Slots, Virtual Casino, Poker, Casino, Roulette, Blackjack usw. aus
+    (`category_check/gambling.py`, IDs und Namen, Stand November 2026) und sagen, wie viele.
+    Nur mit `--include-gambling` bzw. `include_gambling: true` oder bei ausdrücklichem
+    `measure` erscheinen sie, dann immer mit ⚠-Hinweis und am Ende der Liste.
 
 ---
 

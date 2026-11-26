@@ -53,7 +53,8 @@ Zugangsdaten nur als Umgebungsvariablen setzen und niemals in Dateien im Repo sp
 ```powershell
 cd agents
 
-# 1. Einmal messen (Kategorienamen exakt wie auf Twitch; bei Tippfehlern kommen Vorschläge)
+# 1. Einmal messen (Kategorienamen wie auf Twitch, Groß-/Kleinschreibung egal; gängige
+#    Kurzformen wie „CS2“ oder „gta 5“ gehen auch; bei Tippfehlern kommen Vorschläge)
 python -m streaming_agents.category_check measure "Minecraft" "Stardew Valley" "Factorio" `
     --out messungen.jsonl
 
@@ -77,6 +78,46 @@ Wichtige Optionen:
   damit es schnell geht. Bei riesigen Kategorien steht dann „hinter Platz …“. Das reicht, denn
   dort wäre man ohnehin kaum zu sehen.
 - `--ui en`: Ausgabe auf Englisch.
+- `--include-gambling` (`suggest`, `report`): Glücksspiel-Kategorien nicht ausblenden, siehe unten.
+
+### Kurzformen (Aliasse)
+
+Twitch findet Kategorien über den exakten Namen; die Groß-/Kleinschreibung ist egal
+(echt getestet am 26.11.2026). Abkürzungen findet Twitch aber nicht oder falsch: „CS2“ ist
+auf Twitch das Spiel „Carrot Slime 2“, und Counter-Strike 2 läuft unter „Counter-Strike“.
+Deshalb übersetzt der Kategorie-Check gängige Kurzformen vorher in den offiziellen Namen
+(Liste in `streaming_agents/category_check/aliases.py`, jeder Zielname per API geprüft):
+
+| Eingabe (Beispiele) | Gemessen wird |
+| --- | --- |
+| CS2, CS 2, Counter Strike 2, Counter-Strike 2, CS:GO | Counter-Strike |
+| LoL | League of Legends |
+| GTA, GTA 5, GTA V, GTA RP, GTA Online | Grand Theft Auto V |
+| GTA 6, GTA VI | Grand Theft Auto VI |
+| WoW | World of Warcraft |
+| Apex | Apex Legends |
+| R6, R6S, Rainbow Six, Rainbow Six Siege X | Rainbow Six Siege |
+| EA FC, FC 27 / FC 26 / FC 25 | EA Sports FC 27 / 26 / 25 („EA FC“ = aktuelle Ausgabe, Stand November 2026) |
+| TFT, DbD | Teamfight Tactics, Dead by Daylight |
+| PUBG, Warzone, Tarkov/EFT, Dota, OW/OW2, Valo, PoE/PoE 2 | jeweils der offizielle Name |
+
+Greift ein Alias, steht das in der Ausgabe, im Bericht und in der Messdatei:
+`CS2 → Counter-Strike (Alias)`. So ist immer sichtbar, was gemessen wurde.
+
+### Glücksspiel
+
+Glücksspiel-Kategorien (Slots, Virtual Casino, Poker, Casino, Roulette, Blackjack, Baccarat …,
+Liste mit IDs in `streaming_agents/category_check/gambling.py`, Stand November 2026) werden
+**standardmäßig nicht vorgeschlagen**:
+
+- `suggest` lässt sie weg, füllt mit den nächsten Kategorien auf und nennt, wie viele
+  herausgefiltert wurden. `--include-gambling` nimmt sie wieder auf.
+- `report` und die API blenden sie aus und vermerken das in den Hinweisen;
+  `--include-gambling` bzw. `include_gambling: true` zeigt sie.
+- `measure` mit einer ausdrücklich genannten Glücksspiel-Kategorie funktioniert, zeigt aber
+  einen deutlichen Hinweis (⚠) und sortiert sie ans Ende.
+
+Eine Twitch-Kategorie für echte Sportwetten gibt es nicht (nur „Sports Betting Simulator“).
 
 Die Messdatei wird nur ergänzt. Mehrere Dateien lassen sich zusammen auswerten
 (`report a.jsonl b.jsonl`). Eine abgebrochene Messung bleibt lesbar.
@@ -96,7 +137,8 @@ Sie fragt Twitch selbst nicht an.
 
 ## Datenschutz und Fairness
 
-- Gespeichert werden **nur Zuschauerzahlen**, keine Kanalnamen, Titel oder Nutzer.
+- Gespeichert werden **nur Zuschauerzahlen**, keine Kanalnamen, Titel oder Nutzer. Dazu kommt
+  der Name der Kategorie und, falls ein Alias gegriffen hat, die eigene Eingabe (z. B. „CS2“).
 - Es werden ausschließlich öffentliche Live-Daten über die offizielle Twitch-API abgefragt,
   mit kurzen Pausen zwischen den Anfragen. `watch` misst höchstens alle 10 Minuten.
 

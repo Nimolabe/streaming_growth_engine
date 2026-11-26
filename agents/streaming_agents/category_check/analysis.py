@@ -6,10 +6,12 @@ Kategorien weit hinten; in kleinen, aber besuchten Kategorien weit vorn.
 Die Schwellen unten sind nachvollziehbare Faustregeln, keine Twitch-Vorgaben.
 """
 from collections import defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime, timedelta, timezone
 from statistics import median
 
+from .aliases import alias_label
+from .gambling import filtered_note, gambling_warning, is_gambling
 from .models import (
     CategoryCheckResult,
     CategorySnapshot,
@@ -189,6 +191,10 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
     per_channel = median([median(item.viewers) if item.viewers else 0 for item in snapshots])
     shares = [sum(item.viewers[:3]) / sum(item.viewers) for item in snapshots if sum(item.viewers)]
     verdict = _verdict(total, rank, rank_floor)
+    aliases: list[str] = []
+    for item in snapshots:
+        if item.alias and item.alias.casefold() not in {a.casefold() for a in aliases}:
+            aliases.append(item.alias)
 
     measured_slots = {_slot_key(to_local(item.taken_at)) for item in snapshots}
     best: list[SlotInfo] = []
@@ -203,37 +209,58 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
         top3_share=round(median(shares), 3) if shares else 0.0,
         median_rank=rank, rank_is_lower_bound=rank_floor, verdict=verdict,
         verdict_text=_verdict_text(verdict, rank, rank_floor, own, total, language),
-        best_slots=best[:3],
+        best_slots=best[:3], aliases=aliases,
+        gambling=is_gambling(first.category_id, first.category),
     )
 
 
 def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
             language: str = "de",
             to_local: Callable[[float], datetime] = machine_local_time,
-            window: tuple[int, int] | None = None) -> CategoryCheckResult:
-    """Fasst alle Messungen je Kategorie und Sprache zusammen und sortiert nach Chance."""
+            window: tuple[int, int] | None = None, include_gambling: bool = True,
+            excluded_gambling: Sequence[str] = ()) -> CategoryCheckResult:
+    """Fasst alle Messungen je Kategorie und Sprache zusammen und sortiert nach Chance.
+
+    ``include_gambling=False`` blendet Glücksspiel-Kategorien aus (API und ``report``
+    standardmäßig); ``excluded_gambling`` sind Namen, die schon vorher (bei ``suggest``)
+    ausgefiltert wurden. Beides wird in den Hinweisen gezählt. Gezeigte
+    Glücksspiel-Kategorien bekommen immer einen deutlichen Hinweis.
+    """
     if language not in ("de", "en"):
         raise ValueError("language must be 'de' or 'en'")
     if own_viewers < 0:
         raise ValueError("own_viewers must not be negative")
     groups: dict[tuple[str, str], list[CategorySnapshot]] = defaultdict(list)
     count = 0
+    hidden: list[str] = list(dict.fromkeys(excluded_gambling))
     for item in snapshots:
+        if not include_gambling and is_gambling(item.category_id, item.category):
+            if item.category not in hidden:
+                hidden.append(item.category)
+            continue
         groups[(item.category_id, item.language)].append(item)
         count += 1
     summaries = [
         _summarize(sorted(group, key=lambda s: s.taken_at), own_viewers, language, to_local, window)
         for group in groups.values()
     ]
-    summaries.sort(key=lambda s: (VERDICT_ORDER[s.verdict], s.rank_is_lower_bound, s.median_rank,
+    # Glücksspiel steht immer hinten: gemessen ja, empfohlen nie.
+    summaries.sort(key=lambda s: (s.gambling, VERDICT_ORDER[s.verdict], s.rank_is_lower_bound,
+                                  s.median_rank,
                                   -s.median_total_viewers, s.category.casefold()))
     return CategoryCheckResult(own_viewers=own_viewers, language=language, measurements=count,
-                               categories=summaries, notes=_notes(summaries, language))
+                               categories=summaries,
+                               notes=_notes(summaries, language, hidden))
 
 
-def _notes(summaries: list[CategorySummary], language: str) -> list[str]:
+def _notes(summaries: list[CategorySummary], language: str,
+           hidden_gambling: Sequence[str] = ()) -> list[str]:
     de = language == "de"
-    notes = [
+    notes = [gambling_warning(item.category, language) for item in summaries if item.gambling]
+    if hidden_gambling:
+        notes.append(filtered_note(list(hidden_gambling), language))
+    notes += [alias_label(alias, item.category) for item in summaries for alias in item.aliases]
+    notes += [
         "Der Platz ist eine Näherung für die Sichtbarkeit: gezählt wird, wie viele Live-Kanäle "
         "mindestens so viele Zuschauer haben wie du. Twitch kann Listen auch personalisiert "
         "sortieren."

@@ -8,6 +8,12 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 
 from streaming_agents.category_check import cli as cli_module
+from streaming_agents.category_check.aliases import (
+    CATEGORY_ALIASES,
+    alias_label,
+    alias_target,
+    normalize,
+)
 from streaming_agents.category_check.analysis import (
     analyze,
     in_window,
@@ -21,8 +27,10 @@ from streaming_agents.category_check.collect import (
     measure,
     measure_many,
     resolve_category,
+    suggestion_categories,
     top_categories,
 )
+from streaming_agents.category_check.gambling import GAMBLING_CATEGORIES, is_gambling
 from streaming_agents.category_check.models import CategoryCheckRequest, CategorySnapshot
 from streaming_agents.category_check.report import render_report
 from streaming_agents.category_check.store import StoreError, append_snapshots, load_snapshots
@@ -419,3 +427,163 @@ def test_twitch_errors_are_typed():
     fake = FakeTwitch(fail={"5": 429})
     with pytest.raises(TwitchApiError, match="Anfragelimit"):
         measure(client(fake), Category("5", "X"), sleep=lambda _: None)
+
+
+# ------------------------------------------------- Aliasse und Glücksspiel (Echttest 26.11.2026)
+
+@pytest.mark.parametrize(("typed", "official"), [
+    ("CS2", "Counter-Strike"), ("cs 2", "Counter-Strike"), ("Counter Strike 2", "Counter-Strike"),
+    ("Counter-Strike 2", "Counter-Strike"), ("CS:GO", "Counter-Strike"),
+    ("LoL", "League of Legends"), ("GTA", "Grand Theft Auto V"), ("gta 5", "Grand Theft Auto V"),
+    ("GTA V", "Grand Theft Auto V"), ("GTA RP", "Grand Theft Auto V"),
+    ("GTA 6", "Grand Theft Auto VI"), ("WoW", "World of Warcraft"), ("Apex", "Apex Legends"),
+    ("R6", "Rainbow Six Siege"), ("Rainbow Six", "Rainbow Six Siege"),
+    ("EA FC", "EA Sports FC 27"), ("FC 26", "EA Sports FC 26"), ("fc26", "EA Sports FC 26"),
+    ("TFT", "Teamfight Tactics"), ("DbD", "Dead by Daylight"),
+])
+def test_alias_targets(typed, official):
+    assert alias_target(typed) == official
+
+
+def test_alias_table_is_clean():
+    assert alias_target("Counter-Strike") is None      # offizieller Name: kein Alias
+    assert alias_target("Minecraft") is None and alias_target("League") is None
+    assert all(key == normalize(key) for key in CATEGORY_ALIASES)  # Schlüssel normalisiert
+    assert alias_label("CS2", "Counter-Strike") == "CS2 → Counter-Strike (Alias)"
+
+
+def test_resolve_uses_alias_before_get_games():
+    fake = FakeTwitch(games={"Counter-Strike": "32399", "Carrot Slime 2": "789686325"})
+    category = resolve_category(client(fake), " CS2 ")
+    assert category == Category("32399", "Counter-Strike", alias="CS2")
+    names = [parse_qs(urlsplit(r.full_url).query)["name"][0] for r in fake.calls
+             if "/helix/games?" in r.full_url]
+    assert names == ["Counter-Strike"]  # nie nach „CS2“ gefragt → kein „Carrot Slime 2“
+    assert resolve_category(client(fake), "Counter-Strike").alias is None
+
+
+def test_alias_falls_back_when_target_is_gone():
+    fake = FakeTwitch(games={"LoL": "5"})  # Ziel „League of Legends“ gibt es hier nicht
+    assert resolve_category(client(fake), "LoL") == Category("5", "LoL")
+
+
+def test_measure_stores_alias_and_report_shows_it(tmp_path):
+    fake = FakeTwitch(games={"Counter-Strike": "32399"}, streams={("32399", "de"): [90, 4, 1]})
+    category = resolve_category(client(fake), "cs2")
+    shot = measure(client(fake), category, clock=lambda: MONDAY_18_UTC, sleep=lambda _: None)
+    assert shot.alias == "cs2" and shot.category == "Counter-Strike"
+    append_snapshots(tmp_path / "m.jsonl", [shot])
+    loaded = load_snapshots(tmp_path / "m.jsonl").snapshots[0]
+    assert loaded.alias == "cs2"
+    result = analyze([loaded, snap([5], cat="32399", name="Counter-Strike", at=MONDAY_18_UTC + 60)],
+                     to_local=UTC_PLUS_1)
+    assert result.categories[0].aliases == ["cs2"]
+    assert "cs2 → Counter-Strike (Alias)" in result.notes
+    assert "cs2 → Counter-Strike (Alias)" in render_report(result)
+    # Alte Messdateien ohne Alias bleiben lesbar.
+    assert CategorySnapshot.model_validate({**json.loads(snap([1]).model_dump_json()),
+                                            "alias": None}).alias is None
+
+
+def test_gambling_list_and_detection():
+    assert GAMBLING_CATEGORIES["498566"] == "Slots"
+    assert is_gambling("498566", "irgendwas")            # per ID
+    assert is_gambling("123", "Blackjack")               # gleichnamige Kategorie, andere ID
+    assert is_gambling("1", "virtual casino")
+    assert not is_gambling("499634", "Crypto") and not is_gambling("27471", "Minecraft")
+
+
+GAMBLING_TOP = [("509658", "Just Chatting"), ("498566", "Slots"), ("27471", "Minecraft"),
+                ("29452", "Virtual Casino"), ("33214", "Fortnite"), ("516575", "VALORANT")]
+
+
+def test_suggestion_categories_filters_and_refills():
+    fake = FakeTwitch(top=GAMBLING_TOP)
+    chosen = suggestion_categories(client(fake), 3)
+    assert [c.name for c in chosen.categories] == ["Just Chatting", "Minecraft", "Fortnite"]
+    assert [c.name for c in chosen.excluded_gambling] == ["Slots", "Virtual Casino"]
+    chosen = suggestion_categories(client(fake), 3, include_gambling=True)
+    assert [c.name for c in chosen.categories] == ["Just Chatting", "Slots", "Minecraft"]
+    assert chosen.excluded_gambling == []
+
+
+def test_analyze_gambling_filter_warning_and_order():
+    snaps = [snap([50, 1], cat="498566", name="Slots"), snap([900] * 60, cat="2", name="Groß")]
+    shown = analyze(snaps, to_local=UTC_PLUS_1)                       # Standard: zeigen
+    assert [c.category for c in shown.categories] == ["Groß", "Slots"]  # Glücksspiel hinten
+    assert shown.categories[1].gambling and not shown.categories[0].gambling
+    assert any(note.startswith("Achtung: „Slots“ ist eine Glücksspiel-Kategorie")
+               for note in shown.notes)
+    english = analyze(snaps, language="en", to_local=UTC_PLUS_1)
+    assert any(note.startswith("Warning: “Slots” is a gambling category") for note in english.notes)
+    hidden = analyze(snaps, include_gambling=False, to_local=UTC_PLUS_1)
+    assert [c.category for c in hidden.categories] == ["Groß"] and hidden.measurements == 1
+    assert "1 Glücksspiel-Kategorie ausgeblendet (Slots)." in hidden.notes[0]
+    pre = analyze(snaps[1:], excluded_gambling=["Slots", "Virtual Casino"], to_local=UTC_PLUS_1)
+    assert pre.notes[0].startswith("2 Glücksspiel-Kategorien ausgeblendet (Slots, Virtual Casino)")
+    html = render_report(shown)
+    assert "⚠ Glücksspiel" in html
+
+
+@pytest.fixture
+def gambling_env(monkeypatch):
+    fake = FakeTwitch(games={"Slots": "498566", "Counter-Strike": "32399"},
+                      streams={("498566", "de"): [300, 20, 2], ("32399", "de"): [500, 40, 2],
+                               ("27471", "de"): [100, 3], ("509658", "de"): [800, 2],
+                               ("33214", "de"): [60, 2], ("29452", "de"): [10]},
+                      top=GAMBLING_TOP)
+    monkeypatch.setattr(cli_module.HelixClient, "from_env",
+                        classmethod(lambda cls, **kw: HelixClient("cid", "secret", opener=fake)))
+    monkeypatch.setattr("streaming_agents.category_check.collect.time.sleep", lambda _: None)
+    return fake
+
+
+def test_cli_suggest_excludes_gambling_by_default(gambling_env, tmp_path, capsys):
+    out = tmp_path / "m.jsonl"
+    assert cli_module.main(["suggest", "--top", "3", "--out", str(out)]) == 0
+    printed = capsys.readouterr().out
+    assert "Ohne 2 Glücksspiel-Kategorien: Slots, Virtual Casino" in printed
+    assert "2 Glücksspiel-Kategorien ausgeblendet" in printed
+    stored = [json.loads(line)["category"] for line in out.read_text().splitlines()]
+    assert stored == ["Just Chatting", "Minecraft", "Fortnite"]
+    out2 = tmp_path / "m2.jsonl"
+    assert cli_module.main(["suggest", "--top", "3", "--include-gambling", "--out", str(out2)]) == 0
+    printed = capsys.readouterr().out
+    assert "⚠ Slots" in printed and "ausgeblendet" not in printed
+    assert "Glücksspiel-Kategorie" in printed
+
+
+def test_cli_measure_alias_and_explicit_gambling(gambling_env, tmp_path, capsys):
+    out = tmp_path / "m.jsonl"
+    assert cli_module.main(["measure", "CS2", "Slots", "--out", str(out)]) == 0
+    printed = capsys.readouterr().out
+    assert "CS2 → Counter-Strike (Alias)" in printed
+    assert printed.count("Achtung: „Slots“ ist eine Glücksspiel-Kategorie") == 2  # vorher + Hinweis
+    assert "⚠ Slots" in printed
+    assert cli_module.main(["measure", "Slots", "--ui", "en", "--out", str(out)]) == 0
+    assert "Warning: “Slots” is a gambling category" in capsys.readouterr().out
+    # report blendet Glücksspiel standardmäßig aus, --include-gambling zeigt es.
+    assert cli_module.main(["report", str(out)]) == 0
+    printed = capsys.readouterr().out
+    assert "⚠ Slots" not in printed and "1 Glücksspiel-Kategorie ausgeblendet (Slots)" in printed
+    assert "CS2 → Counter-Strike (Alias)" in printed
+    assert cli_module.main(["report", str(out), "--include-gambling"]) == 0
+    assert "⚠ Slots" in capsys.readouterr().out
+
+
+def test_api_include_gambling():
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from streaming_agents.api import app
+
+    snaps = [json.loads(snap([60, 30, 10, 1], cat="498566", name="Slots").model_dump_json()),
+             json.loads(snap([60, 30, 10, 1]).model_dump_json())]
+    api = TestClient(app)
+    data = api.post("/api/v1/content/category-check", json={"snapshots": snaps}).json()
+    assert [c["category"] for c in data["categories"]] == ["Spiel"]
+    assert any("ausgeblendet (Slots)" in note for note in data["notes"])
+    data = api.post("/api/v1/content/category-check",
+                    json={"snapshots": snaps, "include_gambling": True}).json()
+    assert [c["category"] for c in data["categories"]] == ["Spiel", "Slots"]
+    assert data["categories"][1]["gambling"] is True

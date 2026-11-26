@@ -17,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..clip_hunter.twitch_api import HelixClient, TwitchApiError
+from .aliases import alias_label
 from .analysis import analyze, parse_window
 from .collect import (
     DEFAULT_PAGES,
@@ -25,8 +26,9 @@ from .collect import (
     CategoryNotFound,
     measure_many,
     resolve_category,
-    top_categories,
+    suggestion_categories,
 )
+from .gambling import gambling_warning
 from .models import CategoryCheckResult
 from .report import render_report
 from .store import StoreError, append_snapshots, load_snapshots
@@ -66,12 +68,13 @@ def print_table(result: CategoryCheckResult) -> None:
     if not result.categories:
         _print("Keine Messungen." if de else "No measurements.")
         return
-    width = min(34, max(len(item.category) for item in result.categories))
+    width = min(34, max(len(_shown_name(item)) for item in result.categories))
     head = ("Kategorie", "Kanäle", "Zuschauer", "dein Platz", "Einschätzung") if de else \
            ("Category", "Channels", "Viewers", "your rank", "verdict")
     _print(f"{head[0]:<{width}}  {head[1]:>7}  {head[2]:>9}  {head[3]:>11}  {head[4]}")
     for item in result.categories:
-        name = item.category if len(item.category) <= width else item.category[:width - 1] + "…"
+        shown = _shown_name(item)
+        name = shown if len(shown) <= width else shown[:width - 1] + "…"
         plus = "+" if item.channels_is_lower_bound else ""
         rank = f">{item.median_rank - 1}" if item.rank_is_lower_bound else str(item.median_rank)
         _print(f"{name:<{width}}  {str(item.median_channels) + plus:>7}  "
@@ -86,12 +89,21 @@ def print_table(result: CategoryCheckResult) -> None:
         _print(f"• {note}")
 
 
-def _resolve_all(client: HelixClient, names: list[str]) -> list[Category]:
+def _shown_name(item) -> str:
+    """Kategoriename in der Tabelle; Glücksspiel deutlich markiert."""
+    return f"⚠ {item.category}" if item.gambling else item.category
+
+
+def _resolve_all(client: HelixClient, names: list[str], ui: str = "de") -> list[Category]:
     categories: list[Category] = []
     for name in names:
         category = resolve_category(client, name)
+        if category.alias:
+            _print(alias_label(category.alias, category.name))
         if all(existing.id != category.id for existing in categories):
             categories.append(category)
+            if category.gambling:
+                _print(gambling_warning(category.name, ui))
     return categories
 
 
@@ -106,7 +118,7 @@ def _round(client: HelixClient, categories: list[Category], args: argparse.Names
 
 def cmd_measure(args: argparse.Namespace) -> int:
     client = HelixClient.from_env()
-    categories = _resolve_all(client, args.categories)
+    categories = _resolve_all(client, args.categories, args.ui)
     _print(f"Messe {len(categories)} Kategorien (Sprache: {args.lang}) …")
     result = measure_many(client, categories, args.lang, max_pages=args.pages)
     for error in result.errors:
@@ -121,8 +133,13 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
 def cmd_suggest(args: argparse.Namespace) -> int:
     client = HelixClient.from_env()
-    categories = top_categories(client, args.top)
+    chosen = suggestion_categories(client, args.top, include_gambling=args.include_gambling)
+    categories = chosen.categories
+    excluded = [item.name for item in chosen.excluded_gambling]
     _print(f"Messe die {len(categories)} meistgesehenen Kategorien (Sprache: {args.lang}) …")
+    if excluded:
+        _print(f"Ohne {len(excluded)} Glücksspiel-Kategorien: {', '.join(excluded)} "
+               "(anzeigen mit --include-gambling)")
     result = measure_many(client, categories, args.lang, max_pages=args.pages)
     for error in result.errors:
         _print(f"Fehler: {error}")
@@ -130,14 +147,15 @@ def cmd_suggest(args: argparse.Namespace) -> int:
         raise CliError("Keine Messung erfolgreich.")
     append_snapshots(args.out, result.snapshots)
     _print(f"{len(result.snapshots)} Messungen ergänzt in {Path(args.out).expanduser()}\n")
-    print_table(analyze(result.snapshots, own_viewers=args.viewers, language=args.ui))
+    print_table(analyze(result.snapshots, own_viewers=args.viewers, language=args.ui,
+                        excluded_gambling=excluded))
     return 0 if not result.errors else 1
 
 
 def cmd_watch(args: argparse.Namespace, sleep: Callable[[float], None] = time.sleep,
               clock: Callable[[], float] = time.monotonic) -> int:
     client = HelixClient.from_env()
-    categories = _resolve_all(client, args.categories)
+    categories = _resolve_all(client, args.categories, args.ui)
     rounds = max(1, int(args.hours * 60 // args.every) + 1)
     _print(f"Messe {len(categories)} Kategorien alle {args.every:g} Minuten, insgesamt "
            f"{rounds} Runden → {Path(args.out).expanduser()}")
@@ -159,7 +177,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     if loaded.skipped_lines:
         _print(f"Hinweis: {loaded.skipped_lines} unlesbare Zeilen übersprungen.")
     window = parse_window(args.window) if args.window else None
-    result = analyze(loaded.snapshots, own_viewers=args.viewers, language=args.ui, window=window)
+    result = analyze(loaded.snapshots, own_viewers=args.viewers, language=args.ui, window=window,
+                     include_gambling=args.include_gambling)
     print_table(result)
     if args.html:
         target = _new_file(args.html, args.overwrite)
@@ -198,6 +217,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     suggest = sub.add_parser("suggest", help="Die meistgesehenen Kategorien messen und vergleichen")
     suggest.add_argument("--top", type=int, default=30, help="Anzahl Kategorien (1–100)")
+    suggest.add_argument("--include-gambling", action="store_true",
+                         help="Glücksspiel-Kategorien (Slots, Casino, Poker …) nicht ausfiltern")
     _common(suggest)
     suggest.set_defaults(handler=cmd_suggest)
 
@@ -215,6 +236,8 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--window", help="Nur diese Uhrzeiten für „beste Zeiten“, z. B. 16-24 oder 20-2")
     report.add_argument("--html", help="HTML-Bericht speichern")
     report.add_argument("--json", help="Ergebnis als JSON speichern")
+    report.add_argument("--include-gambling", action="store_true",
+                        help="Glücksspiel-Kategorien zeigen (Standard: ausgeblendet)")
     report.add_argument("--overwrite", action="store_true")
     report.set_defaults(handler=cmd_report)
     return parser

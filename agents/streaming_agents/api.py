@@ -75,7 +75,8 @@ def content_category_check(request: CategoryCheckRequest) -> CategoryCheckResult
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return analyze(request.snapshots, own_viewers=request.own_viewers, language=request.language,
-                   to_local=local_time_from_offset(request.utc_offset_minutes), window=window)
+                   to_local=local_time_from_offset(request.utc_offset_minutes), window=window,
+                   include_gambling=request.include_gambling)
 
 
 # ---------- Growth Analyst ----------
