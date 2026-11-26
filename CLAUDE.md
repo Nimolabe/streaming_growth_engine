@@ -6,7 +6,7 @@
   aktualisiert.
 - Neue Erkenntnisse und Stolperfallen kommen in **Abschnitt 10** (Bekannte Fallstricke).
 
-Stand: 26.11.2026 (nach dem Merge von #31/#32 und dem echten Test des Kategorie-Checks) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
+Stand: 26.11.2026 (nach dem Merge von #33/#34) · Repo: `Nimolabe/streaming_growth_engine` (öffentlich, Standard-Branch `main`)
 Website (GitHub Pages): https://nimolabe.github.io/streaming_growth_engine/
 
 > **Für Claude Code:** Lies dieses Dokument vollständig, bevor du etwas änderst. Kommuniziere
@@ -90,6 +90,11 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 `js/layout-profile.js`, `js/waitlist.js`, `js/setups-i18n.js`, `css/guides.css`,
 `css/layouts.css`, `css/overlay.css`. Seit dem PR „Quests und Community“: `js/quests.js`
 (Erste Quests der Startseite, nur per Klick abhakbar, Stand im `localStorage` unter `sge-quests`).
+Seit dem PR „Strategist Web-Kern“: `js/strategist-core.js` (Planer des Content Strategist als
+ES-Modul ohne DOM/Netzwerk/Zufall, `buildPlan(request, data)`), `data/content-strategist.json`
+(Inhalte als Export aus Python, committet), `tests/fixtures/strategist-parity.json`
+(Paritäts-Fixtures), `tests/web/strategist_parity.mjs` und `tests/web/test_strategist_parity.py`.
+Noch keine Seite dafür (kommt in Teil 2).
 
 **Wichtige Mechanismen der Website:**
 - **i18n (`js/i18n.js`):** Eine Map Deutsch→Englisch. Übersetzt werden **nur Textknoten mit
@@ -123,8 +128,8 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
   (Content Strategist Variante A seit #30, ersetzt v2/v3: `genres.py` mit 9 Genres,
   `formats.py` mit Formaten pro Genre, `planner.py` für den Wochenplan mit Zeitbudget und
   Kategorie-Check-Uhrzeiten, `titles.py` für Titel im Stil echter Twitch-Titel,
-  `twitch_limits.py`, `report.py`, `cli.py`; CLI `python -m streaming_agents.content_strategist
-  plan`, API `POST /api/v1/content/strategy`),
+  `twitch_limits.py`, `report.py`, `cli.py`, `web_export.py`; CLI `python -m
+  streaming_agents.content_strategist plan` und `export-web`, API `POST /api/v1/content/strategy`),
   `category_check/aliases.py` (Kurzformen → Twitch-Name) und `category_check/gambling.py`
   (Glücksspiel-Liste; Glücksspiel wird nicht unterstützt, auch im Content Strategist),
   `agents/` (Growth Analyst = Creator Intelligence + `creator_strategy*`, geparkt),
@@ -172,19 +177,21 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
 | #30 | Content Strategist Variante A: neues Paket `content_strategist/` (ersetzt v3 und `/content/weekly-plan`), 9 Genres, Wochenplan in den eigenen Zeitfenstern mit Zeitbudget, Anbindung an den Kategorie-Check (Uhrzeiten nach Publikum pro Platz), Titel im Stil echter Twitch-Titel (Bausteine mit „ \| “, Emoji vorn, drei Titel pro Stream) und Tags nach Twitch-Grenzen; optionale Eingaben `rank_goal`/`current_rank`/`mood`/`first_time`/`commands` |
 | #31 | Content Strategist: Fehler aus einer Simulation mit 100 Test-Streamern behoben (Formate für vertraute Spiele ohne Genre, Kürzen bei knappen Stunden, TimeWindow als Uhrzeit, Wochen-Formate nur am Wochenende, Regressionstest) |
 | #32 | Website: Quests nur per Klick abhakbar, ehrlicher Leer-Zustand der Community, Hinweis „im Aufbau“; `CLAUDE.md` nach #30 |
+| #33 | Doku: Kategorie-Check am 26.11.2026 echt gegen die Twitch-API getestet (Fallstrick 8: Groß-/Kleinschreibung bei Get Games egal) |
+| #34 | Kategorie-Check: Kurzformen (`category_check/aliases.py`, z. B. CS2 → Counter-Strike, jedes Ziel per API geprüft); Glücksspiel wird nirgends unterstützt (`category_check/gambling.py`, auch im Content Strategist, keine Option) |
 
 #1–#20 gemergt bis 17.11.2026, #21–#27 bis 22.11.2026, #28–#29 am 23.11.2026, #30–#32 am
-25.11.2026. Stand nach #29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests),
-alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün; nach #31/#32: 965.
+25.11.2026, #33–#34 am 26.11.2026. Stand nach #29: CI grün (Website 218 Browser-Tests, Agenten 341 Python-Tests),
+alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün; nach #31/#32: 965;
+nach #34: 1003.
 
 ## 5. Offene Pull Requests
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
-- #31 und #32 sind seit dem 25.11.2026 gemergt (siehe Abschnitt 4).
-- **#34 Aliasse und Glücksspiel** (Branch `fix/kategorie-aliasse-gluecksspiel`):
-  Kategorie-Check mit Kurzformen (CS2 → Counter-Strike usw.); Glücksspiel wird nirgends
-  unterstützt (nie vorschlagen, messen oder planen, keine Option), Fallstrick 8 und 15.
-  Nach dem Merge in Abschnitt 4 eintragen.
+- **Strategist Web-Kern, Teil 1** (Branch `feature/strategist-web-kern`): Export
+  `data/content-strategist.json`, `js/strategist-core.js`, Paritätstest Python ↔ JavaScript,
+  Planer findet Messungen über Kurzformen. Noch keine Seite (Teil 2). Nach dem Merge in
+  Abschnitt 4 eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
 
@@ -307,7 +314,9 @@ Fakten mit „Stand: November 2026“ und offizieller Quelle. Affiliate seit Jun
    0–20 Zuschauer – echte Wochentage und Uhrzeiten in den eigenen Zeitfenstern, 9 Genres mit
    eigenen Formaten, Chat-Bedarf als Merkmal pro Format, Titel/Tags nach Twitch-Grenzen,
    Uhrzeiten nach Kategorie-Check-Messungen. CLI `python -m streaming_agents.content_strategist
-   plan`, API `POST /api/v1/content/strategy`. Noch keine Website-Oberfläche.
+   plan`, API `POST /api/v1/content/strategy`. Website „Weg A“: Planer als JavaScript
+   (`js/strategist-core.js`), Inhalte als Export aus Python. Teil 1 (Kern + Paritätstest) im
+   PR, die Seite selbst kommt in Teil 2.
 6. ⏳ Später: **Growth Analyst** und **Trend Scout**. Der Trend Scout kann auf den Messungen
    des Kategorie-Checks aufbauen (Wachstum von Kategorien über Tage).
 
@@ -358,6 +367,14 @@ python -m pytest -q
 # Clip Hunter gegen LIGHTOR (Datensatz separat klonen, NICHT committen):
 #   git clone https://github.com/sfu-db/Lightor_Exp
 #   python -m streaming_agents.clip_hunter benchmark --lightor <Pfad>/Lightor_Exp --game all --split test
+```
+
+Content Strategist für die Website (nach jeder Änderung an Inhalten oder Planer, aus `agents/`):
+
+```bash
+python -m streaming_agents.content_strategist export-web --out ../data/content-strategist.json
+python tests/strategist_parity.py      # Paritäts-Fixtures neu erzeugen
+node ../tests/web/strategist_parity.mjs  # JavaScript gegen Python prüfen (ohne Browser)
 ```
 
 Website lokal: `python -m http.server` in der Repo-Wurzel, dann im Browser öffnen.
@@ -434,7 +451,15 @@ Prüfliste für Website-Änderungen:
     Content Strategist nutzen sie gemeinsam, ein späterer Website-Export muss sie übernehmen.
     `suggest` nennt nur die Zahl, `measure`/`watch` lehnen freundlich ab (nur Glücksspiel →
     Exit-Code 2), `report`/API ignorieren alte Einträge, der Planer entfernt das Spiel (allein →
-    Fehler).
+    Fehler). Die Website-Version bekommt die Liste über `data/content-strategist.json`.
+16. Inhalte des Content Strategist nur in Python ändern (`content_strategist/formats.py`,
+    `titles.py`, `genres.py` usw.), dann `export-web` ausführen und die Paritäts-Fixtures neu
+    erzeugen (`python tests/strategist_parity.py` in `agents/`). Nie `data/content-strategist.json`
+    von Hand bearbeiten. Die Planer-Logik (Hinweise, Fehlermeldungen, Reihenfolge) steht zweimal:
+    in `planner.py` und in `js/strategist-core.js`. Eine Änderung dort muss in beiden
+    Dateien passieren, sonst schlägt der Paritätstest fehl. Nicht den Test lockern, sondern die
+    Ursache beheben. Typische Stolperfallen JS ↔ Python: Codepoints statt `.length`, `casefold`
+    statt `toLowerCase`, Unicode-`\w`, Python-Whitespace, `//` und `%` bei negativen Zahlen.
 
 ---
 

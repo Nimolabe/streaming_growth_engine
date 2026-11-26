@@ -89,3 +89,8 @@ Die Datenbank-Regeln (`database.rules.json`) prüft der Nachbau **nicht**.
 - Die Handy-Tests (390 und 360 px) erzwingen eine breite Ersatzschrift („DejaVu Sans“,
   Verdana). Ohne das hinge das Ergebnis von den installierten Schriften ab, weil die
   Webfonts geblockt sind: Lokal mit „Inter“ wäre es grün, in der CI rot.
+- `test_strategist_parity.py` führt `js/strategist-core.js` in einem Web Worker (ohne DOM) mit
+  den Fällen aus `tests/fixtures/strategist-parity.json` aus und verlangt exakt die Ergebnisse
+  aus Python. Weicht etwas ab: nicht den Test lockern, sondern Python und JavaScript angleichen
+  und die Fixtures neu erzeugen (siehe `agents/docs/content-strategist.md`, „Website-Version“).
+  Ohne Browser geht derselbe Vergleich mit `node tests/web/strategist_parity.mjs`.

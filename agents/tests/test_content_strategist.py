@@ -348,6 +348,26 @@ def test_measurements_for_other_games_do_not_change_times():
     assert "kommt nur aus deinem Zeitfenster" in plan.streams[0].timing_reason
 
 
+def test_measurements_are_found_via_short_names():
+    # „LoL“ ist im Kategorie-Check eine Kurzform für „League of Legends“ (aliases.py).
+    plan = build_plan(measured(games=("LoL",)))
+    assert plan.timing_source == "measurements"
+    item = plan.streams[0]
+    assert item.game == "LoL" and item.stream.label == "Di" and item.stream.start == "20:00"
+    assert plan.games[0].category_check
+    cs = [snapshot("Counter-Strike", 1, 20, [300, 120, 40] + [4] * 12)]
+    plan = build_plan(request(games=("CS2",), windows=["Di 18-23"], streams_per_week=1,
+                              hours_per_week=4, average_viewers=3, measurements=cs,
+                              utc_offset_minutes=0))
+    assert plan.timing_source == "measurements" and plan.streams[0].stream.start == "20:00"
+
+
+def test_web_surface_note_has_no_command_line():
+    plan = build_plan(request(), surface="web")
+    assert not any("python -m" in note for note in plan.notes)
+    assert any(note.startswith("Uhrzeiten kommen nur aus deinen Zeitfenstern.") for note in plan.notes)
+
+
 def test_without_measurements_the_plan_says_how_to_measure():
     plan = build_plan(request())
     assert plan.timing_source == "windows_only"
