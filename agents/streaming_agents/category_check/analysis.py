@@ -6,12 +6,12 @@ Kategorien weit hinten; in kleinen, aber besuchten Kategorien weit vorn.
 Die Schwellen unten sind nachvollziehbare Faustregeln, keine Twitch-Vorgaben.
 """
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta, timezone
 from statistics import median
 
 from .aliases import alias_label
-from .gambling import filtered_note, gambling_warning, is_gambling
+from .gambling import ignored_note, is_gambling, skipped_note
 from .models import (
     CategoryCheckResult,
     CategorySnapshot,
@@ -210,21 +210,19 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
         median_rank=rank, rank_is_lower_bound=rank_floor, verdict=verdict,
         verdict_text=_verdict_text(verdict, rank, rank_floor, own, total, language),
         best_slots=best[:3], aliases=aliases,
-        gambling=is_gambling(first.category_id, first.category),
     )
 
 
 def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
             language: str = "de",
             to_local: Callable[[float], datetime] = machine_local_time,
-            window: tuple[int, int] | None = None, include_gambling: bool = True,
-            excluded_gambling: Sequence[str] = ()) -> CategoryCheckResult:
+            window: tuple[int, int] | None = None,
+            skipped_gambling: int = 0) -> CategoryCheckResult:
     """Fasst alle Messungen je Kategorie und Sprache zusammen und sortiert nach Chance.
 
-    ``include_gambling=False`` blendet Glücksspiel-Kategorien aus (API und ``report``
-    standardmäßig); ``excluded_gambling`` sind Namen, die schon vorher (bei ``suggest``)
-    ausgefiltert wurden. Beides wird in den Hinweisen gezählt. Gezeigte
-    Glücksspiel-Kategorien bekommen immer einen deutlichen Hinweis.
+    Messungen zu Glücksspiel-Kategorien werden immer ignoriert (z. B. aus alten Messdateien)
+    und nur als Zahl erwähnt. ``skipped_gambling``: so viele Kategorien hat ``suggest`` schon
+    vorher weggelassen.
     """
     if language not in ("de", "en"):
         raise ValueError("language must be 'de' or 'en'")
@@ -232,11 +230,10 @@ def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
         raise ValueError("own_viewers must not be negative")
     groups: dict[tuple[str, str], list[CategorySnapshot]] = defaultdict(list)
     count = 0
-    hidden: list[str] = list(dict.fromkeys(excluded_gambling))
+    ignored = 0
     for item in snapshots:
-        if not include_gambling and is_gambling(item.category_id, item.category):
-            if item.category not in hidden:
-                hidden.append(item.category)
+        if is_gambling(item.category_id, item.category):
+            ignored += 1
             continue
         groups[(item.category_id, item.language)].append(item)
         count += 1
@@ -244,21 +241,21 @@ def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
         _summarize(sorted(group, key=lambda s: s.taken_at), own_viewers, language, to_local, window)
         for group in groups.values()
     ]
-    # Glücksspiel steht immer hinten: gemessen ja, empfohlen nie.
-    summaries.sort(key=lambda s: (s.gambling, VERDICT_ORDER[s.verdict], s.rank_is_lower_bound,
-                                  s.median_rank,
+    summaries.sort(key=lambda s: (VERDICT_ORDER[s.verdict], s.rank_is_lower_bound, s.median_rank,
                                   -s.median_total_viewers, s.category.casefold()))
     return CategoryCheckResult(own_viewers=own_viewers, language=language, measurements=count,
                                categories=summaries,
-                               notes=_notes(summaries, language, hidden))
+                               notes=_notes(summaries, language, skipped_gambling, ignored))
 
 
-def _notes(summaries: list[CategorySummary], language: str,
-           hidden_gambling: Sequence[str] = ()) -> list[str]:
+def _notes(summaries: list[CategorySummary], language: str, skipped_gambling: int = 0,
+           ignored_gambling: int = 0) -> list[str]:
     de = language == "de"
-    notes = [gambling_warning(item.category, language) for item in summaries if item.gambling]
-    if hidden_gambling:
-        notes.append(filtered_note(list(hidden_gambling), language))
+    notes: list[str] = []
+    if skipped_gambling:
+        notes.append(skipped_note(skipped_gambling, language))
+    if ignored_gambling:
+        notes.append(ignored_note(ignored_gambling, language))
     notes += [alias_label(alias, item.category) for item in summaries for alias in item.aliases]
     notes += [
         "Der Platz ist eine Näherung für die Sichtbarkeit: gezählt wird, wie viele Live-Kanäle "

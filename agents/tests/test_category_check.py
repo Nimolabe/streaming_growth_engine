@@ -30,7 +30,13 @@ from streaming_agents.category_check.collect import (
     suggestion_categories,
     top_categories,
 )
-from streaming_agents.category_check.gambling import GAMBLING_CATEGORIES, is_gambling
+from streaming_agents.category_check.gambling import (
+    GAMBLING_CATEGORIES,
+    GamblingNotSupported,
+    is_gambling,
+    is_gambling_name,
+    rejection,
+)
 from streaming_agents.category_check.models import CategoryCheckRequest, CategorySnapshot
 from streaming_agents.category_check.report import render_report
 from streaming_agents.category_check.store import StoreError, append_snapshots, load_snapshots
@@ -490,39 +496,72 @@ def test_gambling_list_and_detection():
     assert is_gambling("498566", "irgendwas")            # per ID
     assert is_gambling("123", "Blackjack")               # gleichnamige Kategorie, andere ID
     assert is_gambling("1", "virtual casino")
+    assert is_gambling_name("SLOTS") and is_gambling_name("Texas Hold'em")
     assert not is_gambling("499634", "Crypto") and not is_gambling("27471", "Minecraft")
+    assert "nicht unterstützt" in rejection("Slots", "de")
+    assert "not supported" in rejection("Slots", "en")
+
+
+def test_no_gambling_option_anywhere():
+    parser = cli_module.build_parser()
+    for command in (["suggest", "--out", "x.jsonl"], ["report", "x.jsonl"]):
+        with pytest.raises(SystemExit):
+            parser.parse_args(command + ["--include-gambling"])
+    assert "include_gambling" not in CategoryCheckRequest.model_fields
+    import inspect
+    assert "include" not in str(inspect.signature(suggestion_categories))
+    assert "include" not in str(inspect.signature(analyze))
 
 
 GAMBLING_TOP = [("509658", "Just Chatting"), ("498566", "Slots"), ("27471", "Minecraft"),
                 ("29452", "Virtual Casino"), ("33214", "Fortnite"), ("516575", "VALORANT")]
 
 
-def test_suggestion_categories_filters_and_refills():
+def test_suggestion_categories_always_filters_and_refills():
     fake = FakeTwitch(top=GAMBLING_TOP)
     chosen = suggestion_categories(client(fake), 3)
     assert [c.name for c in chosen.categories] == ["Just Chatting", "Minecraft", "Fortnite"]
-    assert [c.name for c in chosen.excluded_gambling] == ["Slots", "Virtual Casino"]
-    chosen = suggestion_categories(client(fake), 3, include_gambling=True)
-    assert [c.name for c in chosen.categories] == ["Just Chatting", "Slots", "Minecraft"]
-    assert chosen.excluded_gambling == []
+    assert chosen.skipped_gambling == 2
 
 
-def test_analyze_gambling_filter_warning_and_order():
-    snaps = [snap([50, 1], cat="498566", name="Slots"), snap([900] * 60, cat="2", name="Groß")]
-    shown = analyze(snaps, to_local=UTC_PLUS_1)                       # Standard: zeigen
-    assert [c.category for c in shown.categories] == ["Groß", "Slots"]  # Glücksspiel hinten
-    assert shown.categories[1].gambling and not shown.categories[0].gambling
-    assert any(note.startswith("Achtung: „Slots“ ist eine Glücksspiel-Kategorie")
-               for note in shown.notes)
-    english = analyze(snaps, language="en", to_local=UTC_PLUS_1)
-    assert any(note.startswith("Warning: “Slots” is a gambling category") for note in english.notes)
-    hidden = analyze(snaps, include_gambling=False, to_local=UTC_PLUS_1)
-    assert [c.category for c in hidden.categories] == ["Groß"] and hidden.measurements == 1
-    assert "1 Glücksspiel-Kategorie ausgeblendet (Slots)." in hidden.notes[0]
-    pre = analyze(snaps[1:], excluded_gambling=["Slots", "Virtual Casino"], to_local=UTC_PLUS_1)
-    assert pre.notes[0].startswith("2 Glücksspiel-Kategorien ausgeblendet (Slots, Virtual Casino)")
-    html = render_report(shown)
-    assert "⚠ Glücksspiel" in html
+def test_resolve_and_measure_refuse_gambling():
+    fake = FakeTwitch(games={"Slots": "498566", "Blackjack": "999"},
+                      streams={("498566", "de"): [50]})
+    with pytest.raises(GamblingNotSupported) as caught:
+        resolve_category(client(fake), "slots")
+    assert caught.value.name == "slots"
+    assert not [r for r in fake.calls if "/helix/" in r.full_url]  # gar nicht erst gefragt
+    with pytest.raises(GamblingNotSupported):
+        measure(client(fake), Category("498566", "Slots"), sleep=lambda _: None)
+    assert not [r for r in fake.calls if "/streams" in r.full_url]
+    result = measure_many(client(fake), [Category("498566", "Slots")], "de", sleep=lambda _: None)
+    assert result.snapshots == [] and "nicht unterstützt" in result.errors[0]
+
+
+def test_resolve_refuses_gambling_found_by_id_or_alias(monkeypatch):
+    # Twitch liefert unter einem harmlos klingenden Namen eine gesperrte ID.
+    fake = FakeTwitch(games={"Lucky Spin": "498566"})
+    with pytest.raises(GamblingNotSupported, match="Lucky Spin"):
+        resolve_category(client(fake), "Lucky Spin")
+    # Eine Kurzform, die auf eine Glücksspiel-Kategorie zeigt, wird ebenso abgelehnt.
+    monkeypatch.setitem(CATEGORY_ALIASES, "vc", "Virtual Casino")
+    fake = FakeTwitch(games={"Virtual Casino": "29452"})
+    with pytest.raises(GamblingNotSupported):
+        resolve_category(client(fake), "VC")
+    assert not [r for r in fake.calls if "/helix/" in r.full_url]
+
+
+def test_analyze_ignores_gambling_and_counts_neutrally():
+    snaps = [snap([50, 1], cat="498566", name="Slots"), snap([9, 1], cat="1", name="Blackjack"),
+             snap([900] * 60, cat="2", name="Groß")]
+    result = analyze(snaps, to_local=UTC_PLUS_1)
+    assert [c.category for c in result.categories] == ["Groß"] and result.measurements == 1
+    assert result.notes[0] == "2 Messungen zu Glücksspiel-Kategorien ignoriert (werden nicht unterstützt)."
+    assert not any("Slots" in note or "Blackjack" in note for note in result.notes)
+    english = analyze(snaps, language="en", skipped_gambling=1, to_local=UTC_PLUS_1)
+    assert english.notes[:2] == ["Without 1 gambling category (not supported).",
+                                 "2 measurements of gambling categories ignored (not supported)."]
+    assert "Slots" not in render_report(result)
 
 
 @pytest.fixture
@@ -538,40 +577,57 @@ def gambling_env(monkeypatch):
     return fake
 
 
-def test_cli_suggest_excludes_gambling_by_default(gambling_env, tmp_path, capsys):
+def test_cli_suggest_never_measures_gambling(gambling_env, tmp_path, capsys):
     out = tmp_path / "m.jsonl"
     assert cli_module.main(["suggest", "--top", "3", "--out", str(out)]) == 0
     printed = capsys.readouterr().out
-    assert "Ohne 2 Glücksspiel-Kategorien: Slots, Virtual Casino" in printed
-    assert "2 Glücksspiel-Kategorien ausgeblendet" in printed
+    assert "Ohne 2 Glücksspiel-Kategorien (werden nicht unterstützt)." in printed
+    assert "Slots" not in printed and "Virtual Casino" not in printed   # keine Namen
     stored = [json.loads(line)["category"] for line in out.read_text().splitlines()]
     assert stored == ["Just Chatting", "Minecraft", "Fortnite"]
-    out2 = tmp_path / "m2.jsonl"
-    assert cli_module.main(["suggest", "--top", "3", "--include-gambling", "--out", str(out2)]) == 0
-    printed = capsys.readouterr().out
-    assert "⚠ Slots" in printed and "ausgeblendet" not in printed
-    assert "Glücksspiel-Kategorie" in printed
+    measured = [r.full_url for r in gambling_env.calls if "/streams" in r.full_url]
+    assert not any("game_id=498566" in url or "game_id=29452" in url for url in measured)
 
 
-def test_cli_measure_alias_and_explicit_gambling(gambling_env, tmp_path, capsys):
+def test_cli_measure_mixed_refuses_gambling_and_measures_rest(gambling_env, tmp_path, capsys):
     out = tmp_path / "m.jsonl"
-    assert cli_module.main(["measure", "CS2", "Slots", "--out", str(out)]) == 0
+    assert cli_module.main(["measure", "Slots", "CS2", "--out", str(out)]) == 0
     printed = capsys.readouterr().out
+    assert "„Slots“ ist eine Glücksspiel-Kategorie. Glücksspiel-Kategorien werden von der " \
+           "Streaming Growth Engine nicht unterstützt" in printed
     assert "CS2 → Counter-Strike (Alias)" in printed
-    assert printed.count("Achtung: „Slots“ ist eine Glücksspiel-Kategorie") == 2  # vorher + Hinweis
-    assert "⚠ Slots" in printed
-    assert cli_module.main(["measure", "Slots", "--ui", "en", "--out", str(out)]) == 0
-    assert "Warning: “Slots” is a gambling category" in capsys.readouterr().out
-    # report blendet Glücksspiel standardmäßig aus, --include-gambling zeigt es.
-    assert cli_module.main(["report", str(out)]) == 0
-    printed = capsys.readouterr().out
-    assert "⚠ Slots" not in printed and "1 Glücksspiel-Kategorie ausgeblendet (Slots)" in printed
-    assert "CS2 → Counter-Strike (Alias)" in printed
-    assert cli_module.main(["report", str(out), "--include-gambling"]) == 0
-    assert "⚠ Slots" in capsys.readouterr().out
+    stored = [json.loads(line)["category"] for line in out.read_text().splitlines()]
+    assert stored == ["Counter-Strike"]
 
 
-def test_api_include_gambling():
+def test_cli_measure_and_watch_only_gambling_fail(gambling_env, tmp_path, capsys):
+    out = tmp_path / "m.jsonl"
+    assert cli_module.main(["measure", "Slots", "Poker", "--out", str(out)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out.count("nicht unterstützt") == 2
+    assert "Keine unterstützte Kategorie" in captured.err
+    assert not out.exists()
+    assert cli_module.main(["measure", "Slots", "--ui", "en", "--out", str(out)]) == 2
+    captured = capsys.readouterr()
+    assert "“Slots” is a gambling category" in captured.out
+    assert "No supported category" in captured.err
+    assert cli_module.main(["watch", "Slots", "--every", "30", "--hours", "1",
+                            "--out", str(out)]) == 2
+    assert "nicht unterstützt" in capsys.readouterr().out and not out.exists()
+
+
+def test_cli_report_ignores_gambling_in_old_files(tmp_path, capsys):
+    old = tmp_path / "alt.jsonl"
+    append_snapshots(old, [snap([300, 2], cat="498566", name="Slots"), snap([40, 3, 1])])
+    html = tmp_path / "b.html"
+    assert cli_module.main(["report", str(old), "--html", str(html)]) == 0
+    printed = capsys.readouterr().out
+    assert "1 Messung zu Glücksspiel-Kategorien ignoriert" in printed
+    assert "Spiel" in printed and "Slots" not in printed
+    assert "Slots" not in html.read_text(encoding="utf-8")
+
+
+def test_api_has_no_include_gambling_and_ignores_unknown_field():
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
 
@@ -580,10 +636,8 @@ def test_api_include_gambling():
     snaps = [json.loads(snap([60, 30, 10, 1], cat="498566", name="Slots").model_dump_json()),
              json.loads(snap([60, 30, 10, 1]).model_dump_json())]
     api = TestClient(app)
-    data = api.post("/api/v1/content/category-check", json={"snapshots": snaps}).json()
-    assert [c["category"] for c in data["categories"]] == ["Spiel"]
-    assert any("ausgeblendet (Slots)" in note for note in data["notes"])
-    data = api.post("/api/v1/content/category-check",
-                    json={"snapshots": snaps, "include_gambling": True}).json()
-    assert [c["category"] for c in data["categories"]] == ["Spiel", "Slots"]
-    assert data["categories"][1]["gambling"] is True
+    for body in ({"snapshots": snaps}, {"snapshots": snaps, "include_gambling": True}):
+        data = api.post("/api/v1/content/category-check", json=body).json()
+        assert [c["category"] for c in data["categories"]] == ["Spiel"]
+        assert "1 Messung zu Glücksspiel-Kategorien ignoriert" in data["notes"][0]
+        assert "gambling" not in data["categories"][0]

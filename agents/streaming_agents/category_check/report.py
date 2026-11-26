@@ -12,13 +12,13 @@ TEXT = {
            "median": "Zuschauer pro Kanal (Median)", "top3": "Anteil Top 3", "rank": "Dein Platz",
            "verdict": "Einschätzung", "slots": "Beste Zeiten", "none": "–", "notes": "Hinweise",
            "labels": {"good": "gute Chance", "ok": "machbar", "hard": "schwer", "low_demand": "wenig Publikum"},
-           "created": "Erstellt", "lang": "Sprache", "gambling": "Glücksspiel"},
+           "created": "Erstellt", "lang": "Sprache"},
     "en": {"title": "Category check", "own": "Your viewers", "measured": "Measurements",
            "category": "Category", "channels": "Live channels", "viewers": "Total viewers",
            "median": "Viewers per channel (median)", "top3": "Top 3 share", "rank": "Your position",
            "verdict": "Verdict", "slots": "Best times", "none": "–", "notes": "Notes",
            "labels": {"good": "good chance", "ok": "doable", "hard": "hard", "low_demand": "small audience"},
-           "created": "Created", "lang": "Language", "gambling": "Gambling"},
+           "created": "Created", "lang": "Language"},
 }
 STYLE = """
 body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0e0e12;color:#e9e9ef}
@@ -30,8 +30,7 @@ th{color:#a1a1b5;font-weight:600;font-size:13px}td.num{font-variant-numeric:tabu
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#0e0e12}
 .why{color:#c9c9d6;font-size:13px;margin-top:4px}ul{margin:8px 0 0 18px;padding:0;color:#c9c9d6}
 .slots{font-size:13px;color:#c9c9d6}.slot{white-space:nowrap}
-.alias{color:#a1a1b5;font-size:13px}.warn{display:inline-block;margin-left:6px;padding:1px 8px;
-border-radius:999px;font-size:12px;font-weight:700;background:#ff6b81;color:#0e0e12}
+.alias{color:#a1a1b5;font-size:13px}
 """
 
 
@@ -49,11 +48,10 @@ def _row(item: CategorySummary, t: dict, language: str) -> str:
     slots = "<br>".join(f"<span class=\"slot\">{escape(slot.label)}</span>"
                         for slot in item.best_slots) or t["none"]
     lang = "" if item.language == "any" else f" ({escape(item.language)})"
-    warn = f"<span class=\"warn\">⚠ {escape(t['gambling'])}</span>" if item.gambling else ""
     aliases = "".join(f"<div class=\"alias\">{escape(alias_label(alias, item.category))}</div>"
                       for alias in item.aliases)
     return (
-        f"<tr><td><strong>{escape(item.category)}</strong>{lang}{warn}{aliases}"
+        f"<tr><td><strong>{escape(item.category)}</strong>{lang}{aliases}"
         f"<div class=\"why\">{item.measurements} {escape(t['measured'])}</div></td>"
         f"<td class=\"num\">{_num(item.median_channels, item.channels_is_lower_bound, language)}</td>"
         f"<td class=\"num\">{_num(item.median_total_viewers, item.channels_is_lower_bound, language)}</td>"

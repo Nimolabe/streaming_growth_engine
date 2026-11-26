@@ -78,7 +78,6 @@ Wichtige Optionen:
   damit es schnell geht. Bei riesigen Kategorien steht dann „hinter Platz …“. Das reicht, denn
   dort wäre man ohnehin kaum zu sehen.
 - `--ui en`: Ausgabe auf Englisch.
-- `--include-gambling` (`suggest`, `report`): Glücksspiel-Kategorien nicht ausblenden, siehe unten.
 
 ### Kurzformen (Aliasse)
 
@@ -104,26 +103,29 @@ Deshalb übersetzt der Kategorie-Check gängige Kurzformen vorher in den offizie
 Greift ein Alias, steht das in der Ausgabe, im Bericht und in der Messdatei:
 `CS2 → Counter-Strike (Alias)`. So ist immer sichtbar, was gemessen wurde.
 
-### Glücksspiel
+### Glücksspiel wird nicht unterstützt
 
-Glücksspiel-Kategorien (Slots, Virtual Casino, Poker, Casino, Roulette, Blackjack, Baccarat …,
-Liste mit IDs in `streaming_agents/category_check/gambling.py`, Stand November 2026) werden
-**standardmäßig nicht vorgeschlagen**:
+Entscheidung des Nutzers vom 26.11.2026: Die Streaming Growth Engine unterstützt Glücksspiel
+**gar nicht** – nie vorschlagen, nie messen, nie planen. Es gibt keine Option zum Einschalten.
 
-- `suggest` lässt sie weg, füllt mit den nächsten Kategorien auf und nennt, wie viele
-  herausgefiltert wurden. `--include-gambling` nimmt sie wieder auf.
-- `report` und die API blenden sie aus und vermerken das in den Hinweisen;
-  `--include-gambling` bzw. `include_gambling: true` zeigt sie.
-- `measure` mit einer ausdrücklich genannten Glücksspiel-Kategorie funktioniert, zeigt aber
-  einen deutlichen Hinweis (⚠) und sortiert sie ans Ende.
+Die eine Liste steht in `streaming_agents/category_check/gambling.py` (Slots, Virtual Casino,
+Poker, Casino, Casino Games, Roulette, Blackjack, Baccarat, Gates of Olympus, Texas Hold'em;
+IDs und Namen, per API ermittelt, Stand November 2026). Gleichnamige Kategorien mit anderer ID
+und Kurzformen, die auf eine dieser Kategorien zeigen, zählen genauso.
+
+- `suggest` misst Glücksspiel-Kategorien gar nicht erst, füllt mit den nächsten Kategorien auf
+  und nennt nur die Zahl: „Ohne 2 Glücksspiel-Kategorien (werden nicht unterstützt).“
+- `measure` und `watch` lehnen eine Glücksspiel-Kategorie freundlich ab (DE/EN) und messen die
+  übrigen Kategorien normal. Kommt nur Glücksspiel vor, endet der Befehl mit Exit-Code 2.
+- `report` und die API ignorieren Glücksspiel-Einträge aus älteren Messdateien und nennen
+  nur die Zahl. Ein Feld `include_gambling` in der API-Anfrage wird wie jedes unbekannte Feld
+  ignoriert und ändert nichts.
+- Der [Content Strategist](content-strategist.md) nutzt dieselbe Liste.
+- Ein späterer Export für die Website (z. B. Kategorie-Listen oder Vorschläge im Browser) muss
+  diese Liste mit übernehmen.
 
 Eine Twitch-Kategorie für echte Sportwetten gibt es nicht (nur „Sports Betting Simulator“).
-
-Die Messdatei wird nur ergänzt. Mehrere Dateien lassen sich zusammen auswerten
-(`report a.jsonl b.jsonl`). Eine abgebrochene Messung bleibt lesbar.
-
-Die API bietet `POST /api/v1/content/category-check` zum Auswerten gespeicherter Messungen.
-Sie fragt Twitch selbst nicht an.
+„Crypto“ steht bewusst nicht in der Liste (Handel, kein Glücksspiel im engeren Sinn).
 
 ## Lesehilfe
 

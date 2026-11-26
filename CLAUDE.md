@@ -126,7 +126,7 @@ Außerdem (seit #14–#20): `guides.html`, `layouts.html`, `overlay.html`,
   `twitch_limits.py`, `report.py`, `cli.py`; CLI `python -m streaming_agents.content_strategist
   plan`, API `POST /api/v1/content/strategy`),
   `category_check/aliases.py` (Kurzformen → Twitch-Name) und `category_check/gambling.py`
-  (Glücksspiel-Filter),
+  (Glücksspiel-Liste; Glücksspiel wird nicht unterstützt, auch im Content Strategist),
   `agents/` (Growth Analyst = Creator Intelligence + `creator_strategy*`, geparkt),
   `llm/` (OpenAI-Provider, opt-in mit `--live`, Kostenbremse; soll später mit
   `clip_hunter/ai_stage.py` zusammengelegt werden), `api.py`, `registry.py`. Entfernt:
@@ -181,9 +181,9 @@ alle Seiten DE/EN ohne JS-Fehler. Nach #30: Agenten 877 Python-Tests grün; nach
 
 - **#5** Setup Intelligence Agent: bewusst geparkt.
 - #31 und #32 sind seit dem 25.11.2026 gemergt (siehe Abschnitt 4).
-- **Aliasse und Glücksspiel-Filter** (Branch `fix/kategorie-aliasse-gluecksspiel`):
-  Kategorie-Check mit Kurzformen (CS2 → Counter-Strike usw.), Glücksspiel standardmäßig
-  aus `suggest`/`report`/API gefiltert (`--include-gambling`), Fallstrick 8 und 15.
+- **#34 Aliasse und Glücksspiel** (Branch `fix/kategorie-aliasse-gluecksspiel`):
+  Kategorie-Check mit Kurzformen (CS2 → Counter-Strike usw.); Glücksspiel wird nirgends
+  unterstützt (nie vorschlagen, messen oder planen, keine Option), Fallstrick 8 und 15.
   Nach dem Merge in Abschnitt 4 eintragen.
 
 ### Details zu den zuletzt gemergten PRs (#14–#20)
@@ -402,7 +402,7 @@ Prüfliste für Website-Änderungen:
    Vorschläge („Phasmo“ → Phasmophobia, „Fortnight“ → Fortnite). Achtung: Counter-Strike 2
    heißt auf Twitch „Counter-Strike“ (ID 32399); „Counter Strike 2“ und „Counter-Strike 2“
    werden nicht gefunden. Abkürzungen können exakt auf ein anderes Spiel passen („CS2“ →
-   „Carrot Slime 2“). **Seit dem PR „Aliasse und Glücksspiel-Filter“** übersetzt
+   „Carrot Slime 2“). **Seit PR #34** übersetzt
    `category_check/aliases.py` gängige Kurzformen VOR Get Games in den offiziellen Namen
    (CS2 → Counter-Strike, LoL, GTA/GTA 5, WoW, Apex, R6 → Rainbow Six Siege, EA FC → EA Sports
    FC 27, TFT, DbD u. a.; jedes Ziel per API geprüft). Ausgabe, Bericht und Messdatei zeigen
@@ -428,11 +428,13 @@ Prüfliste für Website-Änderungen:
     XP-Leiste gefüllt; das wirkte unehrlich. Seit dem PR „Quests und Community“ zählt nur ein
     Klick auf die Checkbox (`js/quests.js`). Dasselbe gilt für Zähler, Badges und
     Community-Angaben: nichts versprechen oder anzeigen, was nicht wirklich passiert ist.
-15. Keine Glücksspiel-Kategorien empfehlen (standardmäßig gefiltert). `suggest`, `report` und
-    die API blenden Slots, Virtual Casino, Poker, Casino, Roulette, Blackjack usw. aus
-    (`category_check/gambling.py`, IDs und Namen, Stand November 2026) und sagen, wie viele.
-    Nur mit `--include-gambling` bzw. `include_gambling: true` oder bei ausdrücklichem
-    `measure` erscheinen sie, dann immer mit ⚠-Hinweis und am Ende der Liste.
+15. Glücksspiel wird nicht unterstützt (Entscheidung des Nutzers vom 26.11.2026): nie
+    vorschlagen, nie messen, nie planen; keine Option zum Einschalten. Die eine Liste steht in
+    `category_check/gambling.py` (IDs und Namen, Stand November 2026); Kategorie-Check und
+    Content Strategist nutzen sie gemeinsam, ein späterer Website-Export muss sie übernehmen.
+    `suggest` nennt nur die Zahl, `measure`/`watch` lehnen freundlich ab (nur Glücksspiel →
+    Exit-Code 2), `report`/API ignorieren alte Einträge, der Planer entfernt das Spiel (allein →
+    Fehler).
 
 ---
 

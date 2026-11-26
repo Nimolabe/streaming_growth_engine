@@ -81,7 +81,6 @@ class CategorySummary(BaseModel):
     best_slots: list[SlotInfo] = Field(default_factory=list, max_length=3)
     aliases: list[str] = Field(default_factory=list,
                                description="Schreibweisen, unter denen gemessen wurde, z. B. CS2")
-    gambling: bool = Field(default=False, description="Glücksspiel-Kategorie (wird nicht empfohlen)")
 
 
 class CategoryCheckResult(BaseModel):
@@ -103,8 +102,6 @@ class CategoryCheckRequest(BaseModel):
     language: Literal["de", "en"] = "de"
     window: str | None = Field(default=None, pattern=r"^\d{1,2}-\d{1,2}$",
                                description="Uhrzeiten für „beste Zeiten“, z. B. 16-24")
-    include_gambling: bool = Field(default=False,
-                                   description="Glücksspiel-Kategorien (Slots, Casino …) zeigen")
 
     @model_validator(mode="after")
     def _limit_total(self):

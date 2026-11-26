@@ -1,4 +1,9 @@
-"""Glücksspiel-Kategorien: werden standardmäßig NICHT vorgeschlagen (Entscheidung des Nutzers).
+"""Glücksspiel wird von der Streaming Growth Engine NICHT unterstützt.
+
+Entscheidung des Nutzers vom 26.11.2026: nie vorschlagen, nie messen, nie planen; es gibt
+keine Option zum Einschalten. Diese Datei ist die EINE Liste dafür – der Kategorie-Check und
+der Content Strategist nutzen sie gemeinsam. Ein späterer Export für die Website muss
+dieselbe Liste übernehmen.
 
 Liste per Search Categories und Get Streams gegen die echte Twitch-API ermittelt
 (26.11.2026, Stand: November 2026). Auf Twitch gibt es mehrere Kategorien gleichen Namens;
@@ -8,9 +13,10 @@ Bewusst NICHT in der Liste:
 - „Crypto“ (499634): Handel/Finanzen, kein Glücksspiel im engeren Sinn.
 - „Bingo“ (31080) und Lotterie-Spiele: meist Gelegenheitsspiele ohne Einsatz.
 - „Sports Betting Simulator“ (233837772): eine Simulation. Eine Kategorie für echte
-  Sportwetten gibt es auf Twitch nicht (Suche nach „betting“, „sportwetten“, „sportsbook“).
+  Sportwetten gibt es auf Twitch nicht (Suche nach „betting“, „sportwetten“, „sportsbook“);
+  der Name „Sports Betting“ ist trotzdem gesperrt, falls sie entsteht.
 """
-from .aliases import normalize
+from .aliases import alias_target, normalize
 
 GAMBLING_CATEGORIES: dict[str, str] = {
     "498566": "Slots",               # mit Abstand die größte (93+ Kanäle weltweit am 26.11.)
@@ -33,26 +39,48 @@ GAMBLING_NAMES: frozenset[str] = frozenset(normalize(name) for name in (
 ))
 
 
+class GamblingNotSupported(ValueError):
+    """Eine Glücksspiel-Kategorie wurde angefragt; die Meldung ist freundlich und zweisprachig."""
+
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(rejection(name, "de"))
+
+
+def is_gambling_name(name: str) -> bool:
+    """Name (oder seine Kurzform) ist eine Glücksspiel-Kategorie – für Eingaben ohne ID."""
+    target = alias_target(name)
+    return normalize(name) in GAMBLING_NAMES or (target is not None
+                                                  and normalize(target) in GAMBLING_NAMES)
+
+
 def is_gambling(category_id: str, name: str) -> bool:
-    return str(category_id) in GAMBLING_CATEGORIES or normalize(name) in GAMBLING_NAMES
+    return str(category_id) in GAMBLING_CATEGORIES or is_gambling_name(name)
 
 
-def gambling_warning(name: str, language: str) -> str:
+def rejection(name: str, language: str) -> str:
     if language == "de":
-        return (f"Achtung: „{name}“ ist eine Glücksspiel-Kategorie. Der Kategorie-Check schlägt "
-                "Glücksspiel standardmäßig nicht vor (Suchtgefahr, strenge Twitch-Regeln) und "
-                "empfiehlt sie nicht.")
-    return (f"Warning: “{name}” is a gambling category. The category check does not suggest "
-            "gambling by default (risk of addiction, strict Twitch rules) and does not "
-            "recommend it.")
+        return (f"„{name}“ ist eine Glücksspiel-Kategorie. Glücksspiel-Kategorien werden von der "
+                "Streaming Growth Engine nicht unterstützt – sie werden weder gemessen noch "
+                "vorgeschlagen oder geplant.")
+    return (f"“{name}” is a gambling category. Gambling categories are not supported by the "
+            "Streaming Growth Engine – they are never measured, suggested or planned.")
 
 
-def filtered_note(names: list[str], language: str) -> str:
-    listed = ", ".join(names)
+def skipped_note(count: int, language: str) -> str:
+    """Neutrale Zahl ohne Namen (z. B. bei ``suggest``)."""
     if language == "de":
-        word = "Glücksspiel-Kategorie" if len(names) == 1 else "Glücksspiel-Kategorien"
-        return (f"{len(names)} {word} ausgeblendet ({listed}). Anzeigen mit --include-gambling "
-                "(API: include_gambling).")
-    word = "gambling category" if len(names) == 1 else "gambling categories"
-    return (f"{len(names)} {word} hidden ({listed}). Show them with --include-gambling "
-            "(API: include_gambling).")
+        word = "Glücksspiel-Kategorie" if count == 1 else "Glücksspiel-Kategorien"
+        return f"Ohne {count} {word} (werden nicht unterstützt)."
+    word = "gambling category" if count == 1 else "gambling categories"
+    return f"Without {count} {word} (not supported)."
+
+
+def ignored_note(count: int, language: str) -> str:
+    """Hinweis, wenn alte Messdateien Glücksspiel-Einträge enthalten (``report``, API)."""
+    if language == "de":
+        word = "Messung" if count == 1 else "Messungen"
+        return (f"{count} {word} zu Glücksspiel-Kategorien ignoriert (werden nicht "
+                "unterstützt).")
+    word = "measurement" if count == 1 else "measurements"
+    return f"{count} {word} of gambling categories ignored (not supported)."
