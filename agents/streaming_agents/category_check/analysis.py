@@ -10,6 +10,8 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta, timezone
 from statistics import median
 
+from .aliases import alias_label
+from .gambling import ignored_note, is_gambling, skipped_note
 from .models import (
     CategoryCheckResult,
     CategorySnapshot,
@@ -189,6 +191,10 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
     per_channel = median([median(item.viewers) if item.viewers else 0 for item in snapshots])
     shares = [sum(item.viewers[:3]) / sum(item.viewers) for item in snapshots if sum(item.viewers)]
     verdict = _verdict(total, rank, rank_floor)
+    aliases: list[str] = []
+    for item in snapshots:
+        if item.alias and item.alias.casefold() not in {a.casefold() for a in aliases}:
+            aliases.append(item.alias)
 
     measured_slots = {_slot_key(to_local(item.taken_at)) for item in snapshots}
     best: list[SlotInfo] = []
@@ -203,22 +209,32 @@ def _summarize(snapshots: list[CategorySnapshot], own: int, language: str,
         top3_share=round(median(shares), 3) if shares else 0.0,
         median_rank=rank, rank_is_lower_bound=rank_floor, verdict=verdict,
         verdict_text=_verdict_text(verdict, rank, rank_floor, own, total, language),
-        best_slots=best[:3],
+        best_slots=best[:3], aliases=aliases,
     )
 
 
 def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
             language: str = "de",
             to_local: Callable[[float], datetime] = machine_local_time,
-            window: tuple[int, int] | None = None) -> CategoryCheckResult:
-    """Fasst alle Messungen je Kategorie und Sprache zusammen und sortiert nach Chance."""
+            window: tuple[int, int] | None = None,
+            skipped_gambling: int = 0) -> CategoryCheckResult:
+    """Fasst alle Messungen je Kategorie und Sprache zusammen und sortiert nach Chance.
+
+    Messungen zu Glücksspiel-Kategorien werden immer ignoriert (z. B. aus alten Messdateien)
+    und nur als Zahl erwähnt. ``skipped_gambling``: so viele Kategorien hat ``suggest`` schon
+    vorher weggelassen.
+    """
     if language not in ("de", "en"):
         raise ValueError("language must be 'de' or 'en'")
     if own_viewers < 0:
         raise ValueError("own_viewers must not be negative")
     groups: dict[tuple[str, str], list[CategorySnapshot]] = defaultdict(list)
     count = 0
+    ignored = 0
     for item in snapshots:
+        if is_gambling(item.category_id, item.category):
+            ignored += 1
+            continue
         groups[(item.category_id, item.language)].append(item)
         count += 1
     summaries = [
@@ -228,12 +244,20 @@ def analyze(snapshots: Iterable[CategorySnapshot], *, own_viewers: int = 2,
     summaries.sort(key=lambda s: (VERDICT_ORDER[s.verdict], s.rank_is_lower_bound, s.median_rank,
                                   -s.median_total_viewers, s.category.casefold()))
     return CategoryCheckResult(own_viewers=own_viewers, language=language, measurements=count,
-                               categories=summaries, notes=_notes(summaries, language))
+                               categories=summaries,
+                               notes=_notes(summaries, language, skipped_gambling, ignored))
 
 
-def _notes(summaries: list[CategorySummary], language: str) -> list[str]:
+def _notes(summaries: list[CategorySummary], language: str, skipped_gambling: int = 0,
+           ignored_gambling: int = 0) -> list[str]:
     de = language == "de"
-    notes = [
+    notes: list[str] = []
+    if skipped_gambling:
+        notes.append(skipped_note(skipped_gambling, language))
+    if ignored_gambling:
+        notes.append(ignored_note(ignored_gambling, language))
+    notes += [alias_label(alias, item.category) for item in summaries for alias in item.aliases]
+    notes += [
         "Der Platz ist eine Näherung für die Sichtbarkeit: gezählt wird, wie viele Live-Kanäle "
         "mindestens so viele Zuschauer haben wie du. Twitch kann Listen auch personalisiert "
         "sortieren."

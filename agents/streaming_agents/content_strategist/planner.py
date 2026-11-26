@@ -26,6 +26,7 @@ from ..category_check.analysis import (
     slot_reach,
     slot_stats,
 )
+from ..category_check.gambling import is_gambling_name, rejection
 from ..category_check.models import CategorySnapshot, SlotInfo
 from .formats import FORMATS, Format, formats_for
 from .genres import detect_genre, genre_label, normalize
@@ -339,6 +340,12 @@ def build_plan(request: StrategyRequest,
                to_local: Callable[[float], datetime] | None = None) -> ContentPlan:
     de = request.language == "de"
     lang = request.language
+    # Glücksspiel wird nicht unterstützt (Entscheidung des Nutzers vom 26.11.2026): kein Plan,
+    # keine Titel, keine Formate. Dieselbe Liste wie im Kategorie-Check.
+    refused = [game for game in request.games if is_gambling_name(game)]
+    games = [game for game in request.games if game not in refused]
+    if not games:
+        raise PlanError(" ".join(rejection(game, lang) for game in refused))
     level = chat_level(request.active_chatters)
     length, extras = _stream_length(request)
     count = request.streams_per_week
@@ -353,7 +360,6 @@ def build_plan(request: StrategyRequest,
             f"planned {count} streams. Add windows or plan fewer streams.")
 
     # Spiele und Genres
-    games = request.games
     genres = {game: detect_genre(game) for game in games}
     if to_local is None:
         to_local = (local_time_from_offset(request.utc_offset_minutes)
@@ -517,7 +523,8 @@ def build_plan(request: StrategyRequest,
             f"Title at most {TITLE_MAX_CHARS} characters, at most {TAGS_MAX_COUNT} tags of at most "
             f"{TAG_MAX_CHARS} characters without spaces or special characters. Source: "
             f"{SOURCE_URL} (as of {SOURCE_DATE})"),
-        notes=_notes(request, level, genres, game_slots, streams, extras),
+        notes=[rejection(game, lang) for game in refused]
+        + _notes(request, level, genres, game_slots, streams, extras),
         limitations=[
             "Redaktionelle Regeln, kein Sprachmodell und keine Wachstumsvorhersage." if de else
             "Editorial rules, no language model and no growth prediction.",

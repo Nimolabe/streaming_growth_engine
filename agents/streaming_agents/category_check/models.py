@@ -22,6 +22,8 @@ class CategorySnapshot(BaseModel):
     taken_at: float = Field(gt=1_500_000_000, description="Zeitpunkt der Messung, Unix-Sekunden (UTC)")
     category_id: str = Field(pattern=r"^\d{1,20}$")
     category: str = Field(min_length=1, max_length=120)
+    alias: str | None = Field(default=None, max_length=120,
+                              description="Eingegebene Schreibweise, z. B. „CS2“ für Counter-Strike")
     language: str = Field(pattern=r"^([a-z]{2}|any)$", description="ISO-639-1 oder 'any'")
     complete: bool = Field(description="False: Seitenlimit erreicht, es gibt noch mehr Kanäle")
     viewers: list[int] = Field(default_factory=list, max_length=MAX_VIEWERS_PER_SNAPSHOT)
@@ -40,6 +42,12 @@ class CategorySnapshot(BaseModel):
         if not value:
             raise ValueError("category must not be blank")
         return value
+
+    @field_validator("alias")
+    @classmethod
+    def _strip_alias(cls, value: str | None) -> str | None:
+        value = " ".join(value.split()) if value else ""
+        return value or None
 
     @property
     def channels(self) -> int:
@@ -71,6 +79,8 @@ class CategorySummary(BaseModel):
     verdict: Verdict
     verdict_text: str
     best_slots: list[SlotInfo] = Field(default_factory=list, max_length=3)
+    aliases: list[str] = Field(default_factory=list,
+                               description="Schreibweisen, unter denen gemessen wurde, z. B. CS2")
 
 
 class CategoryCheckResult(BaseModel):

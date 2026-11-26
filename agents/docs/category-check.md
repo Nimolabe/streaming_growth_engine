@@ -53,7 +53,8 @@ Zugangsdaten nur als Umgebungsvariablen setzen und niemals in Dateien im Repo sp
 ```powershell
 cd agents
 
-# 1. Einmal messen (Kategorienamen exakt wie auf Twitch; bei Tippfehlern kommen Vorschläge)
+# 1. Einmal messen (Kategorienamen wie auf Twitch, Groß-/Kleinschreibung egal; gängige
+#    Kurzformen wie „CS2“ oder „gta 5“ gehen auch; bei Tippfehlern kommen Vorschläge)
 python -m streaming_agents.category_check measure "Minecraft" "Stardew Valley" "Factorio" `
     --out messungen.jsonl
 
@@ -78,11 +79,53 @@ Wichtige Optionen:
   dort wäre man ohnehin kaum zu sehen.
 - `--ui en`: Ausgabe auf Englisch.
 
-Die Messdatei wird nur ergänzt. Mehrere Dateien lassen sich zusammen auswerten
-(`report a.jsonl b.jsonl`). Eine abgebrochene Messung bleibt lesbar.
+### Kurzformen (Aliasse)
 
-Die API bietet `POST /api/v1/content/category-check` zum Auswerten gespeicherter Messungen.
-Sie fragt Twitch selbst nicht an.
+Twitch findet Kategorien über den exakten Namen; die Groß-/Kleinschreibung ist egal
+(echt getestet am 26.11.2026). Abkürzungen findet Twitch aber nicht oder falsch: „CS2“ ist
+auf Twitch das Spiel „Carrot Slime 2“, und Counter-Strike 2 läuft unter „Counter-Strike“.
+Deshalb übersetzt der Kategorie-Check gängige Kurzformen vorher in den offiziellen Namen
+(Liste in `streaming_agents/category_check/aliases.py`, jeder Zielname per API geprüft):
+
+| Eingabe (Beispiele) | Gemessen wird |
+| --- | --- |
+| CS2, CS 2, Counter Strike 2, Counter-Strike 2, CS:GO | Counter-Strike |
+| LoL | League of Legends |
+| GTA, GTA 5, GTA V, GTA RP, GTA Online | Grand Theft Auto V |
+| GTA 6, GTA VI | Grand Theft Auto VI |
+| WoW | World of Warcraft |
+| Apex | Apex Legends |
+| R6, R6S, Rainbow Six, Rainbow Six Siege X | Rainbow Six Siege |
+| EA FC, FC 27 / FC 26 / FC 25 | EA Sports FC 27 / 26 / 25 („EA FC“ = aktuelle Ausgabe, Stand November 2026) |
+| TFT, DbD | Teamfight Tactics, Dead by Daylight |
+| PUBG, Warzone, Tarkov/EFT, Dota, OW/OW2, Valo, PoE/PoE 2 | jeweils der offizielle Name |
+
+Greift ein Alias, steht das in der Ausgabe, im Bericht und in der Messdatei:
+`CS2 → Counter-Strike (Alias)`. So ist immer sichtbar, was gemessen wurde.
+
+### Glücksspiel wird nicht unterstützt
+
+Entscheidung des Nutzers vom 26.11.2026: Die Streaming Growth Engine unterstützt Glücksspiel
+**gar nicht** – nie vorschlagen, nie messen, nie planen. Es gibt keine Option zum Einschalten.
+
+Die eine Liste steht in `streaming_agents/category_check/gambling.py` (Slots, Virtual Casino,
+Poker, Casino, Casino Games, Roulette, Blackjack, Baccarat, Gates of Olympus, Texas Hold'em;
+IDs und Namen, per API ermittelt, Stand November 2026). Gleichnamige Kategorien mit anderer ID
+und Kurzformen, die auf eine dieser Kategorien zeigen, zählen genauso.
+
+- `suggest` misst Glücksspiel-Kategorien gar nicht erst, füllt mit den nächsten Kategorien auf
+  und nennt nur die Zahl: „Ohne 2 Glücksspiel-Kategorien (werden nicht unterstützt).“
+- `measure` und `watch` lehnen eine Glücksspiel-Kategorie freundlich ab (DE/EN) und messen die
+  übrigen Kategorien normal. Kommt nur Glücksspiel vor, endet der Befehl mit Exit-Code 2.
+- `report` und die API ignorieren Glücksspiel-Einträge aus älteren Messdateien und nennen
+  nur die Zahl. Ein Feld `include_gambling` in der API-Anfrage wird wie jedes unbekannte Feld
+  ignoriert und ändert nichts.
+- Der [Content Strategist](content-strategist.md) nutzt dieselbe Liste.
+- Ein späterer Export für die Website (z. B. Kategorie-Listen oder Vorschläge im Browser) muss
+  diese Liste mit übernehmen.
+
+Eine Twitch-Kategorie für echte Sportwetten gibt es nicht (nur „Sports Betting Simulator“).
+„Crypto“ steht bewusst nicht in der Liste (Handel, kein Glücksspiel im engeren Sinn).
 
 ## Lesehilfe
 
@@ -96,7 +139,8 @@ Sie fragt Twitch selbst nicht an.
 
 ## Datenschutz und Fairness
 
-- Gespeichert werden **nur Zuschauerzahlen**, keine Kanalnamen, Titel oder Nutzer.
+- Gespeichert werden **nur Zuschauerzahlen**, keine Kanalnamen, Titel oder Nutzer. Dazu kommt
+  der Name der Kategorie und, falls ein Alias gegriffen hat, die eigene Eingabe (z. B. „CS2“).
 - Es werden ausschließlich öffentliche Live-Daten über die offizielle Twitch-API abgefragt,
   mit kurzen Pausen zwischen den Anfragen. `watch` misst höchstens alle 10 Minuten.
 

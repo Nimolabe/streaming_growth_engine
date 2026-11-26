@@ -875,3 +875,37 @@ def test_simulation_regression(profile):
 def test_simulation_only_real_impossibilities_fail(windows, streams, hours, match):
     with pytest.raises(PlanError, match=match):
         build_plan(request(windows=windows, streams_per_week=streams, hours_per_week=hours))
+
+
+# ------------------------------------------- Glücksspiel wird nicht unterstützt (26.11.2026)
+
+
+def test_gambling_game_alone_is_refused():
+    with pytest.raises(PlanError, match="Glücksspiel-Kategorien werden von der Streaming Growth "
+                                        "Engine nicht unterstützt"):
+        build_plan(request(games=("Slots",)))
+    with pytest.raises(PlanError, match="not supported"):
+        build_plan(request(games=("virtual casino", "Poker"), language="en"))
+
+
+def test_gambling_game_is_removed_next_to_a_real_game():
+    plan = build_plan(request(games=("Slots", "Valorant")))
+    assert [game.name for game in plan.games] == ["Valorant"]
+    assert {stream.game for stream in plan.streams} == {"Valorant"}
+    assert plan.notes[0].startswith("„Slots“ ist eine Glücksspiel-Kategorie.")
+    text = json.dumps(plan.model_dump(), ensure_ascii=False)
+    assert text.count("Slots") == 1  # nur im Hinweis – kein Titel, Tag oder Format
+
+
+def test_gambling_refusal_in_cli_and_api(capsys):
+    assert cli_main(["plan", "--game", "Slots", "--window", "Fr 20-23", "--hours", "6",
+                     "--streams", "1"]) == 2
+    assert "nicht unterstützt" in capsys.readouterr().err
+    body = {"games": ["Slots"], "windows": [{"day": "Fr", "start": "20", "end": "23"}],
+            "hours_per_week": 6,
+            "streams_per_week": 1}
+    response = client.post("/api/v1/content/strategy", json=body)
+    assert response.status_code == 422 and "nicht unterstützt" in response.text
+    response = client.post("/api/v1/content/strategy", json=body | {"games": ["Slots", "Valorant"]})
+    assert response.status_code == 200
+    assert [game["name"] for game in response.json()["games"]] == ["Valorant"]

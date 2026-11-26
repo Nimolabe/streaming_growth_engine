@@ -17,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..clip_hunter.twitch_api import HelixClient, TwitchApiError
+from .aliases import alias_label
 from .analysis import analyze, parse_window
 from .collect import (
     DEFAULT_PAGES,
@@ -25,8 +26,9 @@ from .collect import (
     CategoryNotFound,
     measure_many,
     resolve_category,
-    top_categories,
+    suggestion_categories,
 )
+from .gambling import GamblingNotSupported, rejection
 from .models import CategoryCheckResult
 from .report import render_report
 from .store import StoreError, append_snapshots, load_snapshots
@@ -86,12 +88,25 @@ def print_table(result: CategoryCheckResult) -> None:
         _print(f"• {note}")
 
 
-def _resolve_all(client: HelixClient, names: list[str]) -> list[Category]:
+def _resolve_all(client: HelixClient, names: list[str], ui: str = "de") -> list[Category]:
+    """Kategorien auflösen. Glücksspiel wird freundlich abgelehnt und nicht gemessen; kommt
+    nur Glücksspiel vor, bricht der Befehl ab (Exit-Code 2)."""
     categories: list[Category] = []
+    rejected = 0
     for name in names:
-        category = resolve_category(client, name)
+        try:
+            category = resolve_category(client, name)
+        except GamblingNotSupported as exc:
+            _print(rejection(exc.name, ui))
+            rejected += 1
+            continue
+        if category.alias:
+            _print(alias_label(category.alias, category.name))
         if all(existing.id != category.id for existing in categories):
             categories.append(category)
+    if not categories:
+        raise CliError("Keine unterstützte Kategorie zum Messen." if ui == "de" else
+                       "No supported category to measure.")
     return categories
 
 
@@ -106,7 +121,7 @@ def _round(client: HelixClient, categories: list[Category], args: argparse.Names
 
 def cmd_measure(args: argparse.Namespace) -> int:
     client = HelixClient.from_env()
-    categories = _resolve_all(client, args.categories)
+    categories = _resolve_all(client, args.categories, args.ui)
     _print(f"Messe {len(categories)} Kategorien (Sprache: {args.lang}) …")
     result = measure_many(client, categories, args.lang, max_pages=args.pages)
     for error in result.errors:
@@ -121,7 +136,8 @@ def cmd_measure(args: argparse.Namespace) -> int:
 
 def cmd_suggest(args: argparse.Namespace) -> int:
     client = HelixClient.from_env()
-    categories = top_categories(client, args.top)
+    chosen = suggestion_categories(client, args.top)
+    categories = chosen.categories
     _print(f"Messe die {len(categories)} meistgesehenen Kategorien (Sprache: {args.lang}) …")
     result = measure_many(client, categories, args.lang, max_pages=args.pages)
     for error in result.errors:
@@ -130,14 +146,15 @@ def cmd_suggest(args: argparse.Namespace) -> int:
         raise CliError("Keine Messung erfolgreich.")
     append_snapshots(args.out, result.snapshots)
     _print(f"{len(result.snapshots)} Messungen ergänzt in {Path(args.out).expanduser()}\n")
-    print_table(analyze(result.snapshots, own_viewers=args.viewers, language=args.ui))
+    print_table(analyze(result.snapshots, own_viewers=args.viewers, language=args.ui,
+                        skipped_gambling=chosen.skipped_gambling))
     return 0 if not result.errors else 1
 
 
 def cmd_watch(args: argparse.Namespace, sleep: Callable[[float], None] = time.sleep,
               clock: Callable[[], float] = time.monotonic) -> int:
     client = HelixClient.from_env()
-    categories = _resolve_all(client, args.categories)
+    categories = _resolve_all(client, args.categories, args.ui)
     rounds = max(1, int(args.hours * 60 // args.every) + 1)
     _print(f"Messe {len(categories)} Kategorien alle {args.every:g} Minuten, insgesamt "
            f"{rounds} Runden → {Path(args.out).expanduser()}")

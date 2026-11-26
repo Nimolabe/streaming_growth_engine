@@ -205,6 +205,19 @@ des Plans; kein Rückblick-Format als erster Stream eines Spiels in Woche 1; Cha
 Mitspieler-Bedarf passt; alle Titelregeln und Twitch-Grenzen. Echte Unmöglichkeiten (zu wenig
 Stunden für 60-Minuten-Streams, zu wenige Zeitfenster) müssen dagegen einen Fehler ergeben.
 
+## Glücksspiel wird nicht unterstützt
+
+Entscheidung des Nutzers vom 26.11.2026: Für Glücksspiel-Kategorien gibt es keinen Plan, keine
+Titel und keine Formate. Geprüft wird mit derselben Liste wie im Kategorie-Check
+(`category_check/gambling.py`, `is_gambling_name`), nicht mit einer eigenen Kopie.
+
+- Ist ein Glücksspiel (z. B. „Slots“) das einzige Spiel, gibt es eine Fehlermeldung (CLI
+  Exit-Code 2, API 422): „„Slots“ ist eine Glücksspiel-Kategorie. Glücksspiel-Kategorien werden
+  von der Streaming Growth Engine nicht unterstützt …“ (auch auf Englisch).
+- Sind andere Spiele dabei, wird nur das Glücksspiel entfernt; der Plan zeigt denselben Satz
+  als ersten Hinweis.
+- Eine spätere Website-Oberfläche muss dieselbe Liste übernehmen.
+
 ## Grenzen
 
 - Redaktionelle Regeln, keine Wachstumsvorhersage. Die Ideen sind Hypothesen zum Ausprobieren.
@@ -212,5 +225,5 @@ Stunden für 60-Minuten-Streams, zu wenige Zeitfenster) müssen dagegen einen Fe
 - Ohne Messungen kommen Uhrzeiten nur aus den eigenen Zeitfenstern.
 - Mit Messungen ist der Platz eine Näherung, weil Twitch Listen personalisiert sortieren kann.
 - Spielinhalte ändern sich mit Updates; Ideen vor dem Stream in der eigenen Spielversion prüfen.
-- Gegen die echte Twitch-API ist nur der Kategorie-Check gebaut, und auch der ist noch nicht
-  echt getestet. Der Content Strategist selbst fragt nichts im Netz an.
+- Gegen die echte Twitch-API ist nur der Kategorie-Check gebaut (seit dem 26.11.2026 echt
+  getestet). Der Content Strategist selbst fragt nichts im Netz an.

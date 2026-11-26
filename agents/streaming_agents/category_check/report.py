@@ -2,6 +2,7 @@
 from datetime import datetime
 from html import escape
 
+from .aliases import alias_label
 from .models import CategoryCheckResult, CategorySummary
 
 COLORS = {"good": "#20c997", "ok": "#f5b301", "hard": "#ff6b81", "low_demand": "#8b8f99"}
@@ -29,6 +30,7 @@ th{color:#a1a1b5;font-weight:600;font-size:13px}td.num{font-variant-numeric:tabu
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#0e0e12}
 .why{color:#c9c9d6;font-size:13px;margin-top:4px}ul{margin:8px 0 0 18px;padding:0;color:#c9c9d6}
 .slots{font-size:13px;color:#c9c9d6}.slot{white-space:nowrap}
+.alias{color:#a1a1b5;font-size:13px}
 """
 
 
@@ -46,8 +48,10 @@ def _row(item: CategorySummary, t: dict, language: str) -> str:
     slots = "<br>".join(f"<span class=\"slot\">{escape(slot.label)}</span>"
                         for slot in item.best_slots) or t["none"]
     lang = "" if item.language == "any" else f" ({escape(item.language)})"
+    aliases = "".join(f"<div class=\"alias\">{escape(alias_label(alias, item.category))}</div>"
+                      for alias in item.aliases)
     return (
-        f"<tr><td><strong>{escape(item.category)}</strong>{lang}"
+        f"<tr><td><strong>{escape(item.category)}</strong>{lang}{aliases}"
         f"<div class=\"why\">{item.measurements} {escape(t['measured'])}</div></td>"
         f"<td class=\"num\">{_num(item.median_channels, item.channels_is_lower_bound, language)}</td>"
         f"<td class=\"num\">{_num(item.median_total_viewers, item.channels_is_lower_bound, language)}</td>"
